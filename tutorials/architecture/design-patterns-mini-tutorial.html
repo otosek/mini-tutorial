@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wzorce projektowe</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0d9488;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .cat-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .tag-creational { background: #ccfbf1; color: #115e59; }
+    .tag-structural { background: #e0f2fe; color: #075985; }
+    .tag-behavioral { background: #fef3c7; color: #92400e; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f0fdfa; font-weight: 600; }
+
+    table a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    table a:hover { text-decoration: underline; }
+
+    .when {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin: 0.5rem 0 0.75rem;
+    }
+    .when strong { color: var(--text); }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Wzorce projektowe</h1>
+<p class="meta">GoF — kreacyjne, strukturalne, behawioralne · kiedy stosować · przykłady Java<br>
+Format: HTML offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#co-to">Co to jest wzorzec</a></li>
+    <li><a href="#lista">Lista wzorców</a></li>
+    <li><a href="#singleton">Singleton</a></li>
+    <li><a href="#factory">Factory Method</a></li>
+    <li><a href="#builder">Builder</a></li>
+    <li><a href="#adapter">Adapter</a></li>
+    <li><a href="#decorator">Decorator</a></li>
+    <li><a href="#facade">Facade</a></li>
+    <li><a href="#proxy">Proxy</a></li>
+    <li><a href="#strategy">Strategy</a></li>
+    <li><a href="#observer">Observer</a></li>
+    <li><a href="#command">Command</a></li>
+    <li><a href="#template">Template Method</a></li>
+    <li><a href="#chain">Chain of Responsibility</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="co-to">Co to jest wzorzec</h2>
+<p><strong>Wzorzec projektowy</strong> (design pattern) to sprawdzone rozwiązanie typowego problemu w projektowaniu obiektowym. Nie jest biblioteką ani snippetem do wklejenia — to nazwa + struktura klas + intencja.</p>
+<p>Kanon <strong>Gang of Four</strong> (Gamma, Helm, Johnson, Vlissides, 1994) dzieli 23 wzorce na trzy grupy: <em>creational</em> (tworzenie obiektów), <em>structural</em> (składanie struktur), <em>behavioral</em> (komunikacja i algorytmy).</p>
+
+<hr>
+
+<h2 id="lista" class="must-know">Lista wzorców</h2>
+
+<table>
+  <thead>
+    <tr><th>Wzorzec</th><th>Kategoria</th><th>W jednym zdaniu</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><a href="#singleton">Singleton</a></td><td><span class="cat-tag tag-creational">Kreacyjny</span></td><td>Jedna instancja w JVM / zakresie</td></tr>
+    <tr><td><a href="#factory">Factory Method</a></td><td><span class="cat-tag tag-creational">Kreacyjny</span></td><td>Tworzenie bez hardcodu konkretnej klasy</td></tr>
+    <tr><td><a href="#builder">Builder</a></td><td><span class="cat-tag tag-creational">Kreacyjny</span></td><td>Krok po kroku obiekt z wieloma polami</td></tr>
+    <tr><td><a href="#adapter">Adapter</a></td><td><span class="cat-tag tag-structural">Strukturalny</span></td><td>Dopasowanie obcego API do Twojego</td></tr>
+    <tr><td><a href="#decorator">Decorator</a></td><td><span class="cat-tag tag-structural">Strukturalny</span></td><td>Dokładanie zachowania bez dziedziczenia</td></tr>
+    <tr><td><a href="#facade">Facade</a></td><td><span class="cat-tag tag-structural">Strukturalny</span></td><td>Prosty front na skomplikowany podsystem</td></tr>
+    <tr><td><a href="#proxy">Proxy</a></td><td><span class="cat-tag tag-structural">Strukturalny</span></td><td>Kontrola dostępu / lazy / cache wokół obiektu</td></tr>
+    <tr><td><a href="#strategy">Strategy</a></td><td><span class="cat-tag tag-behavioral">Behawioralny</span></td><td>Wymienny algorytm za interfejsem</td></tr>
+    <tr><td><a href="#observer">Observer</a></td><td><span class="cat-tag tag-behavioral">Behawioralny</span></td><td>Subskrypcja zdarzeń (publish–subscribe)</td></tr>
+    <tr><td><a href="#command">Command</a></td><td><span class="cat-tag tag-behavioral">Behawioralny</span></td><td>Żądanie jako obiekt (kolejka, undo)</td></tr>
+    <tr><td><a href="#template">Template Method</a></td><td><span class="cat-tag tag-behavioral">Behawioralny</span></td><td>Szkielet algorytmu + haki w podklasach</td></tr>
+    <tr><td><a href="#chain">Chain of Responsibility</a></td><td><span class="cat-tag tag-behavioral">Behawioralny</span></td><td>Łańcuch handlerów, pierwszy „bierze” request</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="singleton"><span class="cat-tag tag-creational">Kreacyjny</span> Singleton</h2>
+<p>Gwarantuje jedną instancję klasy i globalny punkt dostępu. W Javie często enum albo holder z lazy init — unikaj „podwójnego checkingu” bez <code>volatile</code>.</p>
+<p class="when"><strong>Kiedy:</strong> konfiguracja, cache współdzielony, logger — gdy naprawdę potrzebujesz jednej instancji. Unikaj jako „globalnej zmiennej” na wszystko.</p>
+<pre><code>public enum AppConfig {
+  INSTANCE;
+  private final String env = System.getenv().getOrDefault("APP_ENV", "dev");
+  public String env() { return env; }
+}
+// AppConfig.INSTANCE.env()</code></pre>
+
+<hr>
+
+<h2 id="factory"><span class="cat-tag tag-creational">Kreacyjny</span> Factory Method</h2>
+<p>Tworzenie obiektu przez metodę/interfejs zamiast <code>new Concrete</code> w kliencie. Klient zna produkt (interfejs), nie konkretną klasę.</p>
+<p class="when"><strong>Kiedy:</strong> typ obiektu zależy od konfiguracji, środowiska lub parametru; chcesz otworzyć kod na nowe warianty bez zmiany call-site’ów.</p>
+<pre><code>interface Notifier { void send(String msg); }
+
+class NotifierFactory {
+  static Notifier create(String channel) {
+    return switch (channel) {
+      case "email" -&gt; new EmailNotifier();
+      case "sms"   -&gt; new SmsNotifier();
+      default      -&gt; throw new IllegalArgumentException(channel);
+    };
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="builder" class="must-know"><span class="cat-tag tag-creational">Kreacyjny</span> Builder</h2>
+<p>Buduje obiekt krok po kroku (fluent API), zamiast konstruktora z 8+ parametrami. Dobry do obiektów niemutowalnych i opcjonalnych pól.</p>
+<p class="when"><strong>Kiedy:</strong> wiele opcjonalnych pól, czytelność wywołań, walidacja dopiero na <code>build()</code>. W Javie: ręczny builder, Lombok <code>@Builder</code>, records + withery.</p>
+<pre><code>var order = Order.builder()
+    .customerId(42)
+    .item("SKU-1", 2)
+    .discount(10)
+    .build();</code></pre>
+
+<hr>
+
+<h2 id="adapter"><span class="cat-tag tag-structural">Strukturalny</span> Adapter</h2>
+<p>Opakowuje obce API tak, by pasowało do Twojego interfejsu. Nie zmienia zachowania — tłumaczy wywołania.</p>
+<p class="when"><strong>Kiedy:</strong> integracja biblioteki zewnętrznej, legacy SOAP → Twój port, inny format daty/DTO bez przepisywania klientów.</p>
+<pre><code>interface PaymentPort { void charge(Money amount); }
+
+class StripeAdapter implements PaymentPort {
+  private final StripeClient client;
+  public void charge(Money amount) {
+    client.createCharge(amount.cents(), "PLN");
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="decorator"><span class="cat-tag tag-structural">Strukturalny</span> Decorator</h2>
+<p>Dokłada odpowiedzialność do obiektu w runtime, zachowując ten sam interfejs. Klasyczny przykład: <code>InputStream</code> / <code>BufferedInputStream</code>.</p>
+<p class="when"><strong>Kiedy:</strong> logowanie, cache, retry, kompresja — warstwy wokół tej samej operacji bez eksplozji podklas.</p>
+<pre><code>interface Repo { User find(long id); }
+
+class CachingRepo implements Repo {
+  private final Repo inner;
+  private final Map&lt;Long, User&gt; cache = new HashMap&lt;&gt;();
+  public User find(long id) {
+    return cache.computeIfAbsent(id, inner::find);
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="facade"><span class="cat-tag tag-structural">Strukturalny</span> Facade</h2>
+<p>Jeden prosty interfejs nad kilkoma klasami podsystemu. Ukrywa kolejność wywołań i szczegóły.</p>
+<p class="when"><strong>Kiedy:</strong> use-case warstwy aplikacji, uproszczenie startu biblioteki, API dla UI/REST bez eksponowania 5 serwisów naraz.</p>
+<pre><code>class CheckoutFacade {
+  void placeOrder(Cart cart) {
+    inventory.reserve(cart);
+    payment.charge(cart.total());
+    shipping.schedule(cart);
+    orders.save(cart);
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="proxy"><span class="cat-tag tag-structural">Strukturalny</span> Proxy</h2>
+<p>Zastępca obiektu z tym samym interfejsem: lazy load, kontrola dostępu, remote stub. W Hibernate lazy proxy to właśnie Proxy.</p>
+<p class="when"><strong>Kiedy:</strong> kosztowna inicjalizacja, ACL przed wywołaniem, wywołanie zdalne (RMI/HTTP). Różnica vs Decorator: Proxy kontroluje dostęp do realnego obiektu; Decorator dokłada funkcje.</p>
+<pre><code>class LazyImage implements Image {
+  private Image real;
+  public void draw() {
+    if (real == null) real = new HeavyImage(path);
+    real.draw();
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="strategy" class="must-know"><span class="cat-tag tag-behavioral">Behawioralny</span> Strategy</h2>
+<p>Rodzina wymiennych algorytmów za wspólnym interfejsem. Klient wybiera strategię (lub dostaje ją z DI) bez <code>if/switch</code> w środku logiki biznesowej.</p>
+<p class="when"><strong>Kiedy:</strong> różne polityki cen, sortowanie, walidacja, płatności — ten sam kontekst, inny algorytm. W Springu: wiele beanów jednego interfejsu + mapa/qualifier.</p>
+<pre><code>interface Pricing { Money price(Cart cart); }
+
+class RegularPricing implements Pricing { ... }
+class VipPricing implements Pricing { ... }
+
+Money total = pricing.price(cart); // wstrzyknięta strategia</code></pre>
+
+<hr>
+
+<h2 id="observer"><span class="cat-tag tag-behavioral">Behawioralny</span> Observer</h2>
+<p>Podmiot powiadamia listę obserwatorów o zmianie stanu. Luźne powiązanie: publisher nie zna konkretnych listenerów.</p>
+<p class="when"><strong>Kiedy:</strong> eventy domenowe, UI (Listener), Spring <code>ApplicationEventPublisher</code>, reactive streams. Unikaj cykli powiadomień i ciężkiej pracy synchronicznie w listenerze.</p>
+<pre><code>class OrderService {
+  private final List&lt;Consumer&lt;Order&gt;&gt; listeners = new ArrayList&lt;&gt;();
+  void onPlaced(Consumer&lt;Order&gt; l) { listeners.add(l); }
+  void place(Order o) {
+    save(o);
+    listeners.forEach(l -&gt; l.accept(o));
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="command"><span class="cat-tag tag-behavioral">Behawioralny</span> Command</h2>
+<p>Żądanie jako obiekt: parametry + <code>execute()</code> (+ opcjonalnie <code>undo()</code>). Można kolejkować, logować, retry’ować.</p>
+<p class="when"><strong>Kiedy:</strong> undo/redo, joby w kolejce, makrokomendy, oddzielenie UI („przycisk”) od akcji. Blisko CQRS command, ale GoF Command to obiekt z zachowaniem.</p>
+<pre><code>interface Command { void execute(); }
+
+class TransferCmd implements Command {
+  public void execute() { account.debit(from); account.credit(to); }
+}
+queue.offer(new TransferCmd(from, to, amount));</code></pre>
+
+<hr>
+
+<h2 id="template"><span class="cat-tag tag-behavioral">Behawioralny</span> Template Method</h2>
+<p>Abstrakcyjna klasa definiuje szkielet algorytmu; podklasy nadpisują kroki (haki). Odwrócenie Strategy: tu dziedziczenie, nie kompozycja.</p>
+<p class="when"><strong>Kiedy:</strong> wspólny pipeline (np. import pliku: parse → validate → save), różnice tylko w środkowych krokach. Preferuj Strategy, gdy warianty rosną lub nie chcesz hierarchii klas.</p>
+<pre><code>abstract class ImportJob {
+  final void run(Path file) {
+    var rows = parse(file);
+    validate(rows);
+    save(rows);
+  }
+  abstract List&lt;Row&gt; parse(Path file);
+  void validate(List&lt;Row&gt; rows) { /* default */ }
+  abstract void save(List&lt;Row&gt; rows);
+}</code></pre>
+
+<hr>
+
+<h2 id="chain"><span class="cat-tag tag-behavioral">Behawioralny</span> Chain of Responsibility</h2>
+<p>Request idzie przez łańcuch handlerów; każdy może obsłużyć, przekazać dalej albo przerwać. Servlet filters, Spring Security filter chain, middleware.</p>
+<p class="when"><strong>Kiedy:</strong> walidacja wieloetapowa, autoryzacja, logging/metrics przed handlerem, support tickets (poziomy eskalacji). Pilnuj kolejności i tego, by łańcuch zawsze kończył się sensownie.</p>
+<pre><code>interface Handler {
+  void setNext(Handler n);
+  void handle(Request r);
+}
+
+// AuthHandler → RateLimitHandler → BusinessHandler
+auth.setNext(rateLimit);
+rateLimit.setNext(business);
+auth.handle(request);</code></pre>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ul>
+  <li>Singleton na wszystko — ukryty global state, trudne testy, ukryte zależności.</li>
+  <li>Wzorzec „bo brzmi seniorowo” — bez problemu do rozwiązania to szum w kodzie.</li>
+  <li>Mylenie Adapter / Decorator / Proxy — podobna struktura, inna intencja.</li>
+  <li>God Object zamiast Facade — facade upraszcza API, nie zbiera całej logiki świata.</li>
+  <li>Strategy z jednym wariantem „na zapas” — YAGNI; dodaj gdy pojawi się drugi algorytm.</li>
+  <li>Observer synchroniczny z ciężką I/O — blokuje publishera; rozważ async / kolejkę.</li>
+  <li>Template Method + głębokie dziedziczenie zamiast kompozycji Strategy.</li>
+  <li>Factory zwracająca konkret zamiast interfejsu — klient i tak sprzężony z implementacją.</li>
+  <li>Builder bez walidacji na <code>build()</code> — niespójne obiekty pół-zbudowane.</li>
+  <li>Łańcuch bez końca / bez „fallback” — request ginie po drodze w ciszy.</li>
+</ul>
+
+</body>
+</html>
