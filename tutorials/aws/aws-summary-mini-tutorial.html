@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS Summary — ściąga usług</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #ff9900;
+      --aws: #232f3e;
+      --code-bg: #f4f4f5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.28rem; margin-top: 2.25rem; color: var(--aws); border-left: 4px solid var(--accent); padding-left: 0.65rem; }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; color: var(--accent); }
+
+    h2.must-know::after {
+      content: "must-know";
+      display: inline-block;
+      margin-left: 0.6rem;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.15em 0.5em;
+      border-radius: 999px;
+      vertical-align: middle;
+    }
+
+    p { margin: 0.75rem 0; }
+    ul { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.87rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    .svc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .svc-name { font-weight: 700; color: var(--aws); }
+    .svc-tech { font-size: 0.88rem; color: #0d9488; margin: 0.25rem 0 0.4rem; }
+    .svc-desc { font-size: 0.92rem; color: var(--muted); margin: 0; }
+
+    .map-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.8rem 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; font-size: 1em; }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; padding-left: 1.4rem; }
+    .toc a { color: var(--aws); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>AWS Summary — ściąga usług</h1>
+<p class="meta">Dyski · load balancery i autoscaling · RDS · Route 53 · S3 lifecycle · CloudFront · kolejki · kontenery · serverless · typy baz · analityka · ML · CloudWatch · Cognito<br>
+Format: HTML offline, bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#dyski">Typy dysków i storage</a></li>
+    <li><a href="#lb">Load balancery</a></li>
+    <li><a href="#asg">Auto Scaling</a></li>
+    <li><a href="#rds">RDS i Aurora</a></li>
+    <li><a href="#route53">Route 53</a></li>
+    <li><a href="#s3">S3 i Lifecycle rules</a></li>
+    <li><a href="#cloudfront">CloudFront</a></li>
+    <li><a href="#kolejki">Kolejki i eventy</a></li>
+    <li><a href="#kontenery">Kontenery: ECS / EKS</a></li>
+    <li><a href="#serverless">Serverless — gdzie występuje</a></li>
+    <li><a href="#bazy">Typy baz danych</a></li>
+    <li><a href="#analityka">Data &amp; Analytics</a></li>
+    <li><a href="#ml">Machine Learning</a></li>
+    <li><a href="#cloudwatch">CloudWatch i logi</a></li>
+    <li><a href="#cognito">Cognito</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">0. Fundamenty — na czym stoi reszta</h2>
+
+<p>Wszystko poniżej działa w trzech skalach: <strong>Region</strong> (np. <code>eu-central-1</code>), <strong>Availability Zone</strong> (izolowane centrum danych w regionie) i <strong>Edge location</strong> (CloudFront, Route 53, ~600 PoP). Wybór skali determinuje dostępność i koszty transferu.</p>
+
+<table>
+  <thead><tr><th>Zasięg</th><th>Usługi</th><th>Konsekwencja</th></tr></thead>
+  <tbody>
+    <tr><td>Strefowe (AZ)</td><td>EC2, EBS, subnet</td><td>Awaria AZ = utrata zasobu; potrzebujesz kopii w innej AZ</td></tr>
+    <tr><td>Regionalne</td><td>S3, DynamoDB, SQS, RDS Multi-AZ, ALB</td><td>AWS sam replikuje między AZ</td></tr>
+    <tr><td>Globalne</td><td>IAM, Route 53, CloudFront, WAF (dla CF)</td><td>Jedna konfiguracja dla całego konta</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Model współdzielonej odpowiedzialności:</strong> AWS odpowiada za bezpieczeństwo <em>chmury</em> (hardware, hypervisor, fizyczny dostęp), Ty za bezpieczeństwo <em>w chmurze</em> (IAM, szyfrowanie, security groups, patche OS na EC2). Im bardziej managed usługa, tym mniej po Twojej stronie.</p>
+
+<p><strong>Koszt</strong> zwykle rozbija się na: compute (godziny), storage (GB-miesiąc), żądania (per 1000) i <strong>transfer wychodzący</strong> — ten ostatni najczęściej zaskakuje na fakturze. Ruch wchodzący do AWS jest darmowy, wychodzący do internetu i między AZ — nie.</p>
+
+<hr>
+
+<h2 id="dyski" class="must-know">1. Typy dysków — EBS, instance store, EFS, FSx</h2>
+
+<h3>EBS — dysk blokowy przypięty do jednej instancji</h3>
+
+<p>EBS to wolumen sieciowy istniejący <strong>w jednej AZ</strong>, niezależny od cyklu życia instancji. Snapshot trafia do S3 i może zostać odtworzony w innej AZ lub regionie — to jedyny sposób „przeniesienia” dysku.</p>
+
+<table>
+  <thead><tr><th>Typ</th><th>Charakterystyka</th><th>Maks. IOPS / przepustowość</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>gp3</strong> (SSD)</td><td>Domyślny wybór. Bazowo 3 000 IOPS i 125 MB/s <em>niezależnie od rozmiaru</em>; IOPS i throughput dokupujesz osobno</td><td>16 000 IOPS / 1 000 MB/s</td><td>90% przypadków: boot volume, aplikacja, mała/średnia baza</td></tr>
+    <tr><td><strong>gp2</strong> (SSD)</td><td>Starszy — 3 IOPS na GiB, mechanizm kredytów burst do 3 000 IOPS</td><td>16 000 IOPS</td><td>Tylko legacy; gp3 jest szybszy i ~20% tańszy</td></tr>
+    <tr><td><strong>io2 Block Express</strong> (SSD)</td><td>Provisioned IOPS, trwałość 99,999%, wsparcie dla Multi-Attach</td><td>256 000 IOPS / 4 000 MB/s</td><td>Duże bazy OLTP na EC2, SAP HANA, klastry wymagające gwarancji latencji</td></tr>
+    <tr><td><strong>io1</strong> (SSD)</td><td>Poprzednik io2, gorszy stosunek cena/trwałość</td><td>64 000 IOPS</td><td>Nie zaczynaj nowych wdrożeń</td></tr>
+    <tr><td><strong>st1</strong> (HDD)</td><td>Throughput-optimized, sekwencyjny odczyt; nie da się z niego bootować</td><td>500 MB/s</td><td>Logi, big data, hurtownie, streaming plików</td></tr>
+    <tr><td><strong>sc1</strong> (HDD)</td><td>Cold HDD — najtańszy GB w EBS</td><td>250 MB/s</td><td>Archiwum, do którego zaglądasz kilka razy w miesiącu</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Instance store</strong> to fizyczny NVMe w hoście — najniższa latencja i darmowy, ale <strong>dane znikają przy stop/terminate instancji</strong>. Używaj na cache, tempdb, scratch dla Sparka; nigdy na jedyną kopię danych.</p>
+
+<p><strong>Multi-Attach</strong> (io1/io2) pozwala podpiąć wolumen do maks. 16 instancji w tej samej AZ, ale wymaga systemu plików świadomego klastra. Zwykły ext4 na dwóch instancjach = uszkodzone dane.</p>
+
+<div class="trap"><strong>Pułapka:</strong> zwiększenie rozmiaru wolumenu w konsoli nie powiększa systemu plików — trzeba jeszcze <code>growpart</code> + <code>resize2fs</code>/<code>xfs_growfs</code>. Zmniejszyć wolumenu EBS nie można w ogóle: trzeba utworzyć mniejszy i przekopiować dane.</div>
+
+<h3>Storage plikowy i obiektowy</h3>
+
+<table>
+  <thead><tr><th>Usługa</th><th>Protokół / model</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>EFS</strong></td><td>NFS v4, elastyczny rozmiar, wiele AZ jednocześnie</td><td>Współdzielony katalog dla wielu EC2/ECS/Lambda; klasy IA i Archive dla rzadko czytanych plików</td></tr>
+    <tr><td><strong>FSx for Windows</strong></td><td>SMB, integracja z Active Directory</td><td>Aplikacje .NET/Windows wymagające share'a</td></tr>
+    <tr><td><strong>FSx for Lustre</strong></td><td>Równoległy FS, powiązanie z bucketem S3</td><td>HPC, trening ML, przetwarzanie milionów małych plików</td></tr>
+    <tr><td><strong>FSx for NetApp ONTAP / OpenZFS</strong></td><td>NFS + SMB + iSCSI, snapshoty, deduplikacja</td><td>Migracja on-premowych macierzy bez przepisywania aplikacji</td></tr>
+    <tr><td><strong>S3</strong></td><td>Obiektowy, HTTP API — brak POSIX</td><td>Wszystko, co nie potrzebuje semantyki systemu plików (patrz sekcja 6)</td></tr>
+  </tbody>
+</table>
+
+<div class="map-box">
+<strong>Decyzja w jednym zdaniu:</strong> jedna instancja → EBS gp3 · wiele instancji, potrzebny POSIX → EFS · nie potrzebujesz POSIX → S3 · ekstremalne IOPS → io2 Block Express · dane tymczasowe → instance store.
+</div>
+
+<hr>
+
+<h2 id="lb">2. Load balancery</h2>
+
+<table>
+  <thead><tr><th></th><th>ALB</th><th>NLB</th><th>GWLB</th></tr></thead>
+  <tbody>
+    <tr><td>Warstwa</td><td>L7 (HTTP/HTTPS, gRPC, WebSocket)</td><td>L4 (TCP, UDP, TLS)</td><td>L3/L4 (GENEVE, port 6081)</td></tr>
+    <tr><td>Routing</td><td>Po ścieżce, hoście, nagłówku, query, metodzie, źródłowym IP</td><td>Tylko port → target group</td><td>Przekierowanie ruchu do appliance'ów</td></tr>
+    <tr><td>Adres</td><td>Zmienna pula IP — używaj nazwy DNS</td><td>Statyczny IP na AZ, można przypiąć Elastic IP</td><td>Endpoint w VPC</td></tr>
+    <tr><td>Wydajność</td><td>Kilkadziesiąt tys. żądań/s, latencja ~ms</td><td>Miliony połączeń/s, latencja ~µs</td><td>Zależna od appliance</td></tr>
+    <tr><td>Cele</td><td>Instancja, IP, <strong>Lambda</strong>, ALB→ALB nie</td><td>Instancja, IP, ALB</td><td>Firewalle, IDS/IPS (Palo Alto, Fortinet)</td></tr>
+    <tr><td>Kiedy</td><td>API REST, aplikacja webowa, mikroserwisy za jednym wejściem</td><td>Protokoły niehttpowe, gry, MQTT, PrivateLink, wymóg stałego IP</td><td>Inspekcja ruchu przez zewnętrzny firewall</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Target group</strong> to zbiór celów z własnym health checkiem (ścieżka, kod odpowiedzi, próg healthy/unhealthy, interwał). Load balancer wysyła ruch tylko do celów w stanie <em>healthy</em> — źle skonfigurowany health check (np. wskazujący na endpoint wymagający autoryzacji) wyłącza całą usługę.</p>
+
+<p><strong>Funkcje ALB</strong>, o których warto pamiętać: terminacja TLS z certyfikatem z ACM (darmowym), SNI dla wielu domen na jednym listenerze, sticky sessions przez cookie, reguły redirect/fixed-response (np. HTTP→HTTPS bez dotykania aplikacji), wbudowane uwierzytelnianie OIDC/Cognito oraz integracja z WAF.</p>
+
+<div class="trap"><strong>Pułapka:</strong> NLB ma <em>cross-zone load balancing wyłączony domyślnie</em> — jeśli w AZ-a masz 1 instancję, a w AZ-b 9, każda AZ dostanie po 50% ruchu. W ALB cross-zone jest zawsze włączony i darmowy; w NLB włączenie generuje opłatę za transfer między AZ.</div>
+
+<p>Classic Load Balancer (CLB) to relikt sprzed 2016 — pojawia się już tylko w starych kontach i migruje się go na ALB/NLB.</p>
+
+<hr>
+
+<h2 id="asg">3. Auto Scaling</h2>
+
+<p>Auto Scaling Group utrzymuje liczbę instancji między <code>min</code> a <code>max</code>, dążąc do <code>desired</code>. Instancje tworzy z <strong>launch template</strong> (AMI, typ, security group, user data, IAM instance profile). ASG rozkłada je równomiernie po wskazanych subnetach/AZ i sama wymienia instancje, które nie przejdą health checku.</p>
+
+<table>
+  <thead><tr><th>Polityka</th><th>Jak działa</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Target tracking</strong></td><td>Podajesz cel (np. średnie CPU 60%), AWS sam liczy kroki</td><td>Domyślny wybór — 90% przypadków</td></tr>
+    <tr><td><strong>Step scaling</strong></td><td>Progi alarmów CloudWatch → konkretna liczba instancji</td><td>Gdy potrzebujesz różnej reakcji na małe i duże przekroczenie</td></tr>
+    <tr><td><strong>Scheduled</strong></td><td>Zmiana min/max/desired o zadanej godzinie</td><td>Znany rytm dobowy, wyłączanie środowisk dev na noc</td></tr>
+    <tr><td><strong>Predictive</strong></td><td>ML na historii metryk, skalowanie z wyprzedzeniem</td><td>Powtarzalne szczyty, długi czas startu instancji</td></tr>
+  </tbody>
+</table>
+
+<p>Kluczowe parametry czasowe: <strong>warm-up</strong> (ile sekund ignorować metryki nowej instancji — dla JVM z długim startem ustaw realistycznie, inaczej ASG doda nadmiar maszyn) i <strong>cooldown</strong> (przerwa między kolejnymi akcjami skalowania). <strong>Lifecycle hooks</strong> wstrzymują instancję w stanie <code>Pending:Wait</code> lub <code>Terminating:Wait</code>, żeby zdążyć załadować dane albo zrzucić logi. <strong>Instance refresh</strong> wymienia flotę po zmianie launch template, partiami z zachowaniem minimalnego healthy percentage.</p>
+
+<p><strong>Skalowanie to nie tylko EC2.</strong> Application Auto Scaling obsługuje ECS services, DynamoDB (RCU/WCU), Aurora read replicas, provisioned concurrency Lambdy i Spot Fleet. W Kubernetesie odpowiednikami są HPA (pody) oraz Karpenter lub Cluster Autoscaler (węzły). Fargate i Lambda skalują się bez ASG.</p>
+
+<div class="trap"><strong>Pułapka:</strong> skalowanie warstwy aplikacji nie skaluje bazy. 20 instancji × pula 20 połączeń = 400 połączeń do RDS, co przy <code>db.t3.medium</code> przekracza limit. Rozwiązania: RDS Proxy, mniejsze pule, PgBouncer.</div>
+
+<hr>
+
+<h2 id="rds">4. RDS i Aurora — jaka baza, kiedy</h2>
+
+<p>RDS to managed silnik relacyjny: AWS robi backupy, patchowanie, failover i monitoring, Ty nie masz dostępu do systemu operacyjnego (ani do <code>superuser</code>, tylko rola <code>rds_superuser</code>).</p>
+
+<table>
+  <thead><tr><th>Silnik</th><th>Kiedy wybrać</th><th>Uwagi</th></tr></thead>
+  <tbody>
+    <tr><td><strong>PostgreSQL</strong></td><td>Domyślny wybór dla nowych projektów: JSONB, CTE, window functions, PostGIS, pgvector</td><td>Najbogatszy ekosystem rozszerzeń w RDS; dobrze współgra z Hibernate</td></tr>
+    <tr><td><strong>MySQL</strong></td><td>Migracja istniejącej aplikacji PHP/WordPress/legacy</td><td>Prostszy, mniej funkcji SQL niż Postgres</td></tr>
+    <tr><td><strong>MariaDB</strong></td><td>Gdy zespół już na niej stoi</td><td>Fork MySQL, niewielka przewaga funkcjonalna</td></tr>
+    <tr><td><strong>Oracle</strong></td><td>Wymuszone przez system ERP/legacy, PL/SQL</td><td>BYOL lub license-included — najdroższa opcja</td></tr>
+    <tr><td><strong>SQL Server</strong></td><td>Stack .NET, SSRS/SSIS</td><td>Licencja w cenie instancji; ograniczenia w Multi-AZ</td></tr>
+    <tr><td><strong>Db2</strong></td><td>Migracja z mainframe/IBM</td><td>Najrzadziej spotykany</td></tr>
+    <tr><td><strong>Aurora PostgreSQL / MySQL</strong></td><td>Duży ruch odczytowy, wymóg szybkiego failoveru, autoskalowanie storage</td><td>Storage 6 kopii w 3 AZ, do 15 replik z lagiem w milisekundach, do 128 TiB</td></tr>
+    <tr><td><strong>Aurora Serverless v2</strong></td><td>Nieprzewidywalny lub przerywany ruch, środowiska dev/test</td><td>Skalowanie pojemnością ACU w sekundach, rozliczenie za faktyczne zużycie</td></tr>
+  </tbody>
+</table>
+
+<h3>Dostępność i skala odczytu</h3>
+
+<ul>
+  <li><strong>Multi-AZ instance</strong> — standby w drugiej AZ, replikacja synchroniczna, failover 60–120 s. Standby <em>nie obsługuje ruchu</em>; to HA, nie skalowanie.</li>
+  <li><strong>Multi-AZ DB cluster</strong> — dwa czytelne standby, failover zwykle poniżej 35 s.</li>
+  <li><strong>Read replicas</strong> — replikacja asynchroniczna, do 15 replik, można je promować na samodzielne instancje i tworzyć cross-region. Aplikacja musi świadomie kierować odczyty na inny endpoint i tolerować lag.</li>
+  <li><strong>Aurora Global Database</strong> — replikacja do innego regionu z opóźnieniem typowo poniżej sekundy; DR dla wymagań RPO/RTO liczonych w minutach.</li>
+  <li><strong>RDS Proxy</strong> — pooling połączeń przed bazą, obowiązkowy przy Lambdzie, skraca też czas failoveru.</li>
+</ul>
+
+<p><strong>Backupy:</strong> automatyczne snapshoty z retencją 1–35 dni dają point-in-time recovery z dokładnością do sekundy. Snapshoty manualne żyją do momentu ręcznego usunięcia — to jedyny backup, który przetrwa skasowanie instancji.</p>
+
+<div class="trap"><strong>Pułapka:</strong> zmiana klasy instancji, wersji silnika czy większości parametrów wymaga restartu. Do zmian z długim przestojem (major upgrade) używaj <strong>Blue/Green Deployments</strong> — RDS tworzy klon, migruje go i przełącza ruch w kilkadziesiąt sekund.</div>
+
+<hr>
+
+<h2 id="route53">5. Route 53</h2>
+
+<p>Zarządzany DNS z SLA 100% dla zapytań, rejestrator domen i mechanizm health checków w jednym. Strefy dzielą się na <strong>publiczne</strong> (widoczne w internecie) i <strong>prywatne</strong> (rozwiązywane tylko wewnątrz powiązanych VPC).</p>
+
+<h3>Rekord ALIAS vs CNAME</h3>
+
+<table>
+  <thead><tr><th></th><th>ALIAS</th><th>CNAME</th></tr></thead>
+  <tbody>
+    <tr><td>Na wierzchołku strefy (<code>example.com</code>)</td><td>Tak</td><td>Nie — zabronione przez RFC</td></tr>
+    <tr><td>Cel</td><td>Tylko zasoby AWS: CloudFront, ALB/NLB, S3 website, API Gateway, inny rekord w tej samej strefie</td><td>Dowolna nazwa DNS</td></tr>
+    <tr><td>Koszt zapytań</td><td>Bezpłatne</td><td>Płatne</td></tr>
+    <tr><td>Health check</td><td>Automatyczny dla części celów</td><td>Ręczny</td></tr>
+  </tbody>
+</table>
+
+<h3>Polityki routingu</h3>
+
+<table>
+  <thead><tr><th>Polityka</th><th>Zastosowanie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Simple</strong></td><td>Jeden cel, brak health checku</td></tr>
+    <tr><td><strong>Weighted</strong></td><td>Canary release, A/B testing, stopniowa migracja (np. 95/5)</td></tr>
+    <tr><td><strong>Latency-based</strong></td><td>Kilka regionów — kieruje do tego o najniższym opóźnieniu dla klienta</td></tr>
+    <tr><td><strong>Failover</strong></td><td>Primary/secondary z health checkiem — strona awaryjna na S3</td></tr>
+    <tr><td><strong>Geolocation</strong></td><td>Zgodność prawna, lokalizacja treści, blokowanie krajów</td></tr>
+    <tr><td><strong>Geoproximity</strong></td><td>Jak wyżej, ale z parametrem <em>bias</em> przesuwającym granice ruchu; wymaga Traffic Flow</td></tr>
+    <tr><td><strong>Multivalue answer</strong></td><td>Do 8 zdrowych rekordów naraz — prymitywny LB po stronie klienta</td></tr>
+    <tr><td><strong>IP-based</strong></td><td>Routing po blokach CIDR klienta (np. ruch od konkretnego ISP)</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Health checki</strong> występują w trzech odmianach: endpoint (HTTP/HTTPS/TCP z wielu lokalizacji), calculated (kombinacja innych checków przez AND/OR) i CloudWatch alarm (metryka zamiast żądania). Health check bez powiązania z polityką failover/weighted nic nie zmienia w odpowiedziach DNS.</p>
+
+<p><strong>Route 53 Resolver</strong> obsługuje hybrydowy DNS: endpoint <em>inbound</em> pozwala serwerom on-premise pytać o nazwy w VPC, <em>outbound</em> z regułami przekazuje zapytania z VPC do firmowego DNS. Resolver DNS Firewall blokuje domeny z listy (ochrona przed exfiltracją przez DNS).</p>
+
+<div class="trap"><strong>Pułapka:</strong> TTL działa przeciw Tobie w dniu migracji. Obniż TTL do 60 s co najmniej dobę <em>przed</em> planowanym przełączeniem, inaczej resolwery będą trzymać stary adres godzinami.</div>
+
+<hr>
+
+<h2 id="s3" class="must-know">6. S3 — klasy składowania i Lifecycle rules</h2>
+
+<p>S3 przechowuje obiekty (do 5 TB) w bucketach o globalnie unikalnej nazwie. Trwałość 99,999999999% (11 dziewiątek) uzyskuje przez replikację w minimum trzech AZ. Od 2020 r. obowiązuje silna spójność read-after-write dla wszystkich operacji.</p>
+
+<h3>Klasy składowania</h3>
+
+<table>
+  <thead><tr><th>Klasa</th><th>Dostęp</th><th>Min. czas</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Standard</strong></td><td>Natychmiastowy</td><td>—</td><td>Dane gorące: assety frontendu, aktywne uploady</td></tr>
+    <tr><td><strong>Intelligent-Tiering</strong></td><td>Natychmiastowy</td><td>—</td><td>Nieznany wzorzec dostępu — AWS sam przenosi między warstwami za drobną opłatę monitoringu</td></tr>
+    <tr><td><strong>Standard-IA</strong></td><td>Natychmiastowy, wyższa opłata za GB pobrania</td><td>30 dni</td><td>Backupy, dane starsze niż miesiąc, czytane sporadycznie</td></tr>
+    <tr><td><strong>One Zone-IA</strong></td><td>Natychmiastowy</td><td>30 dni</td><td>Dane odtwarzalne (miniatury, cache) — jedna AZ, ~20% taniej</td></tr>
+    <tr><td><strong>Glacier Instant Retrieval</strong></td><td>Milisekundy</td><td>90 dni</td><td>Archiwum medyczne/zdjęcia z wymogiem natychmiastowego dostępu</td></tr>
+    <tr><td><strong>Glacier Flexible Retrieval</strong></td><td>Minuty do 12 godzin</td><td>90 dni</td><td>Backupy zgodnościowe, do których sięgasz kilka razy w roku</td></tr>
+    <tr><td><strong>Glacier Deep Archive</strong></td><td>12–48 godzin</td><td>180 dni</td><td>Retencja 7–10 lat wymuszona regulacjami — najtańszy storage w AWS</td></tr>
+    <tr><td><strong>Express One Zone</strong></td><td>Jednocyfrowe ms, directory bucket</td><td>—</td><td>Bardzo częste odczyty małych obiektów: ML, analityka</td></tr>
+  </tbody>
+</table>
+
+<h3>Lifecycle rules</h3>
+
+<p>Reguła cyklu życia to zadanie wykonywane raz na dobę przez S3, filtrowane po prefiksie, tagach lub rozmiarze obiektu. Dostępne akcje:</p>
+
+<ul>
+  <li><strong>Transition</strong> — przeniesienie bieżącej wersji do tańszej klasy po N dniach.</li>
+  <li><strong>Noncurrent version transition / expiration</strong> — to samo dla starych wersji, kluczowe przy włączonym wersjonowaniu.</li>
+  <li><strong>Expiration</strong> — usunięcie obiektu (w buckecie z wersjonowaniem zakłada delete marker).</li>
+  <li><strong>AbortIncompleteMultipartUpload</strong> — sprząta nieukończone uploady, za które płacisz, a których nie widać na liście obiektów.</li>
+  <li><strong>ExpiredObjectDeleteMarker</strong> — usuwa osierocone delete markery.</li>
+</ul>
+
+<pre><code>{
+  "Rules": [{
+    "ID": "logs-tiering",
+    "Filter": { "Prefix": "logs/" },
+    "Status": "Enabled",
+    "Transitions": [
+      { "Days": 30,  "StorageClass": "STANDARD_IA" },
+      { "Days": 90,  "StorageClass": "GLACIER_IR" },
+      { "Days": 365, "StorageClass": "DEEP_ARCHIVE" }
+    ],
+    "Expiration": { "Days": 2555 },
+    "NoncurrentVersionExpiration": { "NoncurrentDays": 30 },
+    "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 7 }
+  }]
+}</code></pre>
+
+<p>Ograniczenia, które psują kalkulacje: przejście do Standard-IA i One Zone-IA możliwe dopiero po 30 dniach od utworzenia obiektu, obiekty mniejsze niż 128 KB domyślnie nie są przenoszone, a każda transition to płatne żądanie. Przy milionach drobnych plików migracja do Glacier potrafi kosztować więcej niż roczne trzymanie ich w Standard.</p>
+
+<h3>Pozostałe funkcje warte znajomości</h3>
+
+<table>
+  <thead><tr><th>Funkcja</th><th>Do czego</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Versioning</strong></td><td>Ochrona przed nadpisaniem i skasowaniem; warunek konieczny replikacji i Object Lock</td></tr>
+    <tr><td><strong>Replication (CRR/SRR)</strong></td><td>Kopia w innym regionie (DR, zgodność) lub w tym samym (rozdzielenie środowisk)</td></tr>
+    <tr><td><strong>Object Lock</strong></td><td>WORM — tryb Governance (da się obejść uprawnieniem) i Compliance (nie da się nikomu)</td></tr>
+    <tr><td><strong>Event notifications</strong></td><td>Zdarzenie <code>s3:ObjectCreated:*</code> → Lambda, SQS, SNS lub EventBridge</td></tr>
+    <tr><td><strong>Presigned URL</strong></td><td>Czasowy link do uploadu/pobrania bez wystawiania bucketu publicznie</td></tr>
+    <tr><td><strong>Multipart upload</strong></td><td>Zalecany powyżej 100 MB, wymagany powyżej 5 GB; umożliwia równoległość i wznowienie</td></tr>
+    <tr><td><strong>Storage Lens / Inventory</strong></td><td>Raport, co faktycznie leży w bucketach i ile to kosztuje</td></tr>
+    <tr><td><strong>Szyfrowanie</strong></td><td>SSE-S3 domyślnie od 2023 r.; SSE-KMS gdy potrzebny audyt i własny klucz</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="cloudfront">7. CloudFront</h2>
+
+<p>CDN działający na kilkuset lokalizacjach brzegowych. Poza przyspieszeniem statyków realizuje trzy rzeczy, które inaczej trzeba by budować samemu: terminację TLS blisko użytkownika, ochronę origin przed ruchem (WAF, Shield, ukrycie bucketu) i logikę na brzegu.</p>
+
+<ul>
+  <li><strong>Origin</strong> — S3 (przez OAC), ALB, API Gateway lub dowolny serwer HTTP. <em>Origin Group</em> daje failover na zapasowy origin przy błędach 5xx.</li>
+  <li><strong>Cache behavior</strong> — reguły dopasowywane po wzorcu ścieżki w kolejności; <code>/api/*</code> zwykle bez cache i z przekazywaniem nagłówków, <code>/static/*</code> z długim TTL.</li>
+  <li><strong>Cache key</strong> — definiowany przez <em>cache policy</em> (co wchodzi do klucza) i <em>origin request policy</em> (co jest przekazywane dalej). Dorzucenie do klucza nagłówka o wielu wartościach niszczy hit ratio.</li>
+  <li><strong>OAC</strong> (Origin Access Control) — następca OAI; bucket pozostaje prywatny, dostęp ma wyłącznie dystrybucja.</li>
+  <li><strong>Signed URL / signed cookies</strong> — płatne treści, materiały wideo, pliki dla zalogowanych.</li>
+  <li><strong>Origin Shield</strong> — dodatkowa warstwa cache przed originem, redukuje liczbę żądań u źródła.</li>
+</ul>
+
+<table>
+  <thead><tr><th></th><th>CloudFront Functions</th><th>Lambda@Edge</th></tr></thead>
+  <tbody>
+    <tr><td>Język</td><td>JavaScript (ograniczony runtime)</td><td>Node.js, Python</td></tr>
+    <tr><td>Triggery</td><td>Viewer request / response</td><td>Wszystkie cztery, w tym origin request/response</td></tr>
+    <tr><td>Czas</td><td>Poniżej 1 ms</td><td>Do 5 s (viewer) / 30 s (origin)</td></tr>
+    <tr><td>Dostęp do sieci</td><td>Brak</td><td>Jest — można wołać API, czytać z DynamoDB</td></tr>
+    <tr><td>Typowe użycie</td><td>Przepisywanie URL, nagłówki bezpieczeństwa, przekierowania, testy A/B po cookie</td><td>Autoryzacja, personalizacja odpowiedzi, transformacja obrazów</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> inwalidacja <code>/*</code> po każdym deployu jest wolna i po przekroczeniu 1000 ścieżek miesięcznie płatna. Zamiast tego wersjonuj nazwy plików (<code>app.9f3c1.js</code>) i dawaj im TTL na rok, a <code>index.html</code> trzymaj z krótkim TTL.</div>
+
+<hr>
+
+<h2 id="kolejki" class="must-know">8. Kolejki i eventy — SQS, SNS, EventBridge, Kinesis</h2>
+
+<h3>SQS — kolejka punkt-punkt</h3>
+
+<p>Konsument sam pobiera wiadomości (<em>pull</em>). Po odebraniu wiadomość staje się niewidoczna na czas <strong>visibility timeout</strong> (domyślnie 30 s, maks. 12 h) — jeśli konsument nie zdąży jej skasować, wróci do kolejki. Dlatego handler musi być <strong>idempotentny</strong>.</p>
+
+<table>
+  <thead><tr><th></th><th>Standard</th><th>FIFO</th></tr></thead>
+  <tbody>
+    <tr><td>Przepustowość</td><td>Praktycznie nieograniczona</td><td>300 operacji/s (3 000 z batchowaniem), do 70 000/s w trybie high throughput</td></tr>
+    <tr><td>Dostarczenie</td><td>At-least-once — możliwe duplikaty</td><td>Exactly-once processing, deduplikacja w oknie 5 minut</td></tr>
+    <tr><td>Kolejność</td><td>Best-effort</td><td>Ścisła w obrębie <code>MessageGroupId</code></td></tr>
+    <tr><td>Kiedy</td><td>Domyślnie — praca w tle, bufor przed workerem</td><td>Gdy kolejność operacji na jednym encie ma znaczenie (np. zdarzenia jednego zamówienia)</td></tr>
+  </tbody>
+</table>
+
+<p>Reszta parametrów: retencja 4 dni domyślnie (maks. 14), rozmiar wiadomości do 256 KB (większe przez Extended Client Library w S3), <strong>long polling</strong> do 20 s zamiast odpytywania w pętli, <strong>delay queue</strong> do 15 minut, <strong>DLQ</strong> po przekroczeniu <code>maxReceiveCount</code>.</p>
+
+<h3>SNS — pub/sub i fan-out</h3>
+
+<p>Topic rozsyła wiadomość do wszystkich subskrybentów (<em>push</em>): SQS, Lambda, HTTP/S, e-mail, SMS, push mobilny, Data Firehose. <strong>Message filtering</strong> pozwala subskrybentowi odbierać tylko pasujące zdarzenia bez filtrowania w kodzie. Wzorzec fan-out (SNS → wiele SQS) daje jednocześnie rozgłaszanie i buforowanie po stronie każdego konsumenta.</p>
+
+<h3>EventBridge — szyna zdarzeń</h3>
+
+<p>Reguły dopasowują zdarzenia po treści JSON, nie tylko po atrybutach. Dochodzą: zdarzenia z ponad 200 usług AWS i partnerów SaaS, schema registry, archiwum z możliwością <strong>replay</strong>, <em>Scheduler</em> (cron w skali miliona harmonogramów) oraz <em>Pipes</em> (połączenie źródło→cel z filtrem, wzbogaceniem i transformacją bez pisania Lambdy). Kosztem jest wyższa latencja niż w SNS.</p>
+
+<h3>Kinesis i Kafka — strumienie</h3>
+
+<p><strong>Kinesis Data Streams</strong> to log podzielony na shardy z retencją od 24 h do 365 dni — wielu niezależnych konsumentów czyta ten sam strumień i może go odtworzyć od dowolnego punktu. <strong>Data Firehose</strong> to gotowy pipeline dostarczający dane do S3, Redshift, OpenSearch czy Splunka z buforowaniem i konwersją do Parquet. <strong>MSK</strong> daje pełną Kafkę, gdy potrzebujesz jej ekosystemu (Connect, Streams, kompatybilność z istniejącym kodem).</p>
+
+<div class="map-box">
+<strong>Wybór:</strong> zadanie dla jednego workera → SQS · to samo zdarzenie dla kilku odbiorców → SNS · routing po treści i integracje z AWS/SaaS → EventBridge · strumień z odtwarzaniem i kolejnością per klucz → Kinesis/MSK · wieloetapowy proces z kompensacjami → Step Functions.
+</div>
+
+<hr>
+
+<h2 id="kontenery">9. Kontenery — ECS, EKS, ECR</h2>
+
+<table>
+  <thead><tr><th></th><th>ECS</th><th>EKS</th></tr></thead>
+  <tbody>
+    <tr><td>Model</td><td>Orkiestrator AWS-native: task definition, service, cluster</td><td>Zarządzany Kubernetes — pełne API k8s</td></tr>
+    <tr><td>Krzywa wejścia</td><td>Kilka godzin</td><td>Tygodnie; wymaga kompetencji k8s w zespole</td></tr>
+    <tr><td>Koszt sterowania</td><td>Bezpłatny control plane</td><td>Ok. 0,10 USD/h za klaster plus węzły</td></tr>
+    <tr><td>Ekosystem</td><td>Ograniczony do AWS</td><td>Helm, operatory, Istio, ArgoCD, przenośność między chmurami</td></tr>
+    <tr><td>Kiedy</td><td>Kilka–kilkanaście serwisów, zespół bez dedykowanego platform teamu</td><td>Wiele zespołów, wymóg multi-cloud, gotowe operatory</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Fargate</strong> to nie osobny orkiestrator, tylko tryb uruchamiania dla ECS i EKS: nie widzisz węzłów, płacisz za vCPU i pamięć przydzielone taskowi (0,25–16 vCPU, do 120 GB RAM). Cena za jednostkę jest wyższa niż EC2, ale znika koszt utrzymania i niewykorzystana pojemność. Ograniczenia: brak DaemonSetów, brak trybu privileged, brak GPU.</p>
+
+<p><strong>ECR</strong> przechowuje obrazy — z lifecycle policy kasującą stare tagi, skanowaniem CVE (Basic lub Enhanced przez Inspector) i replikacją między regionami. Uwierzytelnianie odbywa się tokenem IAM ważnym 12 h.</p>
+
+<p>Elementy, które trzeba dobrać niezależnie od orkiestratora: sieć (<code>awsvpc</code> — każdy task dostaje własne ENI i security group), rejestr obrazów, sposób podawania sekretów (Secrets Manager w task definition albo External Secrets Operator w k8s), tożsamość (task role w ECS, IRSA lub EKS Pod Identity w EKS) i logi (driver <code>awslogs</code> albo Fluent Bit).</p>
+
+<p>Poza dwoma głównymi opcjami: <strong>App Runner</strong> (kontener z GitHuba lub ECR wystawiony jako HTTPS bez konfiguracji), <strong>AWS Batch</strong> (kolejkowane zadania wsadowe), <strong>ECS/EKS Anywhere</strong> (ten sam model na własnym sprzęcie).</p>
+
+<hr>
+
+<h2 id="serverless">10. Serverless — w których usługach występuje</h2>
+
+<p>„Serverless” w AWS oznacza trzy cechy naraz: brak zarządzania serwerem, automatyczne skalowanie (często do zera) i rozliczenie za faktyczne użycie. Sporo usług ma wariant serverless obok klasycznego.</p>
+
+<table>
+  <thead><tr><th>Obszar</th><th>Usługa serverless</th><th>Uwaga</th></tr></thead>
+  <tbody>
+    <tr><td>Compute</td><td>Lambda</td><td>Do 15 min, do 10 GB RAM; Java z SnapStart skraca cold start</td></tr>
+    <tr><td>Kontenery</td><td>Fargate (ECS/EKS)</td><td>Bez zarządzania węzłami, ale bez skalowania do zera</td></tr>
+    <tr><td>API</td><td>API Gateway, AppSync (GraphQL)</td><td>Throttling, autoryzacja JWT, WebSocket</td></tr>
+    <tr><td>Orkiestracja</td><td>Step Functions</td><td>Maszyna stanów, tryb Standard (do roku) i Express</td></tr>
+    <tr><td>Relacyjne</td><td>Aurora Serverless v2, Aurora DSQL</td><td>DSQL — rozproszona baza zgodna z PostgreSQL, aktywna w wielu regionach</td></tr>
+    <tr><td>NoSQL</td><td>DynamoDB (on-demand), Keyspaces</td><td>Płacisz za żądania, nie za przydzieloną pojemność</td></tr>
+    <tr><td>Cache</td><td>ElastiCache Serverless, MemoryDB</td><td>Pojemność dobierana automatycznie</td></tr>
+    <tr><td>Messaging</td><td>SQS, SNS, EventBridge, Data Firehose</td><td>Domyślnie serverless — nie ma tu wersji „instancyjnej”</td></tr>
+    <tr><td>Analityka</td><td>Athena, Glue, EMR Serverless, Redshift Serverless, MSK Serverless, OpenSearch Serverless</td><td>Rozliczenie za przeskanowane dane lub jednostki mocy</td></tr>
+    <tr><td>Storage</td><td>S3, EFS</td><td>Brak pojęcia „rozmiaru” do zaplanowania</td></tr>
+    <tr><td>Tożsamość i konfiguracja</td><td>Cognito, Secrets Manager, Parameter Store</td><td>—</td></tr>
+    <tr><td>AI/ML</td><td>Bedrock, SageMaker Serverless Inference, Textract, Comprehend</td><td>Płatność za tokeny lub przetworzone dokumenty</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> serverless nie zawsze jest tańszy. Przy stałym, wysokim obciążeniu Lambda i DynamoDB on-demand potrafią kosztować kilkukrotnie więcej niż Fargate z ECS i Aurora provisioned. Serverless wygrywa przy ruchu nieregularnym, sporadycznym lub trudnym do przewidzenia.</div>
+
+<hr>
+
+<h2 id="bazy">11. Typy baz danych — którą kiedy</h2>
+
+<table>
+  <thead><tr><th>Model danych</th><th>Usługa AWS</th><th>Typowe zastosowanie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Relacyjny (OLTP)</strong></td><td>RDS, Aurora, Aurora DSQL</td><td>Transakcje ACID, złożone JOIN-y, raporty, systemy dziedzinowe</td></tr>
+    <tr><td><strong>Klucz-wartość</strong></td><td>DynamoDB</td><td>Sesje, koszyki, liczniki, klucze idempotencji — dostęp po znanym kluczu w pojedynczych milisekundach</td></tr>
+    <tr><td><strong>Dokumentowy</strong></td><td>DocumentDB (zgodny z MongoDB), DynamoDB</td><td>Elastyczna struktura rekordu, katalogi produktów, treści CMS</td></tr>
+    <tr><td><strong>In-memory</strong></td><td>ElastiCache (Redis OSS / Valkey / Memcached), MemoryDB</td><td>Cache, rate limiting, leaderboardy. MemoryDB dodaje trwałość — może być bazą główną</td></tr>
+    <tr><td><strong>Szerokokolumnowy</strong></td><td>Keyspaces (zgodny z Cassandrą)</td><td>Bardzo duże wolumeny zapisów, IoT, telemetria z modelem Cassandry</td></tr>
+    <tr><td><strong>Grafowy</strong></td><td>Neptune (Gremlin, openCypher, SPARQL), Neptune Analytics</td><td>Sieci społecznościowe, wykrywanie nadużyć, rekomendacje, grafy wiedzy, analiza zależności — wszędzie tam, gdzie zapytanie „przechodzi” wiele poziomów relacji i JOIN-y w SQL wybuchają</td></tr>
+    <tr><td><strong>Czasowy (time-series)</strong></td><td>Timestream for LiveAnalytics, Timestream for InfluxDB</td><td>Metryki, IoT, dane z czujników. Automatyczne tierowanie pamięć→dysk, funkcje interpolacji i okien czasowych</td></tr>
+    <tr><td><strong>Wyszukiwanie pełnotekstowe</strong></td><td>OpenSearch, Kendra</td><td>Wyszukiwarka w aplikacji, analiza logów; Kendra to wyszukiwanie semantyczne po dokumentach firmowych</td></tr>
+    <tr><td><strong>Hurtownia (OLAP)</strong></td><td>Redshift, Redshift Serverless</td><td>Agregacje na miliardach wierszy, model kolumnowy, BI</td></tr>
+    <tr><td><strong>Wektorowy</strong></td><td>OpenSearch k-NN, Aurora PostgreSQL + pgvector, MemoryDB</td><td>RAG, wyszukiwanie po podobieństwie embeddingów</td></tr>
+    <tr><td><strong>Plikowy / blokowy / obiektowy</strong></td><td>EFS, FSx / EBS / S3</td><td>Patrz sekcja 1 — dokumenty, media, data lake, dyski maszyn</td></tr>
+  </tbody>
+</table>
+
+<p>Amazon QLDB (baza ledger z kryptograficznie weryfikowalną historią) jest wycofywana — nowe wymagania audytowe realizuje się dziś tabelami wersjonowanymi w Aurora PostgreSQL albo Object Lock w S3.</p>
+
+<div class="map-box">
+<strong>Reguła praktyczna:</strong> zacznij od PostgreSQL (RDS/Aurora). Sięgaj po bazę specjalizowaną dopiero, gdy konkretny wzorzec dostępu udowodnił, że relacyjna go nie obsłuży — grafowa przy zapytaniach o wiele przeskoków, czasowa przy milionach punktów pomiarowych na minutę, klucz-wartość przy stałej latencji pod ekstremalnym ruchem.
+</div>
+
+<hr>
+
+<h2 id="analityka">12. Data &amp; Analytics</h2>
+
+<p>Typowy pipeline analityczny w AWS ma cztery warstwy: pozyskanie → magazyn → przetworzenie → prezentacja.</p>
+
+<pre><code>Źródła (aplikacja, logi, IoT, bazy)
+   ↓ Kinesis Data Streams / Data Firehose / DMS / zero-ETL
+S3 (data lake, Parquet/Iceberg) ── Glue Data Catalog
+   ↓ Glue ETL / EMR / Athena
+Redshift (hurtownia)   OpenSearch (logi, search)
+   ↓
+QuickSight (BI)  ·  SageMaker (ML)</code></pre>
+
+<div class="svc">
+  <div class="svc-name">S3 + Lake Formation + S3 Tables</div>
+  <div class="svc-tech">→ fundament data lake</div>
+  <p class="svc-desc">S3 jako magazyn surowy, Lake Formation nakłada uprawnienia na poziomie tabel, kolumn i wierszy. S3 Tables to bucket zoptymalizowany pod Apache Iceberg — daje transakcje i ewolucję schematu na plikach.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">AWS Glue</div>
+  <div class="svc-tech">→ katalog metadanych + ETL bez serwerów</div>
+  <p class="svc-desc">Crawlery wykrywają schemat plików w S3 i wpisują go do Data Catalog (używanego też przez Athenę, EMR i Redshift Spectrum). Joby to Spark lub Python shell; DataBrew daje transformacje bez kodu, Data Quality — reguły walidacji.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Athena</div>
+  <div class="svc-tech">→ SQL bezpośrednio na plikach w S3</div>
+  <p class="svc-desc">Silnik Trino bez infrastruktury, rozliczany za przeskanowane terabajty. Partycjonowanie i format kolumnowy (Parquet) potrafią obciąć koszt zapytania o dwa rzędy wielkości.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Redshift</div>
+  <div class="svc-tech">→ hurtownia kolumnowa</div>
+  <p class="svc-desc">Zapytania analityczne na petabajtach, Spectrum czyta dodatkowo z S3. Integracje zero-ETL kopiują dane z Aurory i DynamoDB niemal w czasie rzeczywistym, bez budowania pipeline'u.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">EMR</div>
+  <div class="svc-tech">→ zarządzany Spark, Hive, Presto, HBase</div>
+  <p class="svc-desc">Gdy potrzebujesz pełnej kontroli nad klastrem Hadoop/Spark albo istniejących jobów. EMR Serverless zdejmuje zarządzanie klastrem.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Kinesis / Managed Service for Apache Flink</div>
+  <div class="svc-tech">→ przetwarzanie strumieniowe</div>
+  <p class="svc-desc">Agregacje w oknach czasowych, wykrywanie anomalii i wzbogacanie zdarzeń zanim trafią do magazynu. Flink obsługuje stan i semantykę exactly-once.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">QuickSight</div>
+  <div class="svc-tech">→ BI i dashboardy</div>
+  <p class="svc-desc">Wizualizacje na Redshift, Athenie, RDS lub plikach; silnik SPICE cache'uje dane. Można osadzać dashboardy w aplikacji, a funkcja Q odpowiada na pytania w języku naturalnym.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">DMS i DataZone</div>
+  <div class="svc-tech">→ migracja baz i katalog danych organizacji</div>
+  <p class="svc-desc">DMS przenosi bazy (także heterogenicznie, z SCT) i utrzymuje ciągłą replikację CDC. DataZone porządkuje dostęp do danych między zespołami — governance ponad pojedynczym kontem.</p>
+</div>
+
+<hr>
+
+<h2 id="ml">13. Machine Learning i AI</h2>
+
+<p>Usługi ML dzielą się na trzy poziomy abstrakcji: gotowe API (bez wiedzy o ML), modele fundamentalne przez API oraz pełna platforma do budowy własnych modeli.</p>
+
+<h3>Poziom 1 — gotowe API</h3>
+
+<table>
+  <thead><tr><th>Usługa</th><th>Co robi</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Rekognition</strong></td><td>Analiza obrazu i wideo: obiekty, twarze, moderacja treści, tekst na zdjęciu</td></tr>
+    <tr><td><strong>Textract</strong></td><td>OCR ze strukturą: formularze, tabele, faktury, dokumenty tożsamości</td></tr>
+    <tr><td><strong>Comprehend</strong></td><td>NLP: sentyment, encje, języki, wykrywanie i redakcja PII</td></tr>
+    <tr><td><strong>Transcribe / Polly</strong></td><td>Mowa na tekst (także w czasie rzeczywistym) i tekst na mowę</td></tr>
+    <tr><td><strong>Translate</strong></td><td>Tłumaczenie maszynowe z terminologią własną</td></tr>
+    <tr><td><strong>Lex</strong></td><td>Boty konwersacyjne — ten sam silnik co Alexa, integracja z Connect</td></tr>
+    <tr><td><strong>Personalize</strong></td><td>Rekomendacje produktowe na własnych danych o interakcjach</td></tr>
+    <tr><td><strong>Fraud Detector</strong></td><td>Ocena ryzyka transakcji i rejestracji</td></tr>
+    <tr><td><strong>Kendra</strong></td><td>Wyszukiwanie semantyczne po repozytoriach firmowych (SharePoint, S3, Confluence)</td></tr>
+  </tbody>
+</table>
+
+<h3>Poziom 2 — modele fundamentalne</h3>
+
+<p><strong>Amazon Bedrock</strong> udostępnia modele wielu dostawców (Anthropic Claude, Meta Llama, Mistral, Amazon Nova i inne) przez jedno API, bez zarządzania infrastrukturą. Kluczowe komponenty: <em>Knowledge Bases</em> (gotowy RAG z bazą wektorową), <em>Agents</em> (wywoływanie API i narzędzi), <em>Guardrails</em> (filtry treści i blokowanie tematów), fine-tuning oraz Provisioned Throughput dla przewidywalnej wydajności. <strong>Amazon Q</strong> to warstwa aplikacyjna nad tym: Q Developer w IDE i konsoli, Q Business jako asystent nad firmowymi danymi.</p>
+
+<h3>Poziom 3 — własne modele</h3>
+
+<p><strong>SageMaker AI</strong> obejmuje cały cykl życia modelu: Studio jako środowisko pracy, Ground Truth do etykietowania, Feature Store, treningi na klastrach GPU (z Spotem i checkpointami), Autopilot do AutoML, JumpStart z gotowymi modelami, Pipelines do CI/CD modeli, Model Monitor i Clarify do wykrywania dryfu oraz biasu. Wnioskowanie występuje w czterech trybach: real-time endpoint, serverless inference, asynchroniczne (duże payloady) i batch transform.</p>
+
+<div class="trap"><strong>Pułapka:</strong> endpointy SageMaker naliczają się za każdą godzinę istnienia, niezależnie od liczby zapytań. Zapomniany endpoint testowy z instancją GPU to najczęstsza niespodzianka na fakturze zespołów ML — użyj Serverless Inference albo skasuj endpoint po eksperymencie.</div>
+
+<hr>
+
+<h2 id="cloudwatch">14. CloudWatch — logi, metryki, alarmy</h2>
+
+<h3>Logi</h3>
+
+<p>Hierarchia: <strong>log group</strong> (zwykle jedna na aplikację) → <strong>log stream</strong> (jedna na instancję/kontener/wywołanie) → zdarzenia. Źródła: driver <code>awslogs</code> w ECS, Fluent Bit w EKS, agent CloudWatch na EC2, automatyczny zapis z Lambdy i API Gateway.</p>
+
+<ul>
+  <li><strong>Retencja</strong> ustawiana per grupa: od 1 dnia do 10 lat. Domyślna wartość to <em>Never expire</em> — to jedna z najczęstszych przyczyn rosnącego rachunku.</li>
+  <li><strong>Logs Insights</strong> — język zapytań do przeszukiwania logów bez eksportu.</li>
+  <li><strong>Metric filter</strong> — wzorzec w logu tworzy własną metrykę (np. liczba <code>ERROR</code>), na której stawiasz alarm.</li>
+  <li><strong>Subscription filter</strong> — strumień logów w czasie rzeczywistym do Lambdy, Firehose lub OpenSearch (np. przekazanie do Splunka albo Datadoga).</li>
+  <li><strong>Klasa Infrequent Access</strong> — ok. połowa ceny ingestii kosztem braku Live Tail i metric filters.</li>
+  <li><strong>Data Protection</strong> — automatyczne maskowanie PII w logach; <strong>Live Tail</strong> — podgląd na żywo przy debugowaniu.</li>
+</ul>
+
+<pre><code>fields @timestamp, @message
+| filter @message like /ERROR/
+| parse @message "traceId=* " as traceId
+| stats count(*) as errors by bin(5m)
+| sort errors desc
+| limit 20</code></pre>
+
+<h3>Metryki i alarmy</h3>
+
+<p>Metryka żyje w <strong>namespace</strong> i ma <strong>dimensions</strong> (np. <code>InstanceId</code>). Podstawowy monitoring EC2 to próbki 5-minutowe, detailed monitoring — 1-minutowe, metryki własne mogą mieć rozdzielczość 1 s. Zamiast wysyłać metryki osobnym wywołaniem API, taniej jest użyć <strong>EMF</strong> (Embedded Metric Format) — struktura JSON w logu, z której CloudWatch wyciąga metryki.</p>
+
+<p>Alarm ma trzy stany: <code>OK</code>, <code>ALARM</code>, <code>INSUFFICIENT_DATA</code>. Progi bywają statyczne albo oparte o <em>anomaly detection</em> (pasmo wyliczone z historii). Alarmy złożone (composite) łączą kilka warunków, żeby ograniczyć szum. Akcją może być powiadomienie SNS, skalowanie ASG lub akcja na instancji EC2.</p>
+
+<p>Wokół CloudWatch: <strong>X-Ray</strong> (śledzenie rozproszone przez wiele usług), <strong>Application Signals</strong> (APM z SLO), <strong>Container/Lambda Insights</strong>, <strong>Synthetics</strong> (canary sprawdzające endpoint z zewnątrz), <strong>RUM</strong> (metryki z przeglądarki). Zdarzenia audytowe „kto co zrobił w API AWS” to <strong>CloudTrail</strong>, nie CloudWatch — łatwo je pomylić.</p>
+
+<hr>
+
+<h2 id="cognito">15. Cognito</h2>
+
+<p>Cognito to dwie odrębne usługi pod jedną nazwą — mylenie ich to klasyczny błąd projektowy.</p>
+
+<table>
+  <thead><tr><th></th><th>User Pool</th><th>Identity Pool</th></tr></thead>
+  <tbody>
+    <tr><td>Rola</td><td>Katalog użytkowników i dostawca tożsamości (OIDC)</td><td>Broker wymieniający token na tymczasowe poświadczenia AWS</td></tr>
+    <tr><td>Zwraca</td><td>ID token, access token, refresh token (JWT)</td><td>Klucze STS z przypisaną rolą IAM</td></tr>
+    <tr><td>Do czego</td><td>Logowanie do aplikacji, autoryzacja API</td><td>Bezpośredni dostęp klienta do S3, DynamoDB, IoT</td></tr>
+  </tbody>
+</table>
+
+<p><strong>User Pool</strong> daje rejestrację i logowanie, weryfikację e-mail/SMS, polityki haseł, MFA (TOTP lub SMS), grupy mapowane na role, atrybuty własne, federację z Google, Apple, Facebookiem oraz dowolnym IdP SAML/OIDC (np. Entra ID). Managed login (następca Hosted UI) to gotowe, brandowalne ekrany logowania — oszczędzają tygodnie pracy nad flow resetu hasła i weryfikacji.</p>
+
+<p><strong>Lambda triggers</strong> wpinają własną logikę w cykl uwierzytelniania: <code>PreSignUp</code> (autoakceptacja, walidacja domeny e-mail), <code>PreTokenGeneration</code> (dodanie własnych claimów, np. <code>tenantId</code>), <code>MigrateUser</code> (przezroczysta migracja z istniejącej bazy przy pierwszym logowaniu), <code>CustomMessage</code>, <code>DefineAuthChallenge</code>.</p>
+
+<p>Integracja z backendem sprowadza się do walidacji JWT po stronie zasobu:</p>
+
+<pre><code># Spring Security — Resource Server
+spring.security.oauth2.resourceserver.jwt.issuer-uri: \
+  https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_AbCdEf123
+
+# Weryfikacja: podpis z JWKS, exp, iss, token_use=access, client_id</code></pre>
+
+<p>Dla komunikacji maszyna-maszyna używa się przepływu <em>client credentials</em> z resource serverem i własnymi scope'ami. API Gateway ma wbudowany autoryzator Cognito, ALB potrafi wymusić logowanie przed przekazaniem żądania do aplikacji.</p>
+
+<div class="trap"><strong>Pułapka:</strong> nie autoryzuj API na podstawie <em>ID tokena</em> — służy on do opisania użytkownika po stronie klienta. Do zabezpieczenia zasobu używaj <em>access tokena</em> i sprawdzaj <code>token_use</code> oraz scope'y. Druga pułapka: z Cognito nie wyeksportujesz haseł — migracja do innego IdP wymaga triggera <code>MigrateUser</code> po stronie docelowej albo resetu haseł wszystkim użytkownikom.</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ul>
+  <li><strong>Traktowanie EBS jak dysku sieciowego.</strong> Wolumen żyje w jednej AZ i nie da się go współdzielić między instancjami — do tego jest EFS albo S3.</li>
+  <li><strong>Health check ALB na chronionym endpointcie.</strong> Odpowiedź 401 lub 403 to dla load balancera „unhealthy”; wystaw osobny publiczny <code>/health</code>.</li>
+  <li><strong>Skalowanie aplikacji bez skalowania bazy.</strong> Nowe instancje wyczerpują limit połączeń RDS — potrzebny RDS Proxy albo dostrojona pula.</li>
+  <li><strong>Multi-AZ mylone z read repliką.</strong> Standby w Multi-AZ nie obsługuje ruchu; to mechanizm dostępności, nie wydajności.</li>
+  <li><strong>Migracja DNS bez obniżenia TTL.</strong> Stary rekord siedzi w cache resolwerów tak długo, jak mówi TTL sprzed zmiany.</li>
+  <li><strong>Lifecycle rules bez obsługi starych wersji.</strong> Przy włączonym wersjonowaniu bucket rośnie mimo „usuwania” plików — potrzebna reguła <code>NoncurrentVersionExpiration</code>.</li>
+  <li><strong>Archiwizacja milionów małych plików do Glaciera.</strong> Koszt żądań przekracza oszczędność na storage — najpierw je spakuj.</li>
+  <li><strong>Inwalidacja <code>/*</code> w CloudFront po każdym deployu</strong> zamiast wersjonowanych nazw plików.</li>
+  <li><strong>Konsument SQS bez idempotencji.</strong> Kolejka standardowa dostarcza at-least-once, a każdy timeout widoczności powoduje ponowne przetworzenie.</li>
+  <li><strong>Brak DLQ.</strong> Wiadomość, której nie da się przetworzyć, krąży do wyczerpania retencji i blokuje zasoby konsumenta.</li>
+  <li><strong>Domyślna retencja logów „Never expire”.</strong> Rachunek za CloudWatch rośnie liniowo w nieskończoność.</li>
+  <li><strong>Klucze IAM w kodzie lub zmiennych środowiskowych.</strong> Zawsze rola: instance profile, task role, IRSA, OIDC dla CI.</li>
+  <li><strong>Autoryzacja API ID tokenem z Cognito</strong> zamiast access tokenem ze sprawdzeniem scope'ów.</li>
+  <li><strong>Zapomniane endpointy SageMaker i instancje NAT Gateway</strong> — dwa najczęstsze cichcem naliczające się koszty.</li>
+</ul>
+
+</body>
+</html>

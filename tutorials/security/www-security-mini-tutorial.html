@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bezpieczeństwo aplikacji WWW — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #dc2626;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .vuln-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .tag-client { background: #fee2e2; color: #991b1b; }
+    .tag-server { background: #dbeafe; color: #1e40af; }
+    .tag-header { background: #fef3c7; color: #92400e; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fef2f2; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Bezpieczeństwo aplikacji WWW</h1>
+<p class="meta">XSS · CSRF · CORS · CSP · SSRF · SSTI · OWASP Top 10 (skrót)<br>
+Format: samodzielny HTML, offline · przykłady: React (authors), Spring Boot</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#mapa">Mapa zagrożeń</a></li>
+    <li><a href="#xss">XSS — Cross-Site Scripting</a></li>
+    <li><a href="#csrf">CSRF — Cross-Site Request Forgery</a></li>
+    <li><a href="#cors">CORS — Cross-Origin Resource Sharing</a></li>
+    <li><a href="#csp">CSP — Content Security Policy</a></li>
+    <li><a href="#ssrf">SSRF — Server-Side Request Forgery</a></li>
+    <li><a href="#ssti">SSTI — Server-Side Template Injection</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="mapa">Mapa zagrożeń</h2>
+<p>Aplikacja WWW = przeglądarka + API + szablony + zewnętrzne URL. Atak trafia w **wejście użytkownika**, **nagłówki HTTP**, **politykę origin** albo **logikę serwera wykonującą requesty/szablony**.</p>
+
+<table>
+  <thead>
+    <tr><th>Atak</th><th>Gdzie</th><th>Cel atakującego</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>XSS</strong></td><td>Przeglądarka ofiary</td><td>Wykonać JS w kontekście domeny (cookies, tokeny, DOM)</td></tr>
+    <tr><td><strong>CSRF</strong></td><td>Przeglądarka ofiary</td><td>Wysłać niechciane żądanie z sesją/cookies ofiary</td></tr>
+    <tr><td><strong>CORS</strong></td><td>Polityka przeglądarki</td><td>(Źle skonfigurowany) udostępnić API innym originom</td></tr>
+    <tr><td><strong>CSP</strong></td><td>Nagłówek obronny</td><td>Ograniczyć źródła skryptów — łagodzi skutki XSS</td></tr>
+    <tr><td><strong>SSRF</strong></td><td>Serwer</td><td>Zmusza backend do requestu do wewnętrznej sieci / metadanych chmury</td></tr>
+    <tr><td><strong>SSTI</strong></td><td>Silnik szablonów</td><td>Wstrzyknąć kod w template engine (RCE)</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="xss" class="must-know">XSS — Cross-Site Scripting</h2>
+<p><span class="vuln-tag tag-client">Klient</span> Wstrzyknięcie JavaScript wykonywanego w przeglądarce użytkownika w kontekście Twojej domeny.</p>
+
+<table>
+  <thead>
+    <tr><th>Typ</th><th>Mechanizm</th><th>Przykład</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Reflected</strong></td><td>Payload w URL/formularzu, natychmiast w odpowiedzi</td><td><code>?q=&lt;script&gt;…&lt;/script&gt;</code></td></tr>
+    <tr><td><strong>Stored</strong></td><td>Payload zapisany w DB, widoczny dla innych</td><td>Komentarz autora z JS w polu bio</td></tr>
+    <tr><td><strong>DOM-based</strong></td><td>JS aplikacji zapisuje niebezpieczne dane do DOM</td><td><code>innerHTML = location.hash</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Obrona</h3>
+<ul>
+  <li><strong>Encoding przy output</strong> — HTML entity dla treści, JS escape w atrybutach</li>
+  <li><strong>React domyślnie escapuje</strong> JSX — pułapka: <code>dangerouslySetInnerHTML</code></li>
+  <li><strong>CSP</strong> — ogranicza inline script (defense in depth)</li>
+  <li><strong>HttpOnly cookies</strong> — JS nie odczyta session cookie (nie chroni przed akcjami w DOM)</li>
+</ul>
+
+<pre><code>// ŹLE — React authors: bio z API bez sanityzacji
+&lt;div dangerouslySetInnerHTML={{ __html: author.bio }} /&gt;
+
+// DOBRZE — tekst jako children (auto-escape)
+&lt;p&gt;{author.bio}&lt;/p&gt;
+
+// DOBRZE — jeśli HTML konieczny: DOMPurify przed renderem
+&lt;div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(author.bio) }} /&gt;</code></pre>
+
+<div class="keyword">
+  <strong>Pułapka rekrutacyjna</strong>
+  <p>XSS ≠ SQL injection. XSS działa w przeglądarce; nie wymaga dostępu do bazy — wystarczy, że aplikacja wyświetli niezaufane dane.</p>
+</div>
+
+<hr>
+
+<h2 id="csrf" class="must-know">CSRF — Cross-Site Request Forgery</h2>
+<p><span class="vuln-tag tag-client">Klient</span> Złośliwa strona wysyła żądanie do Twojego API **z przeglądarki zalogowanej ofiary** (cookies sesji lecą automatycznie).</p>
+
+<pre><code>&lt;!-- evil.com — formularz auto-submit --&gt;
+&lt;form action="https://api.authors.example/authors/1" method="POST"&gt;
+  &lt;input name="name" value="Hacked" /&gt;
+&lt;/form&gt;
+&lt;script&gt;document.forms[0].submit()&lt;/script&gt;</code></pre>
+
+<h3>Obrona</h3>
+<ul>
+  <li><strong>CSRF token</strong> — synchronizer token w formularzu/nagłówku (<code>X-CSRF-TOKEN</code>); Spring Security domyślnie dla sesji</li>
+  <li><strong>SameSite cookies</strong> — <code>SameSite=Lax</code> lub <code>Strict</code> ogranicza cross-site POST</li>
+  <li><strong>Custom header</strong> — np. <code>X-Requested-With</code> lub Bearer token — proste POST z formularza HTML nie doda nagłówka</li>
+  <li><strong>OAuth / Bearer w Authorization</strong> — nie leci automatycznie jak cookie (SPA z localStorage ma inne ryzyko XSS)</li>
+</ul>
+
+<div class="keyword">
+  <strong>CSRF vs XSS</strong>
+  <p>CSRF wykorzystuje zaufaną sesję bez znajomości tokenu. XSS może ukraść token CSRF i wtedy CSRF protection pada — stąd CSP + XSS prevention są kluczowe razem.</p>
+</div>
+
+<hr>
+
+<h2 id="cors">CORS — Cross-Origin Resource Sharing</h2>
+<p><span class="vuln-tag tag-header">Nagłówki</span> Mechanizm **przeglądarki**, nie „firewall”. Serwer mówi, które **originy** mogą czytać odpowiedź JS z innej domeny.</p>
+
+<table>
+  <thead>
+    <tr><th>Nagłówek</th><th>Znaczenie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Access-Control-Allow-Origin</code></td><td>Dozwolony origin (<code>https://app.example</code>) — unikaj <code>*</code> z credentials</td></tr>
+    <tr><td><code>Access-Control-Allow-Credentials</code></td><td><code>true</code> — cookies w cross-origin fetch</td></tr>
+    <tr><td><code>Access-Control-Allow-Methods</code></td><td>GET, POST, PUT…</td></tr>
+    <tr><td><code>Access-Control-Allow-Headers</code></td><td>Authorization, Content-Type…</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Preflight:</strong> żądania „nieproste” (PUT, custom headers) — przeglądarka wysyła OPTIONS przed właściwym requestem.</p>
+
+<pre><code>// React authors — fetch z innego portu (dev: localhost:5173 → :8080)
+fetch("http://localhost:8080/api/authors", {
+  credentials: "include",  // cookies — wymaga konkretnego ACAO, nie *
+  headers: { Authorization: "Bearer …" }
+});
+
+// Spring — źle: Allow-Origin: * + credentials: true (przeglądarka odrzuci)
+// Spring — dobrze: whitelist originów z konfiguracji</code></pre>
+
+<div class="keyword">
+  <strong>Pułapka</strong>
+  <p>CORS **nie blokuje** requestu curl/Postman — tylko JS w przeglądarce. Brak CORS ≠ bezpieczeństwo API; autoryzacja musi być po stronie serwera.</p>
+</div>
+
+<hr>
+
+<h2 id="csp" class="must-know">CSP — Content Security Policy</h2>
+<p><span class="vuln-tag tag-header">Nagłówek</span> Whitelist źródeł: skryptów, stylów, obrazków, ramek. Główna obrona przed inline XSS i ładowaniem złośliwych CDN.</p>
+
+<pre><code>Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' https://cdn.trusted.com;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: https:;
+  frame-ancestors 'none';
+  base-uri 'self';</code></pre>
+
+<table>
+  <thead>
+    <tr><th>Dyrektywa</th><th>Po co</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>script-src</code></td><td>Skąd wolno JS — unikaj <code>'unsafe-inline'</code> w produkcji</td></tr>
+    <tr><td><code>nonce-XYZ</code> / <code>hash</code></td><td>Dozwolony konkretny inline script (Vite/React build)</td></tr>
+    <tr><td><code>frame-ancestors</code></td><td>Ochrona przed clickjacking (zamiast starego X-Frame-Options)</td></tr>
+    <tr><td><code>report-uri</code> / <code>report-to</code></td><td>Logowanie naruszeń CSP</td></tr>
+  </tbody>
+</table>
+
+<p>Wdrożenie: najpierw <code>Content-Security-Policy-Report-Only</code>, potem enforce. React dev często wymaga luźniejszej polityki — produkcja: strict.</p>
+
+<hr>
+
+<h2 id="ssrf">SSRF — Server-Side Request Forgery</h2>
+<p><span class="vuln-tag tag-server">Serwer</span> Atakujący podaje URL; **backend** wykonuje HTTP request — np. do <code>169.254.169.254</code> (metadata AWS), wewnętrznego admin panelu, Redis.</p>
+
+<pre><code>// Endpoint: "Pobierz okładkę książki z URL"
+GET /api/fetch-cover?url=http://169.254.169.254/latest/meta-data/
+
+// Atakujący czyta token IAM / skanuje sieć wewnętrzną</code></pre>
+
+<h3>Obrona</h3>
+<ul>
+  <li>Whitelist dozwolonych hostów/schematów (<code>https</code> tylko, bez IP prywatnych)</li>
+  <li>Blokada DNS rebinding — resolve + sprawdź IP przed requestem</li>
+  <li>Brak przekazywania surowego URL od użytkownika — proxy z katalogiem CDN</li>
+  <li>Segmentacja sieci — aplikacja bez routingu do metadanych chmury</li>
+</ul>
+
+<hr>
+
+<h2 id="ssti">SSTI — Server-Side Template Injection</h2>
+<p><span class="vuln-tag tag-server">Serwer</span> User input trafia do **silnika szablonów** jako kod szablonu, nie jako dane — możliwe **RCE** (Remote Code Execution).</p>
+
+<pre><code>// Thymeleaf / Freemarker — źle: template z parametru
+templateEngine.process(userSuppliedTemplate, context);
+
+// Freemarker — payload (przykład):
+${"freemarker.template.utility.Execute"?new()("id")}
+
+// DOBRZE: szablon statyczny na dysku, user data tylko w zmiennych kontekstu
+model.addAttribute("authorName", escapeHtml(input));</code></pre>
+
+<p>Dotyczy: Thymeleaf, Freemarker, Velocity, Jinja2, Twig. **Nigdy** nie kompiluj szablonu z inputu użytkownika. W React (authors) SSTI nie występuje — szablony to JSX po stronie builda; ryzyko to XSS, nie SSTI.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li>Myślenie, że CORS chroni API przed atakami spoza przeglądarki</li>
+  <li><code>Access-Control-Allow-Origin: *</code> razem z <code>credentials: include</code></li>
+  <li>Poleganie wyłącznie na CSRF token bez SameSite i bez ochrony przed XSS</li>
+  <li><code>dangerouslySetInnerHTML</code> bez sanityzacji (stored XSS w bio autora)</li>
+  <li>CSP z <code>'unsafe-inline' 'unsafe-eval'</code> — prawie jak brak CSP</li>
+  <li>Traktowanie HttpOnly jako ochrony przed XSS (chroni cookie, nie akcje w sesji)</li>
+  <li>Endpoint „fetch URL” bez walidacji — klasyczny SSRF</li>
+  <li>Renderowanie błędów stack trace z parametrami użytkownika (reflected XSS)</li>
+  <li>Dynamiczne szablony e-mail/raportów z inputu użytkownika (SSTI)</li>
+  <li>JWT w localStorage + brak CSP — jeden XSS = kradzież tokenu</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<p><span class="level-tag level-junior">Junior / Mid — 1–15</span></p>
+
+<div class="qa-item">
+  <strong>1. Czym różni się XSS od SQL injection?</strong>
+  <p>XSS wykonuje JS w przeglądarce ofiary w kontekście aplikacji. SQLi manipuluje zapytaniem do bazy po stronie serwera.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Co to reflected XSS?</strong>
+  <p>Payload w żądaniu (URL, formularz) jest natychmiast odbijany w odpowiedzi HTML bez trwałego zapisu.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Co to stored XSS?</strong>
+  <p>Złośliwy skrypt zapisany w bazie (np. komentarz) i serwowany innym użytkownikom.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Dlaczego React domyślnie łagodzi XSS?</strong>
+  <p>JSX escapuje wartości wstawiane jako children — znaki specjalne HTML stają się tekstem, nie tagami.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Po co HttpOnly na cookie sesji?</strong>
+  <p>JavaScript w przeglądarce nie może odczytać takiego cookie — utrudnia kradzież sesji przez XSS.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Czym jest CSRF?</strong>
+  <p>Wymuszenie na przeglądarce ofiary wysłania autentykowanego żądania do aplikacji bez wiedzy użytkownika.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Jak działa CSRF token?</strong>
+  <p>Serwer generuje tajny token powiązany z sesją; żądanie musi go zawierać — zewnętrzna strona go nie zna.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Co robi SameSite=Lax?</strong>
+  <p>Cookie nie jest wysyłane przy cross-site POST (z wyjątkami nawigacji top-level GET) — ogranicza CSRF.</p>
+</div>
+<div class="qa-item">
+  <strong>9. Czym jest CORS?</strong>
+  <p>Mechanizm przeglądarki: serwer deklaruje nagłówkami, czy JS z danego origin może odczytać odpowiedź cross-origin.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Czy brak CORS blokuje curl?</strong>
+  <p>Nie. CORS dotyczy tylko polityki same-origin w przeglądarce dla JavaScript.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Co to preflight OPTIONS?</strong>
+  <p>Wstępne żądanie przeglądarki sprawdzające, czy serwer zezwala na metodę/nagłówki cross-origin.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Do czego służy CSP?</strong>
+  <p>Nagłówek HTTP ograniczający źródła skryptów, stylów, ramek — ogranicza skutki XSS i supply-chain.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Czym jest SSRF?</strong>
+  <p>Atak zmuszający serwer do wykonania HTTP requestu pod kontrolą atakującego — często do zasobów wewnętrznych.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Czym jest SSTI?</strong>
+  <p>Wstrzyknięcie składni silnika szablonów w input użytkownika, co może prowadzić do wykonania kodu na serwerze.</p>
+</div>
+<div class="qa-item">
+  <strong>15. XSS, CSRF czy oba — kradzież sesji cookie HttpOnly?</strong>
+  <p>Bezpośredniej kradzieży HttpOnly cookie przez JS nie ma (XSS nie „czyta” cookie). XSS może jednak wykonywać akcje w imieniu użytkownika w tej samej sesji.</p>
+</div>
+
+<p><span class="level-tag level-senior">Mid / Senior — 16–30</span></p>
+
+<div class="qa-item">
+  <strong>16. DOM-based XSS — przykład?</strong>
+  <p><code>document.getElementById('out').innerHTML = location.hash.slice(1)</code> — payload w hash bez udziału serwera.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Dlaczego Bearer token w localStorage + XSS = game over?</strong>
+  <p>XSS może odczytać localStorage i wysłać token atakującemu — brak HttpOnly. Alternatywa: cookie HttpOnly + BFF lub krótko żyjące tokeny.</p>
+</div>
+<div class="qa-item">
+  <strong>18. CSRF przy REST API ze stateless JWT w Authorization?</strong>
+  <p>Klasyczny CSRF na cookie nie dotyczy, jeśli token tylko w nagłówku (JS musi go dodać). Ryzyko wraca przy cookie-based session lub hybrid.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Dlaczego ACAO: * nie działa z credentials?</strong>
+  <p>Specyfikacja CORS zabrania — przeglądarka wymaga jawnego origin przy <code>Access-Control-Allow-Credentials: true</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>20. CSP nonce — kiedy?</strong>
+  <p>Gdy potrzebny inline script w HTML — serwer generuje losowy nonce per request i dodaje do script-src i tagu script.</p>
+</div>
+<div class="qa-item">
+  <strong>21. frame-ancestors vs X-Frame-Options?</strong>
+  <p><code>frame-ancestors</code> w CSP jest nowsze, elastyczne (wiele originów); X-Frame-Options to legacy (DENY/SAMEORIGIN).</p>
+</div>
+<div class="qa-item">
+  <strong>22. SSRF do 169.254.169.254 — co to?</strong>
+  <p>Link-local metadata cloud (AWS/GCP/Azure) — często credentials/role; klasyczny cel SSRF w chmurze.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Jak bronić endpoint „import from URL”?</strong>
+  <p>Whitelist hostów, blokada IP prywatnych/link-local, timeout, brak redirectów do wewnętrznych adresów, osobna sieć egress.</p>
+</div>
+<div class="qa-item">
+  <strong>24. SSTI vs XSS — różnica?</strong>
+  <p>SSTI: wykonanie w silniku szablonów na serwerze (RCE). XSS: wykonanie JS w przeglądarce ofiary.</p>
+</div>
+<div class="qa-item">
+  <strong>25. Thymeleaf — bezpieczne vs niebezpieczne użycie inputu?</strong>
+  <p>Bezpieczne: <code th:text="${userInput}"</code>. Ryzykowne: parsowanie fragmentu szablonu z inputu użytkownika jako template source.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Double Submit Cookie — CSRF?</strong>
+  <p>Token w cookie i w body/header — serwer porównuje. Wymaga, by atakujący nie mógł ustawić cookie (SameSite pomaga).</p>
+</div>
+<div class="qa-item">
+  <strong>27. CORS misconfiguration — reflected origin?</strong>
+  <p>Serwer odbija <code>Origin</code> requestu w ACAO bez walidacji — każda strona może czytać odpowiedzi z credentials.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Content-Type i CSRF na JSON API?</strong>
+  <p>Form POST ma <code>application/x-www-form-urlencoded</code> — JSON wymaga fetch z JS; prosty CSRF formularzem nie wyśle JSON (choć nie polegaj tylko na tym).</p>
+</div>
+<div class="qa-item">
+  <strong>29. CSP report-only — po co?</strong>
+  <p>Monitorowanie naruszeń bez blokowania — migracja ze starych inline scriptów bez awarii produkcji.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Jak XSS obchodzi CSRF token?</strong>
+  <p>Skrypt w domenie ofiary odczytuje token z DOM/meta/cookie (jeśli nie HttpOnly) i dołącza do fetch — stąd priorytet: zapobieganie XSS.</p>
+</div>
+
+<p><span class="level-tag level-tricky">Pułapki — 31–40</span></p>
+
+<div class="qa-item">
+  <strong>31. „Mamy CORS wyłączony — API bezpieczne”?</strong>
+  <p>Fałsz dla ataków poza przeglądarką i dla błędnej autoryzacji. CORS to nie autentykacja.</p>
+</div>
+<div class="qa-item">
+  <strong>32. CSP unsafe-inline — kiedy akceptowalne?</strong>
+  <p>Raczej dev/legacy; produkcja powinna iść w nonce/hash. unsafe-inline niweczy większość korzyści CSP.</p>
+</div>
+<div class="qa-item">
+  <strong>33. CSRF na GET usuwającym zasób?</strong>
+  <p>Tak — jeśli GET zmienia stan i cookie leci automatycznie. REST: mutacje tylko POST/PUT/DELETE + CSRF/token.</p>
+</div>
+<div class="qa-item">
+  <strong>34. SSRF przez DNS rebinding?</strong>
+  <p>Host najpierw resolve do publicznego IP, potem TTL=0 i resolve do 127.0.0.1 — obejście blacklist po hostname. Obrona: pin IP po resolve.</p>
+</div>
+<div class="qa-item">
+  <strong>35. SSTI w PDF/email template z user data?</strong>
+  <p>Tak — jeśli engine traktuje <code>${…}</code> w treści od użytkownika jako kod. Używaj placeholderów danych, nie składni engine w input.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Angular/React — czy automatycznie chronią przed DOM XSS?</strong>
+  <p>Domyślny binding tak; nie chroni: innerHTML, bypassSanitizer, href z javascript:, third-party widgets.</p>
+</div>
+<div class="qa-item">
+  <strong>37. SameSite=None — kiedy i ryzyko?</strong>
+  <p>Cross-site cookies (embedded, OAuth flows) — wymaga Secure. Zwiększa powierzchnię CSRF bez dodatkowych tokenów.</p>
+</div>
+<div class="qa-item">
+  <strong>38. CORS preflight cache — Max-Age?</strong>
+  <p>Przeglądarka cache'uje wynik OPTIONS — zła konfiguracja utrzymuje się do wygaśnięcia cache preflight.</p>
+</div>
+<div class="qa-item">
+  <strong>39. Subresource Integrity (SRI) a CSP?</strong>
+  <p>SRI weryfikuje hash CDN script — CSP ogranicza skąd wolno ładować. Razem: defense in depth przy zewnętrznych skryptach.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Jeden ranking: co wdrożyć pierwsze w greenfield SPA + API?</strong>
+  <p>Autoryzacja server-side, walidacja input, output encoding, CSP + HttpOnly/SameSite cookies lub Bearer z krótkim TTL, CSRF jeśli cookie session, brak SSRF w integracjach URL, statyczne szablony serwerowe.</p>
+</div>
+
+</body>
+</html>

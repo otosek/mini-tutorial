@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stream Gatherers — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0284c7;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #e0f2fe; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Stream Gatherers</h1>
+<p class="meta">Java 22 preview → <strong>Java 24</strong> standard (JEP 485) · <code>Stream.gather()</code> · okna · scan · mapConcurrent<br>
+Format: samodzielny HTML, offline · przykłady: batch autorów, równoległe fetch API</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty</a></li>
+    <li><a href="#czesc-2">Gatherer vs Collector vs map/filter</a></li>
+    <li><a href="#czesc-3">Wbudowane gatherery</a></li>
+    <li><a href="#czesc-4">mapConcurrent i virtual threads</a></li>
+    <li><a href="#czesc-5">Własny gatherer</a></li>
+    <li><a href="#czesc-6">Kompozycja gathererów</a></li>
+    <li><a href="#czesc-7">Typowe błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty</h2>
+
+<h3>1.1 Co to są Stream Gatherers</h3>
+<p><strong>Stream Gatherers</strong> rozszerzają Stream API (Java 8) o <strong>własne operacje pośrednie</strong> — tak jak <code>Collector</code> rozszerza operacje terminalne przez <code>collect()</code>, tak <code>Gatherer</code> rozszerza pośrednie przez <code>gather()</code>.</p>
+<p>Historycznie: JEP 461 (Java 22 preview), JEP 473 (Java 23 preview), <strong>JEP 485 — finalizacja w Java 24</strong> bez zmian API.</p>
+
+<pre><code>import java.util.stream.Gatherers;
+import java.util.stream.Stream;
+
+Stream.of(1, 2, 3, 4, 5)
+    .gather(Gatherers.windowFixed(2))
+    .forEach(System.out::println);
+// [1, 2]
+// [3, 4]
+// [5]</code></pre>
+
+<h3>1.2 Po co, skoro mamy map/filter/reduce?</h3>
+<p>Brakowało w JDK operacji takich jak <strong>okna (windowing)</strong>, <strong>prefix scan</strong>, <strong>wielu wyników z jednego elementu w kontrolowany sposób</strong> albo <strong>współbieżne mapowanie z zachowaniem kolejności</strong>. Wcześniej: własne <code>Spliterator</code>, biblioteki (Guava), albo obejścia z <code>collect</code> + ponowne streamowanie.</p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Gatherer vs Collector vs map/filter</h2>
+
+<table>
+  <thead>
+    <tr><th></th><th>Operacja</th><th>Wejście → wyjście</th><th>Moment</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>map</code></td><td>pośrednia</td><td>1 → 1</td><td>lazy, element po elemencie</td></tr>
+    <tr><td><code>flatMap</code></td><td>pośrednia</td><td>1 → N</td><td>lazy</td></tr>
+    <tr><td><code>Gatherer</code></td><td>pośrednia (<code>gather</code>)</td><td>1→1, 1→N, N→1, N→N</td><td>lazy, ze stanem</td></tr>
+    <tr><td><code>Collector</code></td><td>terminalna (<code>collect</code>)</td><td>stream → jeden wynik</td><td>zużywa stream</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Interfejs Gatherer&lt;T, A, R&gt;</strong>
+  <p><code>T</code> — typ elementu wejściowego · <code>A</code> — stan wewnętrzny (akumulator) · <code>R</code> — typ elementu wyjściowego downstream. Trzy fazy: <code>initializer</code> (stan początkowy), <code>integrator</code> (element + stan → emit?), <code>finisher</code> (flush na końcu).</p>
+</div>
+
+<p><code>fold</code> to gatherer <strong>many-to-one</strong> w pipeline — emituje jeden wynik dopiero na końcu strumienia (albo przy finisherze). To nie to samo co <code>reduce</code> terminalne — wynik fold może iść dalej w pipeline.</p>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Wbudowane gatherery (<code>Gatherers</code>)</h2>
+
+<table>
+  <thead>
+    <tr><th>Gatherer</th><th>Typ</th><th>Opis</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>fold(initial, folder)</code></td><td>many-to-one</td><td>Akumulacja do jednego wyniku na końcu</td></tr>
+    <tr><td><code>scan(initial, scanner)</code></td><td>one-to-one</td><td>Prefix scan — emit po każdym elemencie (bieżąca suma)</td></tr>
+    <tr><td><code>windowFixed(size)</code></td><td>many-to-many</td><td>Nie nakładające się listy po N elementów</td></tr>
+    <tr><td><code>windowSliding(size)</code></td><td>many-to-many</td><td>Okno przesuwne o 1 element</td></tr>
+    <tr><td><code>mapConcurrent(n, mapper)</code></td><td>one-to-one</td><td>Mapowanie współbieżne (virtual threads), kolejność zachowana</td></tr>
+  </tbody>
+</table>
+
+<h3>scan — bieżąca suma</h3>
+<pre><code>Stream.of(1, 2, 3, 4)
+    .gather(Gatherers.scan(() -&gt; 0, (acc, x) -&gt; acc + x))
+    .toList();
+// [1, 3, 6, 10]</code></pre>
+
+<h3>windowFixed — batchowanie ID autorów</h3>
+<pre><code>List&lt;Long&gt; authorIds = List.of(1L, 2L, 3L, 4L, 5L);
+
+authorIds.stream()
+    .gather(Gatherers.windowFixed(2))
+    .map(batch -&gt; authorRepository.findAllById(batch))  // 1 query na 2 ID
+    .flatMap(List::stream)
+    .toList();</code></pre>
+
+<h3>windowSliding — średnia krocząca</h3>
+<pre><code>Stream.of(10, 20, 30, 40)
+    .gather(Gatherers.windowSliding(3))
+    .map(window -&gt; window.stream().mapToInt(i -&gt; i).average().orElse(0))
+    .toList();
+// [20.0, 30.0]  → okna [10,20,30], [20,30,40]</code></pre>
+
+<h3>fold — pośrednia agregacja</h3>
+<pre><code>// Łączy wszystkie tytuły w jeden string — wynik idzie dalej w pipeline
+Stream.of("Dune", "Solaris", "Hyperion")
+    .gather(Gatherers.fold(
+        () -&gt; new StringBuilder(),
+        (sb, title) -&gt; sb.append(title).append("; ")))
+    .map(StringBuilder::toString)
+    .findFirst();</code></pre>
+
+<hr>
+
+<h2 id="czesc-4">Część 4 — mapConcurrent i virtual threads</h2>
+<p><code>Gatherers.mapConcurrent(maxConcurrency, mapper)</code> uruchamia <code>mapper</code> równolegle (domyślnie na virtual threads), ale **emituje wyniki w kolejności wejścia** — inaczej niż <code>parallelStream()</code>, które optymalizuje CPU i nie gwarantuje kolejności.</p>
+
+<pre><code>// Pobierz szczegóły autorów z zewnętrznego API — max 10 równolegle
+List&lt;Author&gt; authors = authorIds.stream()
+    .gather(Gatherers.mapConcurrent(10, id -&gt;
+        restClient.get()
+            .uri("/authors/{id}", id)
+            .retrieve()
+            .body(Author.class)))
+    .toList();</code></pre>
+
+<div class="keyword">
+  <strong>mapConcurrent vs parallelStream</strong>
+  <p><code>parallelStream</code> — ForkJoinPool, CPU-bound, brak gwarancji kolejności. <code>mapConcurrent</code> — I/O-bound, limit współbieżności, kolejność encounter order zachowana. Idealne przy HTTP/DB z wieloma niezależnymi callami.</p>
+</div>
+
+<hr>
+
+<h2 id="czesc-5">Część 5 — Własny gatherer</h2>
+
+<p>Fabryki: <code>Gatherer.ofSequential(...)</code> (sekwencyjny), <code>Gatherer.of(...)</code> (może wspierać równoległość z combinerem). Prosty gatherer: emit co drugi element.</p>
+
+<pre><code>Gatherer&lt;Integer, ?, Integer&gt; everySecond = Gatherer.ofSequential(
+    () -&gt; new boolean[] { true },                    // stan: czy emitować
+    (state, element, downstream) -&gt; {
+      if (state[0]) {
+        downstream.push(element);
+      }
+      state[0] = !state[0];
+      return true;  // kontynuuj
+    }
+);
+
+Stream.of(1, 2, 3, 4, 5, 6)
+    .gather(everySecond)
+    .toList();  // [1, 3, 5]</code></pre>
+
+<p>Integrator zwraca <code>false</code>, gdy chce przerwać przetwarzanie (jak short-circuit). <code>finisher</code> emituje resztkę stanu (np. niepełne okno).</p>
+
+<hr>
+
+<h2 id="czesc-6">Część 6 — Kompozycja gathererów</h2>
+<p><code>gatherer1.andThen(gatherer2)</code> — pierwszy przetwarza, drugi dostaje jego output jako input. Przydatne: scan + fold, window + map.</p>
+
+<pre><code>var pipeline = Gatherers.&lt;Integer&gt;scan(() -&gt; 0, Integer::sum)
+    .andThen(Gatherers.fold(() -&gt; 0, Integer::sum));
+
+Stream.of(1, 2, 3).gather(pipeline).toList();
+// scan: [1,3,6] → fold: [10]</code></pre>
+
+<hr>
+
+<h2 id="czesc-7">Typowe błędy</h2>
+<ol>
+  <li><strong>Myślenie, że gatherer = collector</strong> — gatherer to operacja pośrednia, stream dalej płynie</li>
+  <li><strong>mapConcurrent bez limitu</strong> — przy tysiącach ID zaljesz API/DB; ustaw <code>maxConcurrency</code> świadomie</li>
+  <li><strong>windowFixed na nieskończonym streamie bez backpressure</strong> — pamięć rośnie jeśli downstream wolny</li>
+  <li><strong>Mutowalny stan w integratorze współdzielony między wątkami</strong> — przy custom gathererze używaj <code>ofSequential</code> albo poprawnego combiner</li>
+  <li><strong>Oczekiwanie wielu wyników z fold w środku pipeline</strong> — fold emituje dopiero na końcu (many-to-one)</li>
+  <li><strong>Zamiana scan ↔ reduce</strong> — scan emituje każdy krok; reduce terminalny daje jeden wynik</li>
+  <li><strong>parallelStream + gather</strong> — zachowanie zależy od encounter order; testuj na małych danych</li>
+  <li><strong>Java 21 bez flagi preview</strong> — gatherery standardowe od Java 24; w 22–23 wymagały <code>--enable-preview</code></li>
+  <li><strong>windowSliding na dużym oknie + długi stream</strong> — każde okno to nowa lista — koszt pamięci O(n×size)</li>
+  <li><strong>Brak obsługi pustego streamu w custom finisher</strong> — finisher musi poprawnie flushować resztkę stanu</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to Stream Gatherers?</strong>
+  <p>API (Java 24) do własnych operacji pośrednich na streamach przez <code>Stream.gather(Gatherer)</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Który JEP finalizuje gatherery?</strong>
+  <p>JEP 485 w Java 24 (preview: JEP 461 w 22, JEP 473 w 23).</p>
+</div>
+<div class="qa-item">
+  <strong>3. Czym różni się gather od collect?</strong>
+  <p><code>gather</code> — operacja pośrednia (lazy), wynik dalej w pipeline. <code>collect</code> — terminalna, kończy stream.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Co robi Gatherers.scan?</strong>
+  <p>Prefix scan — po każdym elemencie emituje bieżącą akumulację (np. sumy częściowe).</p>
+</div>
+<div class="qa-item">
+  <strong>5. Co robi Gatherers.windowFixed(3)?</strong>
+  <p>Grupuje elementy w listy po 3; ostatnie okno może być krótsze.</p>
+</div>
+<div class="qa-item">
+  <strong>6. windowFixed vs windowSliding?</strong>
+  <p>Fixed — okna rozłączne. Sliding — nakładające się, przesuwane o 1 element.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Przykład wyniku windowSliding(2) na [1,2,3]?</strong>
+  <p><code>[[1,2], [2,3]]</code></p>
+</div>
+<div class="qa-item">
+  <strong>8. Co robi Gatherers.fold?</strong>
+  <p>Many-to-one — akumuluje wszystkie elementy do jednego wyniku emitowanego na końcu.</p>
+</div>
+<div class="qa-item">
+  <strong>9. Czym jest mapConcurrent?</strong>
+  <p>Mapowanie elementów współbieżnie z limitem; kolejność wyjścia = kolejność wejścia.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Gdzie jest klasa Gatherers?</strong>
+  <p><code>java.util.stream.Gatherers</code></p>
+</div>
+<div class="qa-item">
+  <strong>11. Czy gatherery wymagają Java 24?</strong>
+  <p>Standard od 24. W 22–23 były preview z <code>--enable-preview</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>12. scan vs reduce terminalny?</strong>
+  <p>scan emituje każdy krok pośredni w streamie; reduce daje jeden końcowy wynik i kończy pipeline.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Po co batchowanie windowFixed przy DB?</strong>
+  <p>Grupuje ID do paczek — mniej round-tripów (<code>IN (...)</code>, bulk API).</p>
+</div>
+<div class="qa-item">
+  <strong>14. Czy gatherer może emitować więcej niż jeden element na input?</strong>
+  <p>Tak — many-to-many (np. okna). flatMap też, ale gatherer ma kontrolowany stan.</p>
+</div>
+<div class="qa-item">
+  <strong>15. Co to integrator w Gatherer?</strong>
+  <p>Funkcja wołana per element: aktualizuje stan, opcjonalnie emituje downstream, zwraca czy kontynuować.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Typy transformacji gatherera (1→1, 1→N, N→1, N→N)?</strong>
+  <p>scan/mapConcurrent = 1→1; window* = many-to-many; fold = many-to-one; flatMap-like custom = 1→N.</p>
+</div>
+<div class="qa-item">
+  <strong>17. mapConcurrent vs parallelStream().map()?</strong>
+  <p>mapConcurrent: virtual threads, limit concurrency, zachowana kolejność, I/O. parallelStream: ForkJoinPool, CPU, bez gwarancji kolejności.</p>
+</div>
+<div class="qa-item">
+  <strong>18. Jak skomponować dwa gatherery?</strong>
+  <p><code>g1.andThen(g2)</code> — output g1 jest inputem g2.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Gatherer.ofSequential vs Gatherer.of?</strong>
+  <p>Sequential — bez combiner, jeden wątek. <code>of</code> — może wspierać równoległe przetwarzanie z łączeniem stanu.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Kiedy fold jako pośredni zamiast collect?</strong>
+  <p>Gdy zagregowany wynik ma iść dalej w pipeline (np. jeden string → dalsze map/filter), nie kończyć streamu.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Czy gatherer jest lazy?</strong>
+  <p>Tak — jak inne operacje pośrednie; wykonanie przy terminal operation.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Co robi finisher gatherera?</strong>
+  <p>Flush stanu po ostatnim elemencie — np. emit niepełnego okna, końcowa agregacja fold.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Integrator zwraca false — efekt?</strong>
+  <p>Przerwanie przetwarzania (short-circuit w gathererze).</p>
+</div>
+<div class="qa-item">
+  <strong>24. mapConcurrent(10, f) — co oznacza 10?</strong>
+  <p>Maksymalna liczba równoległych wywołań <code>f</code> (współbieżność).</p>
+</div>
+<div class="qa-item">
+  <strong>25. Czy gatherery działają na parallel stream?</strong>
+  <p>Tak, ale semantyka encounter order zależy od gatherera; wiele jest sekwencyjnych ze względu na stan.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Analogia Gatherer : Stream jak Collector : ?</strong>
+  <p>Collector rozszerza operacje terminalne; Gatherer — operacje pośrednie.</p>
+</div>
+<div class="qa-item">
+  <strong>27. Przykład użycia scan w analityce?</strong>
+  <p>Bieżąca suma salda, licznik running count, cumulative distribution w czasie rzeczywistym.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Dlaczego nie flatMap do okien?</strong>
+  <p>flatMap nie ma wbudowanego stanu okna; gatherer enkapsuluje stan i granice okien czysto.</p>
+</div>
+<div class="qa-item">
+  <strong>29. Custom gatherer — thread safety?</strong>
+  <p>Stan per pipeline / per sub-stream; mutacja tylko w integratorze; przy równoległości — combiner lub sequential.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Gatherers a reactive streams?</strong>
+  <p>Osobne modele; gatherery synchronizują się ze Stream API. Dla backpressure używaj reactive; gatherery dla batch w pamięci.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki</span></h3>
+
+<div class="qa-item">
+  <strong>31. fold w środku pipeline — ile elementów downstream dostaniesz po 100 input?</strong>
+  <p>Jeden (many-to-one) — dopiero po przetworzeniu całego upstream (finisher).</p>
+</div>
+<div class="qa-item">
+  <strong>32. mapConcurrent z concurrency=1000 i wolnym API?</strong>
+  <p>1000 równoległych calli — ryzyko timeoutów, rate limit, wyczerpanie pooli; semaphore po stronie klienta nadal potrzebny.</p>
+</div>
+<div class="qa-item">
+  <strong>33. windowSliding(100) na streamie 1M elementów — pamięć?</strong>
+  <p>~1M list po ~100 elementów — bardzo drogie; rozważ stream processing lub mniejsze okna/inne algorytmy.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Czy gather zastępuje Spliterator?</strong>
+  <p>Dla wielu przypadków tak (czytelniej); Spliterator nadal nisko-poziomowy dla źródeł danych.</p>
+</div>
+<div class="qa-item">
+  <strong>35. scan z mutowalnym akumulatorem (ArrayList)?</strong>
+  <p>Emitujesz referencję do tego samego obiektu — downstream może zmutować; lepiej emitować kopie/immutable.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Java 22 preview — flaga kompilacji?</strong>
+  <p><code>--enable-preview</code> + target 22; od Java 24 standard bez preview.</p>
+</div>
+<div class="qa-item">
+  <strong>37. fold + andThen + scan — kolejność?</strong>
+  <p>Najpierw scan na input, potem fold na output scan — kolejność <code>andThen</code> ma znaczenie.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Czy mapConcurrent używa platform czy virtual threads?</strong>
+  <p>Implementacja JDK opiera się na virtual threads (JEP 485) — tanie I/O concurrency.</p>
+</div>
+<div class="qa-item">
+  <strong>39. gather po infinite stream + windowFixed?</strong>
+  <p>Działa lazy, ale downstream musi konsumować; infinite okna — potencjalnie infinite output.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Kiedy NIE używać gathererów?</strong>
+  <p>Proste map/filter wystarczy; bardzo duże dane z backpressure → reactive; CPU parallel → parallelStream/Executor.</p>
+</div>
+
+</body>
+</html>

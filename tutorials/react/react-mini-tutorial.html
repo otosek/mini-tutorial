@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #087ea4;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #ecfeff; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+
+    .concept-card h3 { margin-top: 0; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>React — mini-tutorial</h1>
+<p class="meta">Komponenty · hooks · stan · efekty · routing · dane · pytania rekrutacyjne<br>
+Format: HTML (otwórz w przeglądarce — podwójne kliknięcie lub przeciągnij na kartę)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty</a></li>
+    <li><a href="#czesc-2">Komponenty i JSX</a></li>
+    <li><a href="#czesc-3">Stan i props</a></li>
+    <li><a href="#czesc-4">Hooks — useEffect i reszta</a></li>
+    <li><a href="#czesc-5">Renderowanie i cykl życia</a></li>
+    <li><a href="#czesc-6">Formularze, dane, routing</a></li>
+    <li><a href="#czesc-7">Wydajność i wzorce</a></li>
+    <li><a href="#czesc-8">Najczęstsze błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty</h2>
+
+<h3>1.1 Co to jest React</h3>
+<p><strong>React</strong> to biblioteka UI do budowy interfejsów z komponentów. Nie jest frameworkiem full-stack — sam React to warstwa widoku. Routing, dane, formularze dokładasz osobno (React Router, TanStack Query, React Hook Form — jak w projekcie authors).</p>
+
+<h3>1.2 Deklaratywny model</h3>
+<p>Opisujesz <em>jak UI ma wyglądać dla danego stanu</em>, a React synchronizuje DOM z tym opisem. Zmiana stanu → re-render → diff → aktualizacja DOM tylko tam, gdzie trzeba.</p>
+
+<h3>1.3 Single Page Application (SPA)</h3>
+<p>React działa w przeglądarce — nawigacja bez pełnego przeładowania strony (React Router). Serwer zwraca <code>index.html</code> + JS bundle; dalsze „strony” to zamiana komponentów.</p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Komponenty i JSX</h2>
+
+<h3>2.1 Komponent funkcyjny</h3>
+<pre><code>type AuthorCardProps = {
+  firstName: string
+  lastName: string
+}
+
+export function AuthorCard({ firstName, lastName }: AuthorCardProps) {
+  return &lt;p&gt;{firstName} {lastName}&lt;/p&gt;
+}</code></pre>
+<p>Komponent to funkcja zwracająca JSX. Od React 19 — jedyny zalecany styl (class components to legacy).</p>
+
+<h3>2.2 JSX</h3>
+<p>Składnia przypominająca HTML w JS. Kompiluje się do <code>React.createElement</code> (lub jsx runtime). Jedna korzeń lub fragment <code>&lt;&gt;...&lt;/&gt;</code>.</p>
+<pre><code>// Wyrażenia w klamrach
+&lt;h1&gt;{authors.length} autorów&lt;/h1&gt;
+
+// Warunkowo
+{authors.length &gt; 0 &amp;&amp; &lt;ul&gt;...&lt;/ul&gt;}
+
+// Lista — key!
+{authors.map(a =&gt; &lt;li key={a.id}&gt;{a.firstName}&lt;/li&gt;)}</code></pre>
+
+<h3>2.3 Props — tylko w dół</h3>
+<p>Dane płyną z rodzica do dziecka przez props. Props są <strong>readonly</strong> — dziecko nie mutuje propsów rodzica. Callback w props = komunikacja w górę (<code>onSubmit</code>).</p>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Stan i props</h2>
+
+<h3>3.1 <code>useState</code></h3>
+<pre><code>const [selectedAuthor, setSelectedAuthor] = useState&lt;Author | null&gt;(null)
+
+setSelectedAuthor(author)       // zamiana stanu
+setSelectedAuthor(null)         // reset</code></pre>
+<p>Stan jest <strong>lokalny dla komponentu</strong>. Po odmontowaniu (<code>AuthorsPage</code> → wyjście z route) — stan znika. Stąd potrzeba React Query / global state dla danych współdzielonych.</p>
+
+<h3>3.2 State vs props</h3>
+<table>
+  <thead>
+    <tr><th></th><th>Props</th><th>State</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Źródło</td><td>Rodzic</td><td>Wewnątrz komponentu</td></tr>
+    <tr><td>Mutacja</td><td>Readonly</td><td>Przez setter</td></tr>
+    <tr><td>Przykład</td><td><code>defaultValues</code> w formularzu</td><td><code>selectedAuthor</code> w AuthorsPage</td></tr>
+  </tbody>
+</table>
+
+<h3>3.3 Lifting state up</h3>
+<p>Gdy dwa rodzeństwa muszą współdzielić stan — podnieś stan do wspólnego rodzica i przekaż props + callback w dół.</p>
+
+<h3>3.4 Controlled vs uncontrolled</h3>
+<p><strong>Controlled</strong> — React trzyma wartość inputa w state (<code>value</code> + <code>onChange</code>). <strong>Uncontrolled</strong> — DOM trzyma wartość (<code>ref</code>). React Hook Form domyślnie bliżej uncontrolled (mniej re-renderów).</p>
+
+<hr>
+
+<h2 id="czesc-4" class="must-know">Część 4 — Hooks</h2>
+
+<h3>4.1 Zasady hooks</h3>
+<ol>
+  <li>Wywołuj tylko na <strong>top level</strong> — nie w if/pętli</li>
+  <li>Tylko w <strong>komponentach funkcyjnych</strong> lub custom hooks</li>
+</ol>
+
+<h3>4.2 <code>useEffect</code></h3>
+<pre><code>useEffect(() =&gt; {
+  document.title = `${authors.length} autorów`
+}, [authors.length])   // dependency array
+
+useEffect(() =&gt; {
+  const sub = subscribe(id)
+  return () =&gt; sub.unsubscribe()   // cleanup
+}, [id])</code></pre>
+<p>Synchronizacja z <strong>systemem zewnętrznym</strong> — DOM, API, subskrypcje, timery. Nie do pochodnego stanu (lepiej wyliczyć w renderze). Pusta tablica <code>[]</code> = raz po mount (Strict Mode w dev wywoła 2×).</p>
+
+<h3>4.3 Najważniejsze hooks</h3>
+<table>
+  <thead>
+    <tr><th>Hook</th><th>Po co</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>useState</code></td><td>Stan lokalny</td></tr>
+    <tr><td><code>useEffect</code></td><td>Efekty uboczne, sync z zewnętrznym</td></tr>
+    <tr><td><code>useRef</code></td><td>Referencja DOM / mutable value bez re-render</td></tr>
+    <tr><td><code>useMemo</code></td><td>Memoizacja wartości (kosztowne obliczenie)</td></tr>
+    <tr><td><code>useCallback</code></td><td>Memoizacja funkcji (stabilna referencja)</td></tr>
+    <tr><td><code>useContext</code></td><td>Dane z Context bez prop drilling</td></tr>
+    <tr><td><code>useReducer</code></td><td>Złożony stan z akcjami (alternatywa useState)</td></tr>
+  </tbody>
+</table>
+
+<h3>4.4 Custom hooks</h3>
+<pre><code>// useAuthors.ts — logika wyciągnięta z komponentu
+export function useAuthors() {
+  const authorsQuery = useQuery({ ... })
+  const saveAuthorMutation = useMutation({ ... })
+  return { authors: authorsQuery.data ?? [], saveAuthor: ... }
+}</code></pre>
+<p>Custom hook = funkcja zaczynająca się od <code>use</code>, może wołać inne hooks. Wzorzec na logikę wielokrotnego użytku.</p>
+
+<hr>
+
+<h2 id="czesc-5" class="must-know">Część 5 — Renderowanie i cykl życia</h2>
+
+<h3>5.1 Reconciliation i <code>key</code></h3>
+<p>React porównuje drzewo wirtualne. <code>key</code> identyfikuje element w liście — stabilny, unikalny (np. <code>author.id</code>). <strong>Index jako key</strong> — bug przy reorder/delete/insert.</p>
+
+<h3>5.2 Mount → update → unmount</h3>
+<p><strong>Mount</strong> — komponent pojawia się (np. wejście na <code>/authors</code>). <strong>Update</strong> — zmiana state/props → re-render. <strong>Unmount</strong> — wyjście z route, cleanup w <code>useEffect</code>.</p>
+
+<h3>5.3 Strict Mode (dev)</h3>
+<p><code>&lt;StrictMode&gt;</code> w <code>main.tsx</code> — w dev podwójne mount/unmount i double invoke effects, żeby wykryć brak cleanup. Tylko development, nie prod.</p>
+
+<h3>5.4 Batch updates</h3>
+<p>React 18+ automatycznie grupuje setState w jednym evencie — jeden re-render. Async też (po fetch w <code>then</code>).</p>
+
+<hr>
+
+<h2 id="czesc-6">Część 6 — Formularze, dane, routing (Twój stack)</h2>
+
+<div class="concept-card">
+  <h3>React Hook Form + Zod</h3>
+<pre><code>const { register, handleSubmit, formState: { errors } } = useForm({
+  resolver: zodResolver(authorSchema),
+  defaultValues,
+})
+
+&lt;input {...register('firstName')} /&gt;</code></pre>
+  <p>RHF — minimalne re-rendery, rejestracja pól przez <code>register</code>. Zod — walidacja; <code>zodResolver</code> łączy z RHF. Błędy w <code>formState.errors</code>.</p>
+</div>
+
+<div class="concept-card">
+  <h3>TanStack Query (React Query)</h3>
+<pre><code>const authorsQuery = useQuery({
+  queryKey: ['authors'],
+  queryFn: () =&gt; authorList.getAll(),
+})
+
+const mutation = useMutation({
+  mutationFn: save,
+  onSuccess: () =&gt; queryClient.invalidateQueries({ queryKey: ['authors'] }),
+})</code></pre>
+  <p>Serwerowy stan — cache, refetch, loading/error. <code>QueryClientProvider</code> w <code>main.tsx</code>. Po wyjściu z route dane zostają w cache (w przeciwieństwie do <code>useState</code>).</p>
+</div>
+
+<div class="concept-card">
+  <h3>React Router</h3>
+<pre><code>// router.tsx
+{ path: 'authors', element: &lt;AuthorsPage /&gt; }
+
+// RootLayout
+&lt;NavLink to="/authors"&gt;Authors&lt;/NavLink&gt;
+&lt;Outlet /&gt;   // tu renderuje się child route</code></pre>
+  <p>Routing deklaratywny — URL → komponent. <code>Outlet</code> — miejsce na zagnieżdżone trasy. Zmiana route = unmount poprzedniej strony.</p>
+</div>
+
+<h3>Context — kiedy</h3>
+<p>Temat globalny (theme, locale, auth user) — unikaj dużych, często zmieniających się obiektów (re-render wszystkich konsumentów). Dane serwerowe → React Query, nie Context.</p>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — Wydajność i wzorce</h2>
+
+<h3>7.1 Kiedy optymalizować</h3>
+<p>Najpierw zmierz (React DevTools Profiler). Nie owijaj wszystkiego w <code>memo</code> — koszt porównania propsów też istnieje.</p>
+
+<table>
+  <thead>
+    <tr><th>Narzędzie</th><th>Kiedy</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>React.memo</code></td><td>Drogi child z tymi samymi props — skip re-render</td></tr>
+    <tr><td><code>useMemo</code></td><td>Kosztowne wyliczenie — cache między renderami</td></tr>
+    <tr><td><code>useCallback</code></td><td>Stabilna funkcja dla memo child lub dependency effect</td></tr>
+    <tr><td>Code splitting</td><td><code>lazy(() =&gt; import('./Page'))</code> — mniejszy initial bundle</td></tr>
+  </tbody>
+</table>
+
+<h3>7.2 Composition over inheritance</h3>
+<p>React nie używa dziedziczenia klas — kompozycja (<code>children</code>, render props, custom hooks).</p>
+
+<h3>7.3 React 19 — warto znać</h3>
+<ul>
+  <li><code>use</code> — odczyt Promise/Context w renderze (Suspense)</li>
+  <li>Actions — form actions z pending state</li>
+  <li>Ref as prop — bez <code>forwardRef</code> w wielu przypadkach</li>
+  <li>Lepsze batching, dokumentacja hooks-first</li>
+</ul>
+
+<hr>
+
+<h2 id="czesc-8" class="must-know">Część 8 — Najczęstsze błędy</h2>
+<ol>
+  <li><strong>Mutacja stanu</strong> — <code>state.push(x)</code> zamiast <code>setState([...state, x])</code></li>
+  <li><strong>Brak <code>key</code> lub key = index</strong> — błędne listy po edycji</li>
+  <li><strong>useEffect do pochodnego stanu</strong> — niepotrzebny effect + pętle</li>
+  <li><strong>Brak dependency array / złe zależności</strong> — stale closure, nieskończone pętle</li>
+  <li><strong>Stan serwera w useState</strong> — znika przy unmount; użyj React Query</li>
+  <li><strong>Prop drilling 10 poziomów</strong> — Context lub composition</li>
+  <li><strong>Context na często zmieniane dane</strong> — re-render całego drzewa</li>
+  <li><strong>Przedwczesna optymalizacja</strong> — memo wszędzie bez profilera</li>
+  <li><strong>Hooks w warunku</strong> — łamanie rules of hooks</li>
+  <li><strong>Brak cleanup w useEffect</strong> — memory leak (subskrypcje, timery)</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to jest React?</strong>
+  <p>Biblioteka UI do budowy interfejsów z komponentów — deklaratywny model, SPA.</p>
+</div>
+<div class="qa-item">
+  <strong>2. JSX — co to?</strong>
+  <p>Składnia HTML-like w JS — kompiluje się do elementów React.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Props vs state?</strong>
+  <p>Props — z rodzica, readonly. State — wewnętrzny, zmieniany setterem.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Po co <code>key</code> w liście?</strong>
+  <p>Identyfikacja elementu dla reconciliation — stabilny id, nie index.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Co robi <code>useState</code>?</strong>
+  <p>Dodaje lokalny stan komponentu + funkcję do jego aktualizacji.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Co robi <code>useEffect</code>?</strong>
+  <p>Efekt uboczny po renderze — sync z API, DOM, subskrypcjami; opcjonalny cleanup.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Dependency array w useEffect?</strong>
+  <p>Lista zależności — effect re-run gdy się zmienią; [] = mount; brak = każdy render.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Controlled vs uncontrolled input?</strong>
+  <p>Controlled — value w React state. Uncontrolled — wartość w DOM (ref).</p>
+</div>
+<div class="qa-item">
+  <strong>9. Co to lifting state up?</strong>
+  <p>Przeniesienie współdzielonego stanu do wspólnego rodzica.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Virtual DOM — idea?</strong>
+  <p>Drzewo JS — React diffuje z poprzednim, aktualizuje real DOM minimalnie.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Class vs function component?</strong>
+  <p>Function + hooks — standard. Class — legacy (lifecycle methods).</p>
+</div>
+<div class="qa-item">
+  <strong>12. Co to custom hook?</strong>
+  <p>Funkcja <code>use*</code> enkapsulująca logikę ze hooks — wielokrotnego użytku.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Co robi <code>useRef</code>?</strong>
+  <p>Mutable ref — DOM node lub wartość bez triggerowania re-render.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Fragment — po co?</strong>
+  <p>Grupowanie bez dodatkowego węzła DOM.</p>
+</div>
+<div class="qa-item">
+  <strong>15. React Router — <code>Outlet</code>?</strong>
+  <p>Miejsce renderowania zagnieżdżonej trasy child.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Rules of hooks?</strong>
+  <p>Top level only; tylko w komponentach/custom hooks — nie w pętlach/warunkach.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Stale closure w useEffect?</strong>
+  <p>Effect „pamięta” stare wartości — naprawa: poprawne deps lub functional update.</p>
+</div>
+<div class="qa-item">
+  <strong>18. <code>useMemo</code> vs <code>useCallback</code>?</strong>
+  <p>useMemo — wartość. useCallback — funkcja (memoizowana referencja).</p>
+</div>
+<div class="qa-item">
+  <strong>19. Kiedy <code>React.memo</code>?</strong>
+  <p>Gdy child drogi w renderze i dostaje te same props — unikaj ślepo wszędzie.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Reconciliation — jak działa?</strong>
+  <p>Porównanie virtual trees; key decyduje o mapowaniu elementów listy.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Batching w React 18?</strong>
+  <p>Wiele setState → jeden re-render (sync i async events).</p>
+</div>
+<div class="qa-item">
+  <strong>22. Strict Mode — po co double mount?</strong>
+  <p>Dev only — wykrywa brak cleanup i unsafe side effects.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Context — wady?</strong>
+  <p>Każda zmiana value re-renderuje wszystkich konsumentów — nie do częstych update.</p>
+</div>
+<div class="qa-item">
+  <strong>24. React Query vs Context dla API?</strong>
+  <p>React Query — cache, refetch, stale, dedup. Context — nie do serwerowych danych.</p>
+</div>
+<div class="qa-item">
+  <strong>25. Suspense — idea?</strong>
+  <p>Component „wstrzymuje” render do ready (lazy, data) — fallback UI.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Error Boundary — co łapie?</strong>
+  <p>Błędy renderu w dzieciach — nie łapie event handlers, async, SSR same.</p>
+</div>
+<div class="qa-item">
+  <strong>27. <code>useReducer</code> vs <code>useState</code>?</strong>
+  <p>Reducer — złożone przejścia stanu, wiele akcji, testowalna logika.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Code splitting w React?</strong>
+  <p><code>React.lazy</code> + <code>Suspense</code> — dynamic import, mniejszy initial bundle.</p>
+</div>
+<div class="qa-item">
+  <strong>29. SSR vs CSR?</strong>
+  <p>SSR — HTML z serwera, szybszy FCP. CSR — pusty HTML + JS bundle (Vite SPA).</p>
+</div>
+<div class="qa-item">
+  <strong>30. React 19 <code>use</code> hook?</strong>
+  <p>Czyta Promise/Context w renderze — integracja ze Suspense.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy setState jest synchroniczny?</strong>
+  <p>Nie — aktualizacja asynchroniczna/batch; zaraz po setState stary stan w tej samej funkcji.</p>
+</div>
+<div class="qa-item">
+  <strong>32. Czy mutacja props dozwolona?</strong>
+  <p>Nie — antywzorzec; props readonly, single direction data flow.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Index jako key — kiedy bug?</strong>
+  <p>Reorder, delete, insert w środku listy — zły DOM reuse, utrata stanu inputów.</p>
+</div>
+<div class="qa-item">
+  <strong>34. useEffect([]) w Strict Mode — 2×?</strong>
+  <p>Tak w dev — mount, unmount, mount; test cleanup.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Czy useMemo zapobiega re-renderowi?</strong>
+  <p>Nie — tylko cache wartości; re-render nadal następuje.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Fetch w useEffect vs React Query?</strong>
+  <p>RQ — cache, dedup, background refetch; useEffect fetch — ręcznie wszystko.</p>
+</div>
+<div class="qa-item">
+  <strong>37. Dlaczego stan znika po zmianie route?</strong>
+  <p>Unmount komponentu — lokalny useState ginie; Query cache zostaje.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Czy React = framework?</strong>
+  <p>Nie — biblioteka UI; routing/dane to osobne biblioteki.</p>
+</div>
+<div class="qa-item">
+  <strong>39. Event pooling (React 17+)?</strong>
+  <p>Usunięte — synthetic event nie jest pooled; można async używać event properties.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Najczęstszy błąd początkującego?</strong>
+  <p>Mutacja stanu / brak key / useEffect bez deps lub z błędnymi deps.</p>
+</div>
+
+</body>
+</html>

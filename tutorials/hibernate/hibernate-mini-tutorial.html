@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hibernate — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #2563eb;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef2ff; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    .qa-item p + p { margin-top: 0.5rem; }
+
+    .solution-label {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>Hibernate — mini-tutorial</h1>
+<p class="meta">Mapowanie obiektów · stany encji · relacje · N+1 · błędy · pytania rekrutacyjne<br>
+Format: HTML (otwórz w przeglądarce — podwójne kliknięcie lub przeciągnij na kartę)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty</a></li>
+    <li><a href="#czesc-2">Stany encji</a></li>
+    <li><a href="#czesc-3">Relacje i właściciel</a></li>
+    <li><a href="#czesc-4">Problem N+1</a></li>
+    <li><a href="#czesc-5">LazyInitializationException</a></li>
+    <li><a href="#czesc-6">Najczęstsze błędy</a></li>
+    <li><a href="#czesc-7">Zapytania (skrót)</a></li>
+    <li><a href="#czesc-8">Rozwiązania praktyczne (Senior)</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty</h2>
+
+<h3>1.1 Co to jest Hibernate</h3>
+<p>Hibernate to implementacja JPA — mapuje klasy Java na tabele SQL i odwrotnie. Ty pracujesz na obiektach; Hibernate generuje SQL, śledzi zmiany i synchronizuje stan z bazą. W Spring Boot zwykle używasz <code>EntityManager</code> (JPA) lub repozytoriów Spring Data, które pod spodem wołają Hibernate.</p>
+
+<h3>1.2 Minimalna encja</h3>
+<p>Encja to klasa oznaczona <code>@Entity</code> z <code>@Id</code>. Hibernate wie, którą tabelę reprezentuje (<code>@Table</code>) i jak mapować pola na kolumny. <code>@GeneratedValue</code> mówi, skąd wziąć id (auto-increment, sekwencja, UUID). To fundament — bez poprawnej encji reszta nie zadziała.</p>
+
+<p><strong>Przykład:</strong> <code>Author</code> z <code>id</code>, <code>firstName</code>, <code>lastName</code>.</p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Stany encji</h2>
+
+<h3>2.1 Cztery stany</h3>
+<p>Obiekt w Hibernate nie jest „zwykłym POJO” — ma stan w kontekście persystencji. To klucz do zrozumienia, kiedy idzie INSERT vs UPDATE i dlaczego zmiany „znikają”.</p>
+
+<table>
+  <thead>
+    <tr><th>Stan</th><th>Znaczenie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Transient</strong></td><td>Nowy, Hibernate go nie zna — <code>new Author()</code></td></tr>
+    <tr><td><strong>Managed</strong></td><td>W Persistence Context — Hibernate śledzi zmiany</td></tr>
+    <tr><td><strong>Detached</strong></td><td>Był managed, sesja się zamknęła — zmiany nie synchronizują się same</td></tr>
+    <tr><td><strong>Removed</strong></td><td>Oznaczony do usunięcia przy następnym flush</td></tr>
+  </tbody>
+</table>
+
+<h3>2.2 Operacje zmieniające stan</h3>
+<ul>
+  <li><code>persist()</code> — transient → managed, przy flush: INSERT</li>
+  <li><code>merge()</code> — detached → managed (kopia), UPDATE jeśli coś się zmieniło</li>
+  <li><code>remove()</code> — managed → removed, przy flush: DELETE</li>
+  <li><code>flush()</code> — wymusza wysłanie SQL do bazy (w ramach transakcji)</li>
+</ul>
+<p><strong>Pułapka:</strong> edytujesz detached encję poza kontekstem — bez <code>merge()</code> zmiany nie trafią do bazy.</p>
+
+<h3>2.3 Persistence Context</h3>
+<p>To „pierwszy poziom cache” w ramach jednej sesji. Drugi <code>find(id)</code> może nie iść do bazy — Hibernate zwraca obiekt z pamięci. <strong>Dirty checking:</strong> przy flush Hibernate porównuje stan obiektu z momentem załadowania i generuje UPDATE tylko dla zmienionych pól.</p>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Relacje i właściciel</h2>
+
+<h3>3.1 Typy relacji</h3>
+<p><code>@OneToOne</code>, <code>@OneToMany</code>, <code>@ManyToOne</code>, <code>@ManyToMany</code> — opisują relację między tabelami. <strong>Unidirectional</strong> — tylko jedna strona ma pole. <strong>Bidirectional</strong> — obie strony mają referencje; wygodniejsze w kodzie, ale wymaga synchronizacji obu stron.</p>
+
+<h3>3.2 Właściciel relacji (<code>mappedBy</code> vs <code>@JoinColumn</code>)</h3>
+<p><strong>Właściciel</strong> to strona, która trzyma klucz obcy w bazie — ma <code>@JoinColumn</code>. Druga strona ma <code>@OneToMany(mappedBy = "author")</code> — mówi: „FK jest po tamtej stronie, ja tylko odzwierciedlam relację”.</p>
+
+<p><strong>Przykład:</strong> <code>Title</code> ma <code>@ManyToOne Author</code> + <code>@JoinColumn</code> — właściciel. <code>Author.titles</code> ma <code>mappedBy = "author"</code>.</p>
+
+<pre><code>@Entity
+public class Title {
+    @ManyToOne
+    @JoinColumn(name = "author_id")  // właściciel — FK w tabeli titles
+    private Author author;
+}
+
+@Entity
+public class Author {
+    @OneToMany(mappedBy = "author")  // odwrócona strona
+    private List&lt;Title&gt; titles;
+}</code></pre>
+
+<h3>3.3 Dlaczego <code>@OneToMany</code> bez <code>mappedBy</code> to pułapka</h3>
+<p>Bez <code>mappedBy</code> Hibernate zakłada relację przez <strong>tabelę pośrednią</strong> (join table), a nie FK w tabeli „wielu”. Dla <code>Author</code> → <code>Title</code> chcesz kolumnę <code>author_id</code> w <code>titles</code>, więc FK musi być na <code>@ManyToOne</code> w <code>Title</code>.</p>
+
+<p><strong>Cascade</strong> — operacja na rodzicu propaguje się na dzieci (<code>PERSIST</code>, <code>MERGE</code>, <code>REMOVE</code>…). <strong>orphanRemoval</strong> — usunięcie dziecka z kolekcji = DELETE w bazie (silniejsze niż sam cascade).</p>
+
+<h3>3.4 Lazy vs Eager</h3>
+<p><strong>LAZY</strong> — dane powiązane ładują się dopiero przy pierwszym dostępie (domyślnie <code>@OneToMany</code>, <code>@ManyToMany</code>). <strong>EAGER</strong> — ładują się od razu z rodzicem (domyślnie <code>@ManyToOne</code>, <code>@OneToOne</code>). EAGER na kolekcjach często prowadzi do N+1 lub ogromnych JOIN-ów — zwykle wymuszaj LAZY i fetch explicite tam, gdzie potrzebujesz.</p>
+
+<hr>
+
+<h2 id="czesc-4" class="must-know">Część 4 — Problem N+1</h2>
+
+<h3>4.1 Co to jest</h3>
+<p>Jedno zapytanie pobiera N rekordów rodzica, potem przy każdym dostępie do relacji lazy Hibernate robi osobne SELECT — łącznie 1 + N zapytań. Przy 100 autorach i ich tytułach: 101 query zamiast 1–2.</p>
+
+<pre><code>// N+1 w praktyce:
+List&lt;Author&gt; authors = em.createQuery("SELECT a FROM Author a", Author.class).getResultList();
+// 1 SELECT
+
+for (Author a : authors) {
+    a.getTitles().size();  // +1 SELECT na każdego autora
+}
+// razem: 1 + N</code></pre>
+
+<h3>4.2 Jak wykryć</h3>
+<p>Włącz logi SQL (<code>spring.jpa.show-sql</code> lub logger Hibernate). Policz SELECT-y przy jednym requestcie. Narzędzia: p6spy, datasource-proxy, Hibernate statistics.</p>
+
+<h3>4.3 Jak naprawić</h3>
+<p>Cztery główne strategie — wybór zależy od tego, czy potrzebujesz pełnych encji, ile relacji ładujesz naraz i czy wystawiasz dane na API.</p>
+
+<table>
+  <thead>
+    <tr><th>Rozwiązanie</th><th>Kiedy użyć</th><th>Opis</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>JOIN FETCH</code></td>
+      <td>Jedna relacja (<code>@OneToMany</code> / <code>@ManyToOne</code>), lista lub pojedynczy rekord, potrzebujesz <strong>pełnych encji</strong> w serwisie</td>
+      <td>Jeden SELECT z JOIN — rodzic i dzieci w jednym query. Proste i przewidywalne. <strong>Nie łącz wielu kolekcji</strong> — iloczyn kartezjański. Uważaj na paginację (<code>setFirstResult</code>) — duplikaty wierszy zawyżają liczbę rekordów.</td>
+    </tr>
+    <tr>
+      <td><code>@EntityGraph</code></td>
+      <td>Spring Data JPA, powtarzalny fetch plan w wielu metodach repo, złożone grafy relacji (<code>@NamedEntityGraph</code>), łączenie z własnym <code>@Query</code></td>
+      <td>Standard JPA — deklarujesz <strong>co</strong> załadować (atrybuty/relacje), Hibernate/Spring generuje JOIN FETCH lub batch load. Czytelniejsze niż JPQL w stringu; ten sam graf na wielu metodach. Typ <code>FETCH</code> (domyślnie) nadpisuje lazy na eager dla wskazanych ścieżek.</td>
+    </tr>
+    <tr>
+      <td><code>@BatchSize</code></td>
+      <td>Wiele encji rodzica (np. 100 autorów), lazy relacja OK, <strong>druga kolekcja</strong> do załadowania osobnym query, unikasz wielkiego JOIN</td>
+      <td>Zamiast N osobnych SELECTów Hibernate robi partiami: <code>WHERE author_id IN (?, ?, … 20 id)</code>. Przy 100 autorach: ~1 + 5 query zamiast 101. Encje nadal managed — wygodne w serwisie.</td>
+    </tr>
+    <tr>
+      <td>DTO / projection</td>
+      <td>REST API, raport, tabela w UI — <strong>nie potrzebujesz encji</strong>, tylko kilka pól; chcesz zerowego ryzyka lazy i N+1</td>
+      <td>JPQL wybiera wyłącznie pola (interface, record, konstruktor). Brak proxy, brak Persistence Context poza transakcją. Najstabilniejsza granica warstwy API.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4>4.3.1 <code>JOIN FETCH</code> — mikro-przykład</h4>
+<p>Scenariusz: endpoint zwraca autora z listą tytułów — jeden autor, jedna relacja.</p>
+<pre><code>// ❌ N+1 — 2 query (author + titles)
+Author a = em.find(Author.class, 1L);
+a.getTitles().size();
+
+// ✅ 1 query — author + titles razem
+Author a = em.createQuery(
+    "SELECT a FROM Author a JOIN FETCH a.titles WHERE a.id = :id", Author.class)
+  .setParameter("id", 1L)
+  .getSingleResult();
+a.getTitles().size(); // bez dodatkowego SELECT</code></pre>
+<p>Lista autorów z tytułami — ten sam wzorzec, ale <strong>DISTINCT</strong> przy wielu tytułach na autora:</p>
+<pre><code>SELECT DISTINCT a FROM Author a JOIN FETCH a.titles</code></pre>
+
+<h4>4.3.2 <code>@EntityGraph</code> — rozszerzenie</h4>
+
+<p><code>@EntityGraph</code> to standard JPA (nie tylko Hibernate) — mówisz encji <strong>które relacje mają być załadowane</strong> w danym query, zamiast pisać <code>JOIN FETCH</code> ręcznie. Spring Data przekazuje graf do Hibernate, który generuje odpowiedni SQL.</p>
+
+<h4>Co to robi pod spodem?</h4>
+<p>Dla wskazanych atrybutów Hibernate zwykle robi to samo co <code>JOIN FETCH</code> — jeden SELECT z JOIN. Dla relacji, których nie da się sensownie joinować w jednym query, może użyć batch load. Efekt: brak N+1 przy dostępie do wymienionych pól w tej samej transakcji.</p>
+
+<table>
+  <thead>
+    <tr><th>Element</th><th>Znaczenie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>attributePaths</code></td><td>Lista ścieżek do załadowania, np. <code>"titles"</code>, <code>"publisher.address"</code> (zagnieżdżone)</td></tr>
+    <tr><td><code>type = FETCH</code></td><td><strong>Domyślny.</strong> Wskazane relacje ładowane JOIN-em w tym query — lazy na chwilę staje się eager</td></tr>
+    <tr><td><code>type = LOAD</code></td><td>Główne query bez JOIN; wskazane relacje ładowane osobnymi SELECT-ami (batch jeśli możliwe). Rzadziej używany</td></tr>
+    <tr><td><code>@NamedEntityGraph</code></td><td>Graf zdefiniowany na encji — reuse w wielu metodach repo i w <code>EntityManager</code></td></tr>
+    <tr><td><code>subgraph</code></td><td>Zagnieżdżony fetch — np. tytuły <strong>i</strong> wydawca każdego tytułu</td></tr>
+  </tbody>
+</table>
+
+<h4>Podstawowy przykład — <code>attributePaths</code></h4>
+<p>Scenariusz: endpoint zwraca autora z listą tytułów — jeden autor, jedna relacja.</p>
+<pre><code>public interface AuthorRepository extends JpaRepository&lt;Author, Long&gt; {
+
+    @EntityGraph(attributePaths = "titles")
+    Optional&lt;Author&gt; findWithTitlesById(Long id);
+}
+
+// serwis — 1 query, encja gotowa w @Transactional
+Author author = repo.findWithTitlesById(1L).orElseThrow();
+author.getTitles().forEach(t -&gt; ...); // bez dodatkowego SELECT</code></pre>
+
+<h4>Nazwany graf na encji — reuse</h4>
+<p>Gdy ten sam fetch plan powtarza się w wielu miejscach, definiujesz go raz na klasie encji:</p>
+<pre><code>@NamedEntityGraph(
+    name = "Author.withTitles",
+    attributeNodes = @NamedAttributeNode("titles")
+)
+@Entity
+public class Author {
+    @OneToMany(mappedBy = "author")
+    private List&lt;Title&gt; titles;
+}
+
+// repo — odwołanie po nazwie
+@EntityGraph("Author.withTitles")
+Optional&lt;Author&gt; findById(Long id);
+
+@EntityGraph("Author.withTitles")
+List&lt;Author&gt; findByLastName(String lastName);</code></pre>
+<p><strong>Korzyść:</strong> zmiana fetch planu w jednym miejscu (<code>@NamedEntityGraph</code>) — wszystkie metody repo korzystają z aktualnej wersji.</p>
+
+<h4>Zagnieżdżony graf (<code>subgraph</code>)</h4>
+<p>Scenariusz: autor → tytuły → wydawca (<code>Title.publisher</code>). Ścieżka z kropką w <code>attributePaths</code> albo jawny subgraph:</p>
+<pre><code>@NamedEntityGraph(
+    name = "Author.full",
+    attributeNodes = {
+        @NamedAttributeNode(value = "titles", subgraph = "title-publisher")
+    },
+    subgraphs = @NamedSubgraph(
+        name = "title-publisher",
+        attributeNodes = @NamedAttributeNode("publisher")
+    )
+)
+@Entity
+public class Author { ... }
+
+@EntityGraph("Author.full")
+Optional&lt;Author&gt; findFullById(Long id);
+
+// skrót w Spring Data — kropka = zagnieżdżona ścieżka:
+@EntityGraph(attributePaths = {"titles", "titles.publisher"})
+Optional&lt;Author&gt; findWithTitlesAndPublishers(Long id);</code></pre>
+<p><strong>Uwaga:</strong> im głębszy graf, tym większy JOIN — przy wielu kolekcjach na tym samym poziomie wraca problem iloczynu kartezjańskiego.</p>
+
+<h4>EntityGraph + własny <code>@Query</code></h4>
+<p>Graf mówi <em>co</em> załadować; JPQL mówi <em>skąd</em> i <em>z jakim filtrem</em>. Spring Data łączy oba:</p>
+<pre><code>@EntityGraph(attributePaths = "titles")
+@Query("SELECT a FROM Author a WHERE a.lastName = :name")
+List&lt;Author&gt; findByLastNameWithTitles(@Param("name") String name);
+
+// paginacja — EntityGraph na Page:
+@EntityGraph("Author.withTitles")
+Page&lt;Author&gt; findByCountry(Country country, Pageable pageable);</code></pre>
+<p>Hibernate do query z JPQL dokleja JOIN-y dla atrybutów z grafu. Filtrowanie zostaje w JPQL — nie musisz powtarzać <code>JOIN FETCH</code> w stringu.</p>
+
+<h4><code>FETCH</code> vs <code>LOAD</code></h4>
+<pre><code>// FETCH (domyślny) — JOIN w tym samym query
+@EntityGraph(attributePaths = "titles", type = EntityGraph.EntityGraphType.FETCH)
+
+// LOAD — główne query bez JOIN; relacje osobno (batch SELECT)
+@EntityGraph(attributePaths = "titles", type = EntityGraph.EntityGraphType.LOAD)</code></pre>
+<p>W praktyce prawie zawsze używasz <code>FETCH</code>. <code>LOAD</code> ma sens, gdy chcesz uniknąć dużego JOIN-u, ale i tak załadować relację przed zamknięciem sesji — Hibernate może zbatchować osobne SELECT-y.</p>
+
+<h4>Bez Spring Data — <code>EntityManager</code></h4>
+<p>EntityGraph działa też w czystym JPA:</p>
+<pre><code>EntityGraph&lt;Author&gt; graph = em.createEntityGraph(Author.class);
+graph.addAttributeNodes("titles");
+
+Map&lt;String, Object&gt; hints = Map.of("jakarta.persistence.fetchgraph", graph);
+Author author = em.find(Author.class, 1L, hints);
+// alternatywa: em.createEntityGraph("Author.withTitles") — nazwany graf z encji</code></pre>
+<p>Hint <code>fetchgraph</code> — tylko wskazane atrybuty jako eager; reszta lazy. Hint <code>loadgraph</code> — wskazane eager + reszta według domyślnego fetch type encji.</p>
+
+<h4>EntityGraph vs JOIN FETCH</h4>
+<table>
+  <thead>
+    <tr><th></th><th><code>@EntityGraph</code></th><th><code>JOIN FETCH</code> w JPQL</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Składnia</td><td>Deklaratywna, na repo / encji</td><td>Imperatywna, w stringu JPQL</td></tr>
+    <tr><td>Reuse</td><td><code>@NamedEntityGraph</code> — jedna definicja, wiele metod</td><td>Kopiujesz JOIN w każdym query</td></tr>
+    <tr><td>Dynamiczne filtry</td><td>JPQL w <code>@Query</code> + graf osobno</td><td>Wszystko w jednym JPQL</td></tr>
+    <tr><td>SQL pod spodem</td><td>Zwykle ten sam JOIN FETCH</td><td>Jawna kontrola nad JOIN</td></tr>
+    <tr><td>Pułapki</td><td>Te same: kartezjański iloczyn, paginacja</td><td>Te same</td></tr>
+  </tbody>
+</table>
+
+<h4>Typowe pułapki EntityGraph</h4>
+<ul>
+  <li><strong>Wiele kolekcji w jednym grafie</strong> — <code>attributePaths = {"titles", "reviews"}</code> → iloczyn kartezjański. Rozwiązanie: osobne metody repo albo <code>@BatchSize</code> na drugiej kolekcji</li>
+  <li><strong>Paginacja + FETCH</strong> — <code>Page&lt;Author&gt;</code> z grafem kolekcji może zwrócić mniej/m więcej rekordów niż <code>pageSize</code> (duplikaty w JOIN). Rozwiązanie: query count osobno; fetch kolekcji w drugim kroku albo DTO</li>
+  <li><strong>Graf poza transakcją</strong> — załadowane w grafie pola są OK; pola <strong>poza</strong> grafem nadal lazy → <code>LazyInitializationException</code></li>
+  <li><strong>Myślenie, że graf = cache</strong> — działa tylko dla tego jednego query; kolejne <code>findById</code> bez grafu znów lazy</li>
+</ul>
+
+<p><strong>Praktyczna reguła:</strong> EntityGraph wybieraj, gdy fetch plan jest stały i powtarzalny (szczegóły encji, kilka metod repo). JOIN FETCH w JPQL — gdy query jest jednorazowe, bardzo specyficzne albo potrzebujesz pełnej kontroli nad JOIN (np. <code>DISTINCT</code>, warunki na joinowanej tabeli).</p>
+
+<h4>4.3.3 <code>@BatchSize</code> — mikro-przykład</h4>
+<p>Scenariusz: lista 50 autorów — każdy ma lazy <code>titles</code>; nie chcesz JOIN FETCH na całej liście.</p>
+<pre><code>@Entity
+public class Author {
+    @OneToMany(mappedBy = "author")
+    @BatchSize(size = 20)  // lub globalnie: hibernate.default_batch_fetch_size=20
+    private List&lt;Title&gt; titles;
+}
+
+// 1 SELECT — wszyscy autorzy
+List&lt;Author&gt; authors = em.createQuery("SELECT a FROM Author a", Author.class)
+    .getResultList();
+
+// Hibernate ładuje titles partiami po 20 autorów (np. 3 query zamiast 50)
+authors.forEach(a -&gt; a.getTitles().size());</code></pre>
+<p><strong>Efekt:</strong> 50 autorów → 1 + 3 = 4 query (przy <code>batch_size=20</code>), nie 51.</p>
+
+<h4>4.3.4 DTO / projection — mikro-przykład</h4>
+<p>Scenariusz: REST zwraca tylko <code>id</code>, imię autora i liczbę tytułów — encja w ogóle nie wychodzi z warstwy persistence.</p>
+<pre><code>// record + JPQL constructor expression — 1 query, zero lazy
+public record AuthorSummary(Long id, String fullName, long titleCount) {}
+
+@Query("""
+    SELECT new com.example.AuthorSummary(a.id, CONCAT(a.firstName, ' ', a.lastName), COUNT(t))
+    FROM Author a LEFT JOIN a.titles t
+    GROUP BY a.id, a.firstName, a.lastName
+    """)
+List&lt;AuthorSummary&gt; findAllSummaries();
+
+// interface projection — Spring Data generuje query z pól getterów
+public interface AuthorRow {
+    Long getId();
+    String getFirstName();
+    String getLastName();
+}
+
+List&lt;AuthorRow&gt; findAllBy();  // SELECT id, first_name, last_name — bez titles</code></pre>
+<p><strong>Efekt:</strong> JSON w kontrolerze bez N+1, bez <code>LazyInitializationException</code>, bez przypadkowego serializowania całego grafu encji.</p>
+
+<h4>4.3.5 Szybki wybór</h4>
+<table>
+  <thead>
+    <tr><th>Sytuacja</th><th>Wybierz</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1 autor + 1 kolekcja, pełna encja</td><td><code>JOIN FETCH</code> lub <code>@EntityGraph</code></td></tr>
+    <tr><td>100+ autorów, lazy kolekcja w pętli</td><td><code>@BatchSize</code></td></tr>
+    <tr><td>REST / raport — tylko kilka pól</td><td>DTO / projection</td></tr>
+    <tr><td>2+ kolekcje na encji</td><td>Osobne query albo batch — <strong>nie</strong> wielokrotny JOIN FETCH</td></tr>
+  </tbody>
+</table>
+
+<h3>4.4 Typowe pułapki</h3>
+<ul>
+  <li>N+1 w pętli po encjach</li>
+  <li>N+1 przy serializacji do JSON (REST zwraca <code>@OneToMany</code> → każdy element triggeruje lazy load)</li>
+  <li>JOIN FETCH wielu kolekcji naraz → iloczyn kartezjański w wyniku — <strong>rozwiązanie:</strong> osobne query albo <code>@BatchSize</code> zamiast wielu JOIN FETCH</li>
+</ul>
+
+<hr>
+
+<h2 id="czesc-5">Część 5 — LazyInitializationException</h2>
+<p>Gdy sesja jest zamknięta, a kod próbuje odczytać lazy kolekcję lub proxy — Hibernate rzuca <code>LazyInitializationException</code>.</p>
+<ol>
+  <li>Trzymaj dostęp do relacji <strong>wewnątrz</strong> <code>@Transactional</code></li>
+  <li>Załaduj wcześniej: <code>JOIN FETCH</code> / <code>@EntityGraph</code></li>
+  <li>Zwróć <strong>DTO</strong> zamiast encji na zewnątrz warstwy persistence</li>
+  <li>Unikaj <strong>Open Session In View</strong> jako plastra — maskuje N+1 i ukrywa błędy architektury</li>
+</ol>
+<p><strong>Pułapka <code>getReference()</code>:</strong> zwraca proxy bez SELECT — OK jako wskaźnik FK (<code>order.setAuthor(em.getReference(Author.class, 1L))</code>), ale odczyt lazy pola poza transakcją kończy się wyjątkiem.</p>
+
+<hr>
+
+<h2 id="czesc-6" class="must-know">Część 6 — Najczęstsze błędy na początku</h2>
+<ol>
+  <li><strong>Bidirectional bez synchronizacji</strong> — ustawiasz tylko <code>author.titles.add(title)</code>, nie ustawiasz <code>title.setAuthor(author)</code> → FK null</li>
+  <li><strong>Equals/hashCode na id</strong> — transient encje mają <code>id = null</code>, trafiają do tego samego bucketu w HashSet</li>
+  <li><strong><code>cascade = ALL</code> wszędzie</strong> — przypadkowe skasowanie całego drzewa</li>
+  <li><strong><code>@OneToMany</code> bez <code>mappedBy</code></strong> — niechciana join table zamiast FK</li>
+  <li><strong>Modyfikacja detached bez merge</strong> — zmiany nie zapisują się</li>
+  <li><strong>Encja jako DTO w API</strong> — wystawiasz lazy graf, dostajesz N+1 albo LazyInitException</li>
+  <li><strong>Logika w getterze encji</strong> — side effect + nieoczekiwane query</li>
+  <li><strong>Brak indeksu na FK</strong> — wolne JOIN-y w produkcji</li>
+  <li><strong>Eager na kolekcjach</strong> — wolna aplikacja od pierwszego dnia</li>
+  <li><strong><code>find()</code> vs <code>getReference()</code></strong> — <code>getReference()</code> zwraca proxy bez SELECT; potem LazyInit jeśli sesja zamknięta</li>
+</ol>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — Zapytania (skrót)</h2>
+<p><strong>JPQL</strong> — obiekty i pola encji, nie nazwy tabel. <strong>Criteria API</strong> — type-safe, dynamiczne filtry. <strong>Native SQL</strong> — gdy JPQL nie wystarcza.</p>
+<p><code>persist</code> tworzy nowy rekord; <code>merge</code> scala detached z kontekstem. Paginacja: <code>setFirstResult</code> / <code>setMaxResults</code> — uważaj na COUNT z JOIN FETCH (duplikaty).</p>
+
+<hr>
+
+<h2 id="czesc-8" class="must-know">Część 8 — Rozwiązania praktyczne (Senior)</h2>
+<p>Na rozmowie Senior oczekuje nie tylko definicji, ale <strong>diagnozy → narzędzia → decyzji</strong>. Poniżej typowe problemy z gotowymi poprawkami.</p>
+
+<h3>8.1 N+1 — kiedy którego sposobu</h3>
+<table>
+  <thead>
+    <tr><th>Sposób</th><th>Kiedy</th><th>Krótko</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>JOIN FETCH</code></td><td>Jedna relacja, mała lista</td><td>Jeden query z JOIN</td></tr>
+    <tr><td><code>@BatchSize(n=20)</code></td><td>Wiele encji, lazy OK</td><td>Hibernate grupuje SELECTy po N id</td></tr>
+    <tr><td>DTO / projection</td><td>API, raporty</td><td>W ogóle nie ładujesz encji</td></tr>
+    <tr><td><code>@EntityGraph</code></td><td>Spring Data</td><td>Jawny fetch plan na metodzie repo</td></tr>
+  </tbody>
+</table>
+<p><strong>Odpowiedź na rozmowie:</strong> „W logach widzę 1 + N SELECTów. Diagnozuję przez SQL log / p6spy / Hibernate statistics. Naprawiam fetch join albo batch size albo DTO — przy wielu kolekcjach unikam wielu JOIN FETCH (iloczyn kartezjański).”</p>
+
+<h3>8.2 <code>merge()</code> — detached encja</h3>
+<p>Edycja detached poza kontekstem nie zapisze się sama. <code>merge()</code> zwraca <strong>inną</strong> managed instancję — pracuj na zwróconej referencji.</p>
+<pre><code>Order managed = em.merge(detached);
+managed.setStatus(SHIPPED); // dirty checking przy flush/commit</code></pre>
+
+<h3>8.3 Kasowanie rodzica z dziećmi</h3>
+<p>Bez propagacji: FK constraint albo osierocone rekordy.</p>
+<pre><code>@OneToMany(mappedBy = "author", cascade = CascadeType.REMOVE, orphanRemoval = true)
+private List&lt;Title&gt; titles;</code></pre>
+<ul>
+  <li><code>cascade = REMOVE</code> — kasuje dzieci z rodzicem</li>
+  <li><code>orphanRemoval = true</code> — kasuje dziecko usunięte z kolekcji</li>
+</ul>
+
+<h3>8.4 Optimistic vs pessimistic locking</h3>
+<p><strong>Optimistic</strong> — mała contention, konflikt przy commit:</p>
+<pre><code>@Version
+private Long version;
+// OptimisticLockException → retry lub komunikat użytkownikowi</code></pre>
+<p><strong>Pessimistic</strong> — rezerwacja, stock, płatność:</p>
+<pre><code>@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT a FROM Account a WHERE a.id = :id")
+Optional&lt;Account&gt; findForUpdate(@Param("id") Long id);</code></pre>
+
+<h3>8.5 <code>GenerationType.IDENTITY</code> psuje batch insert</h3>
+<p>DB generuje id dopiero po INSERT — Hibernate nie może batchować. Rozwiązanie: <code>SEQUENCE</code> z <code>allocationSize</code>:</p>
+<pre><code>@Id
+@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "author_seq")
+@SequenceGenerator(name = "author_seq", sequenceName = "author_seq", allocationSize = 50)
+private Long id;</code></pre>
+
+<h3>8.6 <code>equals</code> / <code>hashCode</code> z <code>@GeneratedValue</code></h3>
+<p><code>hashCode()</code> na <code>id</code> — przy transient <code>id == null</code>, po persist hash się zmienia → błędy w <code>Set</code>/<code>Map</code>. Użyj natural key:</p>
+<pre><code>@Override
+public boolean equals(Object o) {
+    if (!(o instanceof Author a)) return false;
+    return email != null &amp;&amp; email.equals(a.email);
+}</code></pre>
+
+<h3>8.7 <code>@ManyToMany</code> → encja pośrednia</h3>
+<p>Join table bez dodatkowych pól, słaba kontrola, wolne przy skali. Zamiast <code>Student ↔ Course</code> wprowadź <code>Enrollment</code> z <code>@ManyToOne</code> do obu stron + pola (<code>enrolledAt</code>, <code>grade</code>).</p>
+
+<h3>8.8 Masowy import (miliony rekordów)</h3>
+<p>Zwykła sesja — rosnący L1, dirty checking, ryzyko OOM. <code>StatelessSession</code> + commit co N rekordów; przy ekstremalnej skali JDBC batch / <code>COPY</code> (Postgres).</p>
+<pre><code>statelessSession.insert(entity);
+if (++i % 500 == 0) {
+    tx.commit();
+    tx.begin();
+}</code></pre>
+
+<h3>8.9 Soft delete</h3>
+<pre><code>@SQLDelete(sql = "UPDATE author SET deleted = true WHERE id = ?")
+@Where(clause = "deleted = false")
+@Entity
+public class Author { ... }</code></pre>
+<p><strong>Pułapka:</strong> unique na <code>email</code> — skasowany rekord blokuje email. Rozwiązanie: partial unique index w DB (<code>WHERE deleted = false</code>).</p>
+
+<h3>8.10 Second-level cache — kiedy ma sens</h3>
+<ul>
+  <li><strong>Tak:</strong> rzadko zmieniane słowniki (kategorie, kraje)</li>
+  <li><strong>Nie:</strong> dane użytkownika w czasie rzeczywistym, listy z filtrami, query bez <code>cacheable</code></li>
+</ul>
+<p>L2 cache'uje <strong>encje po id</strong> — nie zastępuje dobrego fetch planu. Query cache to osobna warstwa, domyślnie wyłączona.</p>
+
+<h3>8.11 Diagnoza w produkcji</h3>
+<ol>
+  <li>Logi SQL / datasource proxy (p6spy, Hibernate statistics)</li>
+  <li>Policz query na request — wzorzec 1 + N = N+1</li>
+  <li>Wybierz: fetch join / batch / DTO</li>
+  <li>Test integracyjny <code>@DataJpaTest</code> + assert liczby query</li>
+</ol>
+
+<h3>8.12 Ściąga pułapek</h3>
+<table>
+  <thead>
+    <tr><th>Pułapka</th><th>Rozwiązanie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>LAZY ≠ brak N+1</td><td>Explicite fetch plan</td></tr>
+    <tr><td><code>find()</code> z L1</td><td>Nie idzie do DB — to OK</td></tr>
+    <tr><td><code>remove()</code></td><td>Kasuje przy flush/commit, nie od razu</td></tr>
+    <tr><td>2 obiekty, ten sam id w sesji</td><td>Ten sam obiekt (identity map)</td></tr>
+    <tr><td>Enum <code>ORDINAL</code></td><td>Użyj <code>STRING</code></td></tr>
+    <tr><td>Open Session In View</td><td>Wyłącz, napraw fetch w serwisie</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Jakie są stany encji w JPA?</strong>
+  <p>Transient, managed (persistent), detached, removed.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Czym różni się <code>persist()</code> od <code>merge()</code>?</strong>
+  <p><code>persist()</code> — nowa encja → managed, INSERT. <code>merge()</code> — detached → managed (kopia w kontekście), UPDATE.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Co to jest N+1?</strong>
+  <p>1 query na listę + N query na relacje lazy — np. 100 autorów = 101 SELECT.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Jak rozwiązać N+1?</strong>
+  <p>JOIN FETCH, <code>@EntityGraph</code>, <code>@BatchSize</code>, DTO zamiast encji.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Kto jest właścicielem relacji 1:N?</strong>
+  <p>Strona <code>@ManyToOne</code> z <code>@JoinColumn</code> — tam jest FK w bazie.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Co robi <code>mappedBy</code>?</strong>
+  <p>Wskazuje właściciela — ta strona nie zarządza FK, tylko odzwierciedla relację.</p>
+</div>
+<div class="qa-item">
+  <strong>7. LAZY vs EAGER?</strong>
+  <p>LAZY — ładuje przy pierwszym dostępie. EAGER — ładuje od razu z rodzicem.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Co to jest <code>LazyInitializationException</code>?</strong>
+  <p>Dostęp do lazy relacji po zamknięciu sesji — brak proxy do załadowania danych.</p>
+</div>
+<div class="qa-item">
+  <strong>9. Czym różni się <code>cascade</code> od <code>orphanRemoval</code>?</strong>
+  <p>Cascade propaguje operacje z rodzica na dzieci. OrphanRemoval kasuje dziecko usunięte z kolekcji.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Dlaczego <code>@OneToMany</code> bez <code>mappedBy</code> to problem?</strong>
+  <p>Hibernate tworzy join table zamiast FK w tabeli „wielu”.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Co to jest Persistence Context?</strong>
+  <p>Cache pierwszego poziomu w sesji — śledzi managed encje i dirty checking.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Czy trzeba wołać <code>save()</code> po zmianie pola managed encji?</strong>
+  <p>Nie — dirty checking zapisze zmiany przy flush/commit.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Co robi <code>flush()</code>?</strong>
+  <p>Wymusza wysłanie pending SQL do bazy (w tej samej transakcji).</p>
+</div>
+<div class="qa-item">
+  <strong>14. <code>@Embeddable</code> vs <code>@Entity</code>?</strong>
+  <p><code>@Embeddable</code> — wartość w tej samej tabeli (kompozycja). <code>@Entity</code> — osobna tabela.</p>
+</div>
+<div class="qa-item">
+  <strong>15. Co to jest proxy w Hibernate?</strong>
+  <p>Lazy placeholder — prawdziwe dane ładuje dopiero przy pierwszym użyciu.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. First-level vs second-level cache?</strong>
+  <p>L1 — per sesja (Persistence Context), zawsze włączony. L2 — współdzielony między sesjami, opcjonalny (EHCache, Infinispan).</p>
+  <p><span class="solution-label">Rozwiązanie:</span> L2 tylko dla rzadko zmienianych słowników; invalidacja przy write. Nie zastępuje fetch planu.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Kiedy <code>find()</code> nie idzie do bazy?</strong>
+  <p>Gdy encja jest już w Persistence Context (L1 cache).</p>
+  <p><span class="solution-label">Pułapka:</span> inna sesja = zawsze SELECT (albo L2, jeśli włączony).</p>
+</div>
+<div class="qa-item">
+  <strong>18. <code>getReference()</code> vs <code>find()</code>?</strong>
+  <p><code>getReference()</code> — proxy bez SELECT (lazy). <code>find()</code> — od razu SELECT (lub z L1).</p>
+  <p><span class="solution-label">Rozwiązanie:</span> <code>getReference()</code> tylko jako wskaźnik FK — bez odczytu lazy pól poza transakcją.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Optimistic vs pessimistic locking?</strong>
+  <p>Optimistic — <code>@Version</code>, konflikt przy commit. Pessimistic — <code>SELECT FOR UPDATE</code>, blokada w bazie.</p>
+  <p><span class="solution-label">Rozwiązanie:</span> mała contention → optimistic; rezerwacja/stock → pessimistic (<code>@Lock(PESSIMISTIC_WRITE)</code>).</p>
+</div>
+<div class="qa-item">
+  <strong>20. Co to jest dirty checking?</strong>
+  <p>Hibernate porównuje stan managed encji z snapshotem — generuje UPDATE tylko dla zmienionych pól.</p>
+  <p><span class="solution-label">Powiązane:</span> <code>@DynamicUpdate</code> — UPDATE tylko zmienionych kolumn w SQL.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Dlaczego JOIN FETCH wielu kolekcji to problem?</strong>
+  <p>Iloczyn kartezjański — duplikaty wierszy, ogromny wynik, wolne query.</p>
+  <p><span class="solution-label">Rozwiązanie:</span> osobne query, <code>@BatchSize</code>, DTO — nie łącz wielu kolekcji jednym JOIN FETCH.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Jak zaprojektować equals/hashCode z <code>@GeneratedValue</code>?</strong>
+  <p>Na polach biznesowych (natural key) albo stałym polu — nie na <code>id</code> (null u transient).</p>
+  <p><span class="solution-label">Rozwiązanie:</span> np. <code>equals</code> po <code>email</code> — stabilne w <code>Set</code>/<code>Map</code> przed i po persist.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Problemy z <code>@ManyToMany</code>?</strong>
+  <p>Join table, brak dodatkowych kolumn, wolne przy dużych zbiorach — często lepsza encja pośrednia.</p>
+  <p><span class="solution-label">Rozwiązanie:</span> encja pośrednia z <code>@ManyToOne</code> + pola relacji (<code>enrolledAt</code>, <code>grade</code>).</p>
+</div>
+<div class="qa-item">
+  <strong>24. <code>@Formula</code> / <code>@Where</code> / <code>@Filter</code>?</strong>
+  <p><code>@Formula</code> — computed column. <code>@Where</code> — stały warunek SQL. <code>@Filter</code> — dynamiczny filtr sesji.</p>
+  <p><span class="solution-label">Rozwiązanie soft delete:</span> <code>@SQLDelete</code> + <code>@Where(deleted = false)</code>; partial unique index na email.</p>
+</div>
+<div class="qa-item">
+  <strong>25. StatelessSession — kiedy?</strong>
+  <p>Masowe operacje bez cache i dirty checking — import, batch update milionów rekordów.</p>
+  <p><span class="solution-label">Rozwiązanie:</span> commit co 500 rekordów; przy ekstremalnej skali JDBC batch / <code>COPY</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Problemy z <code>GenerationType.IDENTITY</code>?</strong>
+  <p>Hibernate nie zna id przed INSERT — psuje batch insert, kolejność operacji w sesji.</p>
+  <p><span class="solution-label">Rozwiązanie:</span> <code>SEQUENCE</code> + <code>allocationSize = 50</code> — mniej round-tripów, działający batch.</p>
+</div>
+<div class="qa-item">
+  <strong>27. <code>@DynamicUpdate</code> — po co?</strong>
+  <p>UPDATE tylko zmienionych kolumn — mniejszy SQL, mniej konfliktów przy concurrent update.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Jak testować repozytoria?</strong>
+  <p><code>@DataJpaTest</code> + H2/Testcontainers — prawdziwy SQL, izolowane testy JPA.</p>
+  <p><span class="solution-label">Senior:</span> assert liczby query — wykrywasz N+1 w CI, nie w produkcji.</p>
+</div>
+<div class="qa-item">
+  <strong>29. DTO projection vs encja w serwisie?</strong>
+  <p>DTO — brak lazy, brak N+1, stabilne API. Encja — wygodna w transakcji, ryzyko poza nią.</p>
+  <p><span class="solution-label">Rozwiązanie:</span> encja w warstwie persistence; DTO na granicy API — nigdy lazy graf w REST.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Co to jest fetch plan?</strong>
+  <p>Strategia ładowania relacji — lazy/eager + explicite fetch (join, batch, subselect).</p>
+  <p><span class="solution-label">Pułapka:</span> LAZY samo w sobie N+1 nie rozwiązuje — tylko opóźnia do momentu iteracji.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy każdy <code>find(id)</code> to SELECT?</strong>
+  <p>Nie — jeśli encja jest w L1 cache, Hibernate zwraca ją z pamięci.</p>
+</div>
+<div class="qa-item">
+  <strong>32. Czy <code>remove()</code> od razu kasuje w bazie?</strong>
+  <p>Nie — dopiero przy flush/commit (chyba że <code>flush()</code> explicite).</p>
+</div>
+<div class="qa-item">
+  <strong>33. Dlaczego <code>delete(parent)</code> nie kasuje dzieci?</strong>
+  <p>Bez <code>cascade = REMOVE</code> lub <code>orphanRemoval</code> — FK constraint albo osierocone rekordy.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Czy ustawienie LAZY wystarczy, żeby nie było N+1?</strong>
+  <p>Nie — LAZY tylko opóźnia problem; N+1 wystąpi przy iteracji i dostępie do relacji.</p>
+  <p><span class="solution-label">Rozwiązanie:</span> JOIN FETCH, <code>@BatchSize</code> lub DTO — patrz <a href="#czesc-8">Część 8</a>.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Dwa obiekty z tym samym id w jednej sesji?</strong>
+  <p>Ten sam obiekt (identity) — Persistence Context gwarantuje jedną instancję na id.</p>
+</div>
+<div class="qa-item">
+  <strong>36. <code>merge()</code> zmienia moją referencję?</strong>
+  <p>Tak — zwraca <strong>inną</strong> managed instancję; oryginalny detached zostaje detached.</p>
+  <p><span class="solution-label">Rozwiązanie:</span> <code>Order managed = em.merge(detached);</code> — dalsze zmiany na <code>managed</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>37. <code>@OneToOne</code> — gdzie FK?</strong>
+  <p>Po stronie z <code>@JoinColumn</code>; druga strona <code>mappedBy</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Czy Hibernate cache'uje query (JPQL)?</strong>
+  <p>Osobno — query cache (L2) to inna warstwa niż encje; domyślnie wyłączony.</p>
+</div>
+<div class="qa-item">
+  <strong>39. Enum w JPA — <code>ORDINAL</code> vs <code>STRING</code>?</strong>
+  <p><code>STRING</code> — czytelne, odporne na zmianę kolejności. <code>ORDINAL</code> — kruche, łamie się po reorder enum.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Co robi <code>@OrderColumn</code> vs <code>@OrderBy</code>?</strong>
+  <p><code>@OrderColumn</code> — osobna kolumna z indeksem w join table (rzadko). <code>@OrderBy</code> — sortowanie po polu encji w SQL.</p>
+</div>
+
+</body>
+</html>

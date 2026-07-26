@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TypeScript — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #3178c6;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eff6ff; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+
+    .concept-card h3 { margin-top: 0; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>TypeScript — mini-tutorial</h1>
+<p class="meta">Typowanie statyczne · strict · generics · narrowing · utility types · pytania rekrutacyjne<br>
+Format: HTML (otwórz w przeglądarce — podwójne kliknięcie lub przeciągnij na kartę)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty</a></li>
+    <li><a href="#czesc-2">Typy podstawowe i strukturalne</a></li>
+    <li><a href="#czesc-3">strict i bezpieczeństwo typów</a></li>
+    <li><a href="#czesc-4">Unie, intersection, literal types</a></li>
+    <li><a href="#czesc-5">Type narrowing</a></li>
+    <li><a href="#czesc-6">Generics</a></li>
+    <li><a href="#czesc-7">Utility types i mapped types</a></li>
+    <li><a href="#czesc-8">interface vs type, moduły, tsconfig</a></li>
+    <li><a href="#czesc-9">Najczęstsze błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty</h2>
+
+<h3>1.1 Co to jest TypeScript</h3>
+<p><strong>TypeScript</strong> to nadzbiór JavaScriptu z systemem typów statycznych. Kod TS kompiluje się do JS (<code>tsc</code> lub bundler — Vite, esbuild). Typy istnieją tylko w czasie kompilacji — w runtime zostaje czysty JavaScript.</p>
+
+<h3>1.2 Po co TypeScript</h3>
+<p>Łapie błędy przed uruchomieniem (null, zła sygnatura, literówka w polu). Lepsze IDE — autouzupełnianie, refaktoryzacja, nawigacja. Dokumentacja w kodzie — typy mówią, co funkcja przyjmuje i zwraca. W projektach React + API (np. authors) typy modeli domeny (<code>Author</code>, <code>CreateAuthorInput</code>) trzymają frontend spójny.</p>
+
+<h3>1.3 Jak działa kompilacja</h3>
+<pre><code>// author.ts — TypeScript
+export function greet(name: string): string {
+  return `Hello, ${name}`
+}
+
+// author.js — output (typy usunięte)
+export function greet(name) {
+  return `Hello, ${name}`
+}</code></pre>
+<p><code>tsc</code> sprawdza typy → emituje JS. Bundler (Vite) robi to w locie podczas dev/build. Błąd typu = build fail (przy <code>strict: true</code>).</p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Typy podstawowe i strukturalne</h2>
+
+<h3>2.1 Typy prymitywne</h3>
+<pre><code>let count: number = 0
+let name: string = 'Anna'
+let active: boolean = true
+let nothing: null = null
+let notDefined: undefined = undefined
+let id: bigint = 1n
+let unique: symbol = Symbol('id')</code></pre>
+
+<h3>2.2 Typy strukturalne (shape, nie nazwa klasy)</h3>
+<p>TS używa <strong>structural typing</strong> — liczy się kształt obiektu, nie czy implementuje interfejs explicite.</p>
+<pre><code>type Point = { x: number; y: number }
+
+function print(p: Point) {
+  console.log(p.x, p.y)
+}
+
+print({ x: 1, y: 2 })  // OK — ma wymagany kształt</code></pre>
+
+<h3>2.3 Tablice, tuple, readonly</h3>
+<pre><code>const ids: number[] = [1, 2, 3]
+const pair: [string, number] = ['age', 30]  // tuple — stała długość i typy
+
+type Author = {
+  readonly id: string   // nie można nadpisać
+  firstName: string
+  lastName: string
+}</code></pre>
+
+<h3>2.4 Inferencja — nie pisz typów wszędzie</h3>
+<pre><code>const title = 'Dune'           // inferred: string
+const authors = ['A', 'B']     // inferred: string[]
+
+function double(n: number) {   // return inferred: number
+  return n * 2
+}</code></pre>
+<p>Pisz typy explicite przy parametrach funkcji publicznych i API — resztę TS wywnioskuje.</p>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — strict i bezpieczeństwo typów</h2>
+
+<h3>3.1 <code>strict: true</code></h3>
+<p>Włącza pakiet restrykcyjnych opcji — w Twoim projekcie authors to standard. Najważniejsze pod opcje:</p>
+<table>
+  <thead>
+    <tr><th>Opcja</th><th>Co robi</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>strictNullChecks</code></td><td><code>null</code> / <code>undefined</code> to osobne typy — musisz obsłużyć explicite</td></tr>
+    <tr><td><code>noImplicitAny</code></td><td>Zakaz domyślnego <code>any</code></td></tr>
+    <tr><td><code>strictFunctionTypes</code></td><td>Ścisłe sprawdzanie parametrów funkcji</td></tr>
+    <tr><td><code>strictPropertyInitialization</code></td><td>Pola klasy muszą być zainicjalizowane</td></tr>
+  </tbody>
+</table>
+
+<h3>3.2 <code>any</code> vs <code>unknown</code> vs <code>never</code></h3>
+<table>
+  <thead>
+    <tr><th>Typ</th><th>Znaczenie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>any</code></td><td>Wyłącza sprawdzanie — uciekajka, unikaj</td></tr>
+    <tr><td><code>unknown</code></td><td>„Nie wiem co to” — musisz zawęzić przed użyciem</td></tr>
+    <tr><td><code>never</code></td><td>Wartość, która nigdy nie wystąpi — throw, nieskończona pętla, exhaustive check</td></tr>
+  </tbody>
+</table>
+
+<pre><code>function parseJson(raw: string): unknown {
+  return JSON.parse(raw)
+}
+
+const data = parseJson('{"id":1}')
+// data.id  // błąd — unknown
+
+if (typeof data === 'object' &amp;&amp; data !== null &amp;&amp; 'id' in data) {
+  // teraz można zawęzić dalej
+}</code></pre>
+
+<hr>
+
+<h2 id="czesc-4">Część 4 — Unie, intersection, literal types</h2>
+
+<h3>4.1 Union (<code>|</code>)</h3>
+<p>Wartość może być jednym z typów.</p>
+<pre><code>type AuthorId = string
+type Status = 'draft' | 'published' | 'archived'  // literal union
+
+function formatId(id: string | number): string {
+  return typeof id === 'number' ? id.toString() : id
+}</code></pre>
+
+<h3>4.2 Intersection (<code>&amp;</code>)</h3>
+<p>Połączenie kształtów — musi spełniać oba.</p>
+<pre><code>type Named = { name: string }
+type Aged = { age: number }
+type Person = Named &amp; Aged   // { name: string; age: number }</code></pre>
+
+<h3>4.3 Discriminated unions — wzorzec MUST KNOW</h3>
+<pre><code>type ApiResult =
+  | { status: 'ok'; data: Author[] }
+  | { status: 'error'; message: string }
+
+function handle(result: ApiResult) {
+  if (result.status === 'ok') {
+    return result.data   // TS wie: data istnieje
+  }
+  return result.message  // TS wie: message istnieje
+}</code></pre>
+<p>Wspólne pole (<code>status</code>) = dyskryminator — TS zawęża typ w <code>switch</code> / <code>if</code>.</p>
+
+<hr>
+
+<h2 id="czesc-5" class="must-know">Część 5 — Type narrowing</h2>
+
+<p><strong>Narrowing</strong> — zawężanie typu w gałęzi kodu, żeby TS wiedział, z czym pracujesz.</p>
+
+<table>
+  <thead>
+    <tr><th>Technika</th><th>Przykład</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>typeof</code></td><td><code>typeof x === 'string'</code></td></tr>
+    <tr><td><code>instanceof</code></td><td><code>x instanceof Date</code></td></tr>
+    <tr><td><code>in</code></td><td><code>'email' in author</code></td></tr>
+    <tr><td>Equality</td><td><code>x === null</code>, <code>x !== undefined</code></td></tr>
+    <tr><td>Type predicate</td><td><code>function isAuthor(x: unknown): x is Author</code></td></tr>
+    <tr><td>Discriminated union</td><td><code>if (r.status === 'ok')</code></td></tr>
+    <tr><td>Exhaustive check</td><td><code>default: const _exhaustive: never = action</code></td></tr>
+  </tbody>
+</table>
+
+<pre><code>function isAuthor(value: unknown): value is Author {
+  return (
+    typeof value === 'object' &amp;&amp;
+    value !== null &amp;&amp;
+    'id' in value &amp;&amp;
+    'firstName' in value
+  )
+}</code></pre>
+
+<hr>
+
+<h2 id="czesc-6" class="must-know">Część 6 — Generics</h2>
+
+<p><strong>Generics</strong> — parametry typu. Jedna funkcja/komponent, wiele typów — bez <code>any</code>.</p>
+
+<pre><code>function first&lt;T&gt;(items: T[]): T | undefined {
+  return items[0]
+}
+
+first&lt;string&gt;(['a', 'b'])   // string | undefined
+first([1, 2])                // inferred: number | undefined
+
+// React Query w projekcie authors — generyczne hooki
+function useQuery&lt;T&gt;(options: { queryFn: () => Promise&lt;T&gt; }): T { ... }</code></pre>
+
+<h3>Ograniczenia (<code>extends</code>)</h3>
+<pre><code>function getId&lt;T extends { id: string }&gt;(item: T): string {
+  return item.id
+}</code></pre>
+
+<h3><code>keyof</code> i indeksowany access</h3>
+<pre><code>type Author = { id: string; firstName: string; lastName: string }
+type AuthorKey = keyof Author   // 'id' | 'firstName' | 'lastName'
+
+function getField&lt;K extends keyof Author&gt;(author: Author, key: K): Author[K] {
+  return author[key]
+}</code></pre>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — Utility types i mapped types</h2>
+
+<table>
+  <thead>
+    <tr><th>Utility</th><th>Co robi</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Partial&lt;T&gt;</code></td><td>Wszystkie pola opcjonalne — update DTO</td></tr>
+    <tr><td><code>Required&lt;T&gt;</code></td><td>Wszystkie pola wymagane</td></tr>
+    <tr><td><code>Pick&lt;T, K&gt;</code></td><td>Wybiera pola</td></tr>
+    <tr><td><code>Omit&lt;T, K&gt;</code></td><td>Pomija pola — np. <code>CreateAuthorInput = Omit&lt;Author, 'id'&gt;</code></td></tr>
+    <tr><td><code>Record&lt;K, V&gt;</code></td><td>Obiekt z kluczami K i wartościami V</td></tr>
+    <tr><td><code>Readonly&lt;T&gt;</code></td><td>Nie mutowalny</td></tr>
+    <tr><td><code>ReturnType&lt;F&gt;</code></td><td>Typ zwracany przez funkcję</td></tr>
+    <tr><td><code>Parameters&lt;F&gt;</code></td><td>Tuple typów parametrów</td></tr>
+    <tr><td><code>Extract&lt;U, X&gt;</code></td><td>Wyciąga z union typy przypisalne do X</td></tr>
+    <tr><td><code>Exclude&lt;U, X&gt;</code></td><td>Usuwa z union typy przypisalne do X</td></tr>
+  </tbody>
+</table>
+
+<pre><code>type Author = { id: string; firstName: string; lastName: string; email: string }
+type CreateAuthorInput = Omit&lt;Author, 'id'&gt;
+
+// Mapped type — własny wzorzec
+type Nullable&lt;T&gt; = { [K in keyof T]: T[K] | null }</code></pre>
+
+<hr>
+
+<h2 id="czesc-8">Część 8 — interface vs type, moduły, tsconfig</h2>
+
+<h3>8.1 <code>interface</code> vs <code>type</code></h3>
+<table>
+  <thead>
+    <tr><th></th><th><code>interface</code></th><th><code>type</code></th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Rozszerzanie</td><td><code>extends</code>, declaration merging</td><td><code>&amp;</code> intersection, brak merging</td></tr>
+    <tr><td>Unie, tuple, mapped</td><td>Nie</td><td>Tak</td></tr>
+    <tr><td>Kiedy</td><td>Kształty obiektów, API publiczne</td><td>Unie, utility, aliasy złożone</td></tr>
+  </tbody>
+</table>
+<p>W praktyce oba działają dla obiektów — wybierz konwencję zespołu i trzymaj się jej.</p>
+
+<h3>8.2 Moduły i import typów</h3>
+<pre><code>import type { Author } from './models'     // tylko typ — usunięty w emit
+import { type Author, authorSchema } from './models'  // inline type import</code></pre>
+
+<h3>8.3 tsconfig — essentials</h3>
+<pre><code>{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "noUnusedLocals": true,
+    "skipLibCheck": true
+  }
+}</code></pre>
+<p><code>skipLibCheck: true</code> — szybsza kompilacja, pomija błędy w <code>.d.ts</code> z node_modules. <code>erasableSyntaxOnly</code> (TS 6 / Vite 8) — blokuje <code>enum</code>, <code>namespace</code> — preferuj union literals.</p>
+
+<h3>8.4 Zod + TypeScript (Twój projekt)</h3>
+<pre><code>import { z } from 'zod'
+
+const authorSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email(),
+})
+
+type CreateAuthorInput = z.infer&lt;typeof authorSchema&gt;  // typ z runtime schema</code></pre>
+<p><code>z.infer</code> — jedno źródło prawdy: walidacja runtime + typ compile-time.</p>
+
+<hr>
+
+<h2 id="czesc-9" class="must-know">Część 9 — Najczęstsze błędy</h2>
+<ol>
+  <li><strong>Nadużywanie <code>any</code></strong> — tracisz sens TS; użyj <code>unknown</code></li>
+  <li><strong>Brak <code>strictNullChecks</code></strong> — <code>undefined</code> w runtime mimo „pewności” typów</li>
+  <li><strong>Type assertion (<code>as</code>) bez walidacji</strong> — kłamstwo dla kompilatora</li>
+  <li><strong>Duplikacja typów zamiast <code>z.infer</code> / wspólnego modelu</strong></li>
+  <li><strong>Enum zamiast union literals</strong> — problemy z tree-shaking, <code>erasableSyntaxOnly</code></li>
+  <li><strong>Ignorowanie błędów <code>@ts-ignore</code></strong> — dług techniczny</li>
+  <li><strong>Mutowanie readonly / props React</strong> — błąd logiczny + typowy</li>
+  <li><strong>Zbyt szeroki typ zwracany</strong> — <code>object</code>, <code>Record&lt;string, unknown&gt;</code> bez potrzeby</li>
+  <li><strong>Brak exhaustive check w switch na union</strong> — nowy wariant union = cicha dziura</li>
+  <li><strong>Import typu bez <code>import type</code></strong> — czasem circular dependency w bundlerze</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to jest TypeScript?</strong>
+  <p>Nadzbiór JS ze statycznym typowaniem — kompiluje się do JavaScript.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Czy typy istnieją w runtime?</strong>
+  <p>Nie — są usuwane przy kompilacji (erasure).</p>
+</div>
+<div class="qa-item">
+  <strong>3. Co robi <code>strict: true</code>?</strong>
+  <p>Włącza pakiet restrykcyjnych opcji — m.in. strictNullChecks, noImplicitAny.</p>
+</div>
+<div class="qa-item">
+  <strong>4. <code>any</code> vs <code>unknown</code>?</strong>
+  <p><code>any</code> — wyłącza sprawdzanie. <code>unknown</code> — bezpieczny „nie wiem”, wymaga narrowing.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Co to union type?</strong>
+  <p>Wartość może być jednym z typów: <code>string | number</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Co to intersection type?</strong>
+  <p>Połączenie kształtów: <code>A &amp; B</code> — musi spełniać oba.</p>
+</div>
+<div class="qa-item">
+  <strong>7. <code>interface</code> vs <code>type</code>?</strong>
+  <p>Interface — extends, declaration merging. Type — unie, tuple, mapped types.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Co to type narrowing?</strong>
+  <p>Zawężanie typu w gałęzi kodu (if, switch, typeof, instanceof).</p>
+</div>
+<div class="qa-item">
+  <strong>9. Co to generics?</strong>
+  <p>Parametry typu — funkcja/typ działający na wielu typach bez <code>any</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Co robi <code>Partial&lt;T&gt;</code>?</strong>
+  <p>Wszystkie pola T stają się opcjonalne.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Co robi <code>Omit&lt;T, K&gt;</code>?</strong>
+  <p>Typ T bez pól K.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Co to literal type?</strong>
+  <p>Konkretna wartość jako typ: <code>'draft' | 'published'</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Co to <code>never</code>?</strong>
+  <p>Typ bez wartości — unreachable code, exhaustive checks.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Structural vs nominal typing?</strong>
+  <p>TS — structural (kształt). Java — nominal (nazwa klasy/interfejsu).</p>
+</div>
+<div class="qa-item">
+  <strong>15. Co to <code>readonly</code>?</strong>
+  <p>Pole/tablica nie do mutacji po przypisaniu.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Discriminated union — po co?</strong>
+  <p>Wspólne pole (status/tag) umożliwia bezpieczne zawężenie w switch/if.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Type predicate — co to?</strong>
+  <p><code>value is Author</code> — funkcja mówi kompilatorowi, jaki typ zwraca po true.</p>
+</div>
+<div class="qa-item">
+  <strong>18. Exhaustive check z <code>never</code>?</strong>
+  <p>W default switch: <code>const _: never = x</code> — błąd kompilacji gdy union ma nowy wariant.</p>
+</div>
+<div class="qa-item">
+  <strong>19. <code>keyof</code> i <code>T[K]</code>?</strong>
+  <p><code>keyof</code> — union kluczy. Indeksowany access — typ pola K w T.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Covariance / contravariance parametrów?</strong>
+  <p><code>strictFunctionTypes</code> — parametry funkcji są contravariant (ściślejsze przypisanie).</p>
+</div>
+<div class="qa-item">
+  <strong>21. <code>as const</code> — po co?</strong>
+  <p>Literalny, readonly typ — <code>['a','b'] as const</code> → readonly tuple, nie <code>string[]</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Declaration merging?</strong>
+  <p>Interface o tej samej nazwie łączy się — używane w typach globalnych, rozszerzaniu modułów.</p>
+</div>
+<div class="qa-item">
+  <strong>23. <code>import type</code> — po co?</strong>
+  <p>Import tylko typu — usunięty w emit, unika circular deps i runtime importów.</p>
+</div>
+<div class="qa-item">
+  <strong>24. <code>satisfies</code> — po co?</strong>
+  <p>Sprawdza zgodność z typem, zachowuje węższą inferencję (TS 4.9+).</p>
+</div>
+<div class="qa-item">
+  <strong>25. Mapped types — przykład?</strong>
+  <p><code>{ [K in keyof T]: T[K] | null }</code> — transformacja każdego pola.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Conditional types — <code>T extends U ? X : Y</code>?</strong>
+  <p>Typ zależny od warunku — używane w utility types (<code>Exclude</code>, <code>Extract</code>).</p>
+</div>
+<div class="qa-item">
+  <strong>27. <code>infer</code> w conditional type?</strong>
+  <p>Wyciąga typ z wnętrza — np. <code>ReturnType&lt;F&gt;</code> inferuje typ zwracany.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Distributive conditional types?</strong>
+  <p>Conditional na union rozkłada się na union wyników — <code>T extends U ? X : Y</code> per member.</p>
+</div>
+<div class="qa-item">
+  <strong>29. <code>z.infer&lt;typeof schema&gt;</code>?</strong>
+  <p>Typ TypeScript wywnioskowany z schematu Zod — runtime + compile-time z jednego źródła.</p>
+</div>
+<div class="qa-item">
+  <strong>30. <code>skipLibCheck</code> — plusy/minusy?</strong>
+  <p>Szybszy build, mniej szumu z .d.ts; minus — ukryte błędy w typach bibliotek.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy <code>{}</code> akceptuje wszystko?</strong>
+  <p>Prawie — akceptuje any oprócz null/undefined (przy strictNullChecks).</p>
+</div>
+<div class="qa-item">
+  <strong>32. Czy <code>as Author</code> robi walidację?</strong>
+  <p>Nie — tylko mówi kompilatorowi „ufaj mi”; runtime bez zmian.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Enum vs union literals?</strong>
+  <p>Union — prostszy, tree-shakeable, zgodny z erasableSyntaxOnly. Enum — runtime object, większy bundle.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Czy <code>Array.isArray</code> to type guard?</strong>
+  <p>Tak — wbudowany guard: <code>unknown[]</code> po true.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Double assertion <code>as unknown as T</code>?</strong>
+  <p>Wymuszenie konwersji przez unknown — code smell, omija bezpieczeństwo typów.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Czy interface jest dziedziczony w runtime?</strong>
+  <p>Nie — tylko typ; w JS nic nie zostaje.</p>
+</div>
+<div class="qa-item">
+  <strong>37. <code>void</code> vs <code>undefined</code> jako return?</strong>
+  <p><code>void</code> — funkcja nic użytecznego nie zwraca; może return undefined. Semantyka intentu.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Tuple vs array?</strong>
+  <p>Tuple — stała długość, typy per index. Array — dowolna długość, jeden typ elementu.</p>
+</div>
+<div class="qa-item">
+  <strong>39. <code>noUncheckedIndexedAccess</code>?</strong>
+  <p>Indeks tablicy/obiektu zwraca <code>T | undefined</code> — bezpieczniejsze, więcej null-checków.</p>
+</div>
+<div class="qa-item">
+  <strong>40. TS vs JSDoc w czystym JS?</strong>
+  <p>TS — pliki .ts, pełny system typów. JSDoc + checkJs — typowanie w .js bez kompilacji.</p>
+</div>
+
+</body>
+</html>

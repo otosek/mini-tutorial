@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Java Selenium + JUnit + Spock — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #047857;
+      --sel: #16a34a;
+      --junit: #dc2626;
+      --spock: #7c3aed;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .lib-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .tag-sel { background: #dcfce7; color: #166534; }
+    .tag-junit { background: #fee2e2; color: #991b1b; }
+    .tag-spock { background: #ede9fe; color: #5b21b6; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #ecfdf5; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+
+    .concept-card h3 { margin-top: 0; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Java Selenium + JUnit + Spock</h1>
+<p class="meta">Testy E2E UI · unit/integration · BDD · Page Object · pytania rekrutacyjne<br>
+Format: HTML (podwójne kliknięcie w przeglądarce)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-0">Jak to się łączy</a></li>
+    <li><a href="#selenium">Selenium WebDriver</a></li>
+    <li><a href="#junit">JUnit 5</a></li>
+    <li><a href="#spock">Spock</a></li>
+    <li><a href="#razem">Selenium + JUnit vs Spock</a></li>
+    <li><a href="#bledy">Najczęstsze błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-0">Część 0 — Jak to się łączy</h2>
+
+<table>
+  <thead>
+    <tr><th>Narzędzie</th><th>Warstwa</th><th>Język</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="lib-tag tag-sel">Selenium</span></td>
+      <td>Automatyzacja przeglądarki (E2E UI)</td>
+      <td>Java (+ inne bindingi)</td>
+    </tr>
+    <tr>
+      <td><span class="lib-tag tag-junit">JUnit 5</span></td>
+      <td>Runner / asercje / lifecycle testów</td>
+      <td>Java</td>
+    </tr>
+    <tr>
+      <td><span class="lib-tag tag-spock">Spock</span></td>
+      <td>Framework testowy BDD (alternatywa JUnit)</td>
+      <td>Groovy (działa na JVM)</td>
+    </tr>
+  </tbody>
+</table>
+
+<pre><code>// Typowy stack E2E (Java)
+JUnit 5  →  @BeforeEach WebDriver  →  Selenium  →  przeglądarka
+         →  asercje (AssertJ / JUnit)
+
+// Typowy stack BDD (Groovy)
+Spock Specification  →  given/when/then  →  Selenium lub unit mock</code></pre>
+
+<p><strong>Selenium</strong> nie zastępuje JUnit/Spock — to biblioteka do sterowania browserem. <strong>JUnit</strong> lub <strong>Spock</strong> uruchamia test, zarządza cyklem życia i raportuje wynik.</p>
+
+<hr>
+
+<h2 id="selenium"><span class="lib-tag tag-sel">Selenium</span> WebDriver</h2>
+
+<h3>Co robi</h3>
+<p>API do interakcji z przeglądarką jak użytkownik — klik, wpisywanie, odczyt DOM. WebDriver 4 — standard W3C. Sterowniki: Chrome (ChromeDriver), Firefox (GeckoDriver), Edge.</p>
+
+<h3>Minimalny test</h3>
+<pre><code>WebDriver driver = new ChromeDriver();
+driver.get("https://app.example.com/authors");
+driver.findElement(By.id("firstName")).sendKeys("Anna");
+driver.findElement(By.cssSelector("button[type=submit]")).click();
+assertTrue(driver.getPageSource().contains("Anna"));
+driver.quit();</code></pre>
+
+<h3 class="must-know">Lokalizatory — kolejność preferencji</h3>
+<table>
+  <thead><tr><th>Locator</th><th>Przykład</th><th>Uwagi</th></tr></thead>
+  <tbody>
+    <tr><td><code>By.id</code></td><td><code>By.id("email")</code></td><td>Najstabilniejszy jeśli unikalny</td></tr>
+    <tr><td><code>data-testid</code></td><td><code>[data-testid=save-author]</code></td><td>Celowo pod testy — best practice</td></tr>
+    <tr><td><code>By.cssSelector</code></td><td><code>button.primary</code></td><td>Elastyczny, preferowany nad XPath</td></tr>
+    <tr><td><code>By.xpath</code></td><td><code>//button[text()='Zapisz']</code></td><td>Potężny, kruchy przy zmianach DOM</td></tr>
+  </tbody>
+</table>
+
+<h3 class="must-know">Explicit wait — nie Thread.sleep</h3>
+<pre><code>WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+WebElement btn = wait.until(
+    ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid=save]"))
+);</code></pre>
+<p><strong>Implicit wait</strong> — globalny timeout findElement (rzadko + explicit). <strong>Fluent wait</strong> — polling z ignorowaniem wyjątków. <strong>Thread.sleep</strong> — ❌ flaky, wolne.</p>
+
+<h3>Page Object Model (POM)</h3>
+<pre><code>public class AuthorsPage {
+    private final WebDriver driver;
+    private final WebDriverWait wait;
+
+    public AuthorsPage(WebDriver driver) {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+    }
+
+    public void open() {
+        driver.get("http://localhost:5173/authors");
+    }
+
+    public void fillFirstName(String name) {
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.name("firstName")))
+            .sendKeys(name);
+    }
+
+    public void clickSave() {
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("button[type=submit]")))
+            .click();
+    }
+}</code></pre>
+<p>Test nie zna selektorów — tylko metody strony. Zmiana UI = jedna klasa do poprawy.</p>
+
+<h3>Headless i CI</h3>
+<pre><code>ChromeOptions options = new ChromeOptions();
+options.addArguments("--headless=new", "--window-size=1920,1080");
+WebDriver driver = new ChromeDriver(options);</code></pre>
+<p>W CI: Selenium Grid, Docker + Chrome, lub Playwright/Cypress jako alternatywa (poza scope tego tutorialu).</p>
+
+<hr>
+
+<h2 id="junit"><span class="lib-tag tag-junit">JUnit 5</span></h2>
+
+<h3>Architektura</h3>
+<p>JUnit Platform + Jupiter (JUnit 5 API) + Vintage (JUnit 4 compat). Adnotacje w pakiecie <code>org.junit.jupiter.api</code>.</p>
+
+<h3 class="must-know">Lifecycle — adnotacje</h3>
+<table>
+  <thead><tr><th>Adnotacja</th><th>Kiedy</th><th>Zakres</th></tr></thead>
+  <tbody>
+    <tr><td><code>@BeforeAll</code></td><td>Raz przed klasą</td><td>static</td></tr>
+    <tr><td><code>@BeforeEach</code></td><td>Przed każdym testem</td><td>instancja</td></tr>
+    <tr><td><code>@Test</code></td><td>Metoda testowa</td><td>—</td></tr>
+    <tr><td><code>@AfterEach</code></td><td>Po każdym teście</td><td>instancja — zamknij driver</td></tr>
+    <tr><td><code>@AfterAll</code></td><td>Raz po klasie</td><td>static</td></tr>
+    <tr><td><code>@Disabled</code></td><td>Pomija test</td><td>—</td></tr>
+    <tr><td><code>@DisplayName</code></td><td>Czytelna nazwa w raporcie</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<h3>Selenium + JUnit — wzorzec</h3>
+<pre><code>@ExtendWith(/* opcjonalnie: Selenium-Jupiter */)
+class AuthorsE2ETest {
+
+    static WebDriver driver;
+
+    @BeforeAll
+    static void setupClass() {
+        driver = new ChromeDriver();
+        driver.manage().window().maximize();
+    }
+
+    @AfterAll
+    static void tearDownClass() {
+        if (driver != null) driver.quit();
+    }
+
+    @BeforeEach
+    void openAuthorsPage() {
+        driver.get("http://localhost:5173/authors");
+    }
+
+    @Test
+    @DisplayName("Dodanie autora — widoczny na liście")
+    void shouldAddAuthor() {
+        var page = new AuthorsPage(driver);
+        page.fillFirstName("Jan");
+        page.fillLastName("Kowalski");
+        page.fillEmail("jan@example.com");
+        page.clickSave();
+
+        assertTrue(page.listContains("Jan Kowalski"));
+    }
+}</code></pre>
+
+<h3>Asercje</h3>
+<pre><code>import static org.junit.jupiter.api.Assertions.*;
+
+assertEquals("Anna", actual);
+assertTrue(condition);
+assertThrows(IllegalArgumentException.class, () -&gt; service.save(null));
+
+// AssertJ (popularne rozszerzenie)
+assertThat(authors).hasSize(1).extracting("firstName").contains("Anna");</code></pre>
+
+<h3>Parameterized tests</h3>
+<pre><code>@ParameterizedTest
+@CsvSource({
+    "jan@example.com, true",
+    "invalid-email, false"
+})
+void shouldValidateEmail(String email, boolean valid) {
+    assertEquals(valid, validator.isValid(email));
+}</code></pre>
+
+<h3>Tagi i profile</h3>
+<pre><code>@Tag("e2e")      // uruchom: mvn test -Dgroups=e2e
+@Tag("smoke")
+
+// maven-surefire / junit-platform.properties
+# groups=e2e</code></pre>
+
+<hr>
+
+<h2 id="spock"><span class="lib-tag tag-spock">Spock</span></h2>
+
+<h3>Co to jest</h3>
+<p>Framework testowy na JVM w <strong>Groovy</strong> — składnia BDD: <code>given / when / then</code>. Działa z Maven/Gradle obok Javy. Mocking wbudowany (<code>Mock()</code>, <code>Stub()</code>).</p>
+
+<h3>Specification — struktura</h3>
+<pre><code>class AuthorServiceSpec extends Specification {
+
+    def "should create author with valid input"() {
+        given: "empty repository"
+        def repo = Mock(AuthorRepository)
+        def service = new AuthorService(repo)
+
+        when: "creating author"
+        def result = service.create("Anna", "Nowak", "a@example.com")
+
+        then: "saved once"
+        1 * repo.save({ it.firstName == "Anna" })
+        result.email == "a@example.com"
+    }
+}</code></pre>
+<p><strong>given</strong> — setup. <strong>when</strong> — akcja. <strong>then</strong> — asercje + interakcje mock (<code>1 *</code> = dokładnie jedno wywołanie).</p>
+
+<h3>Data table — parameterized w Spock</h3>
+<pre><code>def "email validation"(String email, boolean valid) {
+    expect:
+    validator.isValid(email) == valid
+
+    where:
+    email              | valid
+    "jan@example.com"  | true
+    "bad"              | false
+    ""                 | false
+}</code></pre>
+
+<h3>Spock + Selenium</h3>
+<pre><code>class AuthorsPageSpec extends Specification {
+
+    WebDriver driver
+
+    def setup() {          // = @Before
+        driver = new ChromeDriver()
+    }
+
+    def cleanup() {        // = @After
+        driver?.quit()
+    }
+
+    def "add author via UI"() {
+        given:
+        def page = new AuthorsPage(driver)
+        page.open()
+
+        when:
+        page.fillFirstName("Ewa")
+        page.clickSave()
+
+        then:
+        page.listContains("Ewa")
+    }
+}</code></pre>
+
+<h3>Spock vs JUnit — kiedy co</h3>
+<table>
+  <thead><tr><th></th><th>JUnit 5</th><th>Spock</th></tr></thead>
+  <tbody>
+    <tr><td>Język</td><td>Java</td><td>Groovy</td></tr>
+    <tr><td>Styl</td><td>xUnit (@Test)</td><td>BDD (blocks)</td></tr>
+    <tr><td>Mocki</td><td>Mockito</td><td>Wbudowane Mock/Stub</td></tr>
+    <tr><td>Data-driven</td><td>@ParameterizedTest</td><td><code>where:</code> table</td></tr>
+    <tr><td>Typowy use</td><td>Unit, E2E Java team</td><td>Unit/integration BDD, czytelne raporty</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="razem">Razem — wybór stacku</h2>
+
+<table>
+  <thead><tr><th>Scenariusz</th><th>Stack</th></tr></thead>
+  <tbody>
+    <tr><td>E2E UI, zespół Java</td><td>Selenium + JUnit 5 + POM + AssertJ</td></tr>
+    <tr><td>Unit serwisu Java</td><td>JUnit 5 + Mockito</td></tr>
+    <tr><td>Unit BDD, czytelne spec</td><td>Spock (bez Selenium)</td></tr>
+    <tr><td>E2E + Groovy OK</td><td>Selenium + Spock</td></tr>
+    <tr><td>API REST (bez UI)</td><td>JUnit + RestAssured — bez Selenium</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Selenium-Jupiter</strong> — rozszerzenie JUnit 5 wstrzykujące WebDriver (<code>@Driver</code>, <code>@Browser</code>) — mniej boilerplate niż ręczny @BeforeAll.</p>
+
+<hr>
+
+<h2 id="bledy" class="must-know">Najczęstsze błędy</h2>
+<ol>
+  <li><strong>Thread.sleep</strong> zamiast explicit wait — flaky testy</li>
+  <li><strong>Selektory kruche</strong> — XPath po indeksie, klasy CSS generowane</li>
+  <li><strong>Brak quit()/close()</strong> — zombie procesy ChromeDriver w CI</li>
+  <li><strong>Testy zależne od kolejności</strong> — współdzielony stan bez @BeforeEach reset</li>
+  <li><strong>Logika w teście zamiast POM</strong> — duplikacja selektorów</li>
+  <li><strong>E2E na unit pipeline</strong> — wolne; tag <code>@Tag("e2e")</code> osobno</li>
+  <li><strong>Spock <code>then:</code> z przypisaniem</strong> — tylko asercje i mock interactions</li>
+  <li><strong>JUnit @BeforeAll non-static</strong> z instancją driver — błąd lifecycle</li>
+  <li><strong>Testowanie prod</strong> — osobne env, dane testowe, idempotentność</li>
+  <li><strong>Brak screenshot on failure</strong> — trudny debug w CI</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co robi Selenium WebDriver?</strong>
+  <p>Automatyzuje przeglądarkę — symuluje akcje użytkownika na UI.</p>
+</div>
+<div class="qa-item">
+  <strong>2. JUnit 5 vs JUnit 4?</strong>
+  <p>JUnit 5 (Jupiter) — nowe adnotacje, extensions, parameterized; pakiet jupiter.api.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Co to Spock?</strong>
+  <p>Framework testowy Groovy — BDD given/when/then na JVM.</p>
+</div>
+<div class="qa-item">
+  <strong>4. @BeforeEach vs @BeforeAll?</strong>
+  <p>BeforeEach — przed każdym testem. BeforeAll — raz przed klasą (static).</p>
+</div>
+<div class="qa-item">
+  <strong>5. Explicit vs implicit wait?</strong>
+  <p>Explicit — warunek na element (WebDriverWait). Implicit — globalny timeout findElement.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Dlaczego nie Thread.sleep?</strong>
+  <p>Flaky — za krótko = fail, za długo = wolne CI.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Co to Page Object Model?</strong>
+  <p>Klasa na stronę UI — enkapsuluje selektory i akcje.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Preferowany locator?</strong>
+  <p>id, data-testid, cssSelector — unikaj kruchego XPath.</p>
+</div>
+<div class="qa-item">
+  <strong>9. given/when/then w Spock?</strong>
+  <p>Setup / akcja / asercje — bloki BDD w Specification.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Spock Mock() — co robi?</strong>
+  <p>Mock obiektu — weryfikacja interakcji w then (np. 1 * repo.save()).</p>
+</div>
+<div class="qa-item">
+  <strong>11. @ParameterizedTest w JUnit?</strong>
+  <p>Jeden test, wiele zestawów danych — @CsvSource, @MethodSource.</p>
+</div>
+<div class="qa-item">
+  <strong>12. driver.quit() vs close()?</strong>
+  <p>quit — zamyka sesję i wszystkie okna. close — bieżące okno.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Headless Chrome — po co?</strong>
+  <p>CI bez GUI — szybsze, stabilne pipeline.</p>
+</div>
+<div class="qa-item">
+  <strong>14. AssertJ vs JUnit assert?</strong>
+  <p>AssertJ — fluent, czytelne łańcuchy (hasSize, extracting).</p>
+</div>
+<div class="qa-item">
+  <strong>15. where: w Spock?</strong>
+  <p>Tabela danych — data-driven test bez osobnej adnotacji.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Selenium Grid?</strong>
+  <p>Hub + nodes — równoległe testy na wielu browser/OS.</p>
+</div>
+<div class="qa-item">
+  <strong>17. JUnit 5 Extensions?</strong>
+  <p>Mechanizm rozszerzeń — @ExtendWith, callbacki, DI (Selenium-Jupiter).</p>
+</div>
+<div class="qa-item">
+  <strong>18. @TestInstance(Lifecycle.PER_CLASS)?</strong>
+  <p>Jedna instancja klasy testowej — współdzielony stan między testami.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Flaky test — jak naprawić?</strong>
+  <p>Explicit waits, stabilne selektory, izolacja danych, retry tylko jako tymczas.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Spock @Unroll?</strong>
+  <p>Każdy wiersz where = osobny raport testu z parametrami w nazwie.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Spock Stub vs Mock?</strong>
+  <p>Stub — zwraca wartości. Mock — weryfikuje wywołania w then.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Page Factory (@FindBy)?</strong>
+  <p>Selenium wzorzec — lazy init elementów; dziś często prostsze POM ręczne.</p>
+</div>
+<div class="qa-item">
+  <strong>23. E2E vs integration vs unit?</strong>
+  <p>Unit — jedna klasa. Integration — kilka warstw. E2E — pełny UI + backend.</p>
+</div>
+<div class="qa-item">
+  <strong>24. @Tag e2e — po co?</strong>
+  <p>Separacja szybkich unit od wolnych E2E w pipeline.</p>
+</div>
+<div class="qa-item">
+  <strong>25. WebDriverManager?</strong>
+  <p>Biblioteka — auto-pobiera matching ChromeDriver/GeckoDriver.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Selenium 4 relative locators?</strong>
+  <p>above, below, leftOf, rightOf — lokalizacja względem innego elementu.</p>
+</div>
+<div class="qa-item">
+  <strong>27. Testcontainers + Selenium?</strong>
+  <p>Docker container z browserem — powtarzalne CI bez lokalnego Chrome.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Spock withBlocks?</strong>
+  <p>with { } — Groovy spread operator na mock/stub setup.</p>
+</div>
+<div class="qa-item">
+  <strong>29. Mockito vs Spock mocks?</strong>
+  <p>Mockito — Java standard. Spock — DSL w Groovy, interakcje w then.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Screenshot on failure w JUnit?</strong>
+  <p>TestWatcher extension / @AfterEach — zapis PNG gdy test failed.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy Selenium testuje API?</strong>
+  <p>Nie — UI. API → RestAssured, WebTestClient, HttpClient.</p>
+</div>
+<div class="qa-item">
+  <strong>32. StaleElementReferenceException?</strong>
+  <p>Element zniknął z DOM (re-render) — ponowne find + wait.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Czy Spock wymaga Groovy w prod?</strong>
+  <p>Nie — tylko test scope; prod zostaje Java.</p>
+</div>
+<div class="qa-item">
+  <strong>34. @BeforeAll static — dlaczego?</strong>
+  <p>JUnit tworzy instancję per test — static dla wspólnego drogiego setup (driver).</p>
+</div>
+<div class="qa-item">
+  <strong>35. then: z println w Spock?</strong>
+  <p>then tylko asercje/mock — side effect w when lub given.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Parallel test execution?</strong>
+  <p>JUnit 5 parallel — ostrożnie z Selenium (osobny driver per test).</p>
+</div>
+<div class="qa-item">
+  <strong>37. Cypress/Playwright vs Selenium?</strong>
+  <p>Nowsze, auto-wait, JS-native — Selenium nadal standard Java enterprise.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Czy POM musi być 1:1 ze stroną?</strong>
+  <p>Nie — komponenty (AuthorFormComponent) + page — composable POM.</p>
+</div>
+<div class="qa-item">
+  <strong>39. @Disabled vs @Tag ignore?</strong>
+  <p>Disabled — wyłączony zawsze. Tag — filtrowanie w Maven/Gradle.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Najważniejszy wzorzec E2E Java?</strong>
+  <p>Selenium + JUnit + Page Object + explicit wait + tag e2e w CI.</p>
+</div>
+
+</body>
+</html>

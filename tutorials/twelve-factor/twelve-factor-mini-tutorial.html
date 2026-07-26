@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twelve-Factor App — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #7c3aed;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    .factor-num {
+      display: inline-block;
+      background: #ede9fe;
+      color: #5b21b6;
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 0.15em 0.5em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f5f3ff; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .factor-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+
+    .factor-card h3 { margin-top: 0; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>Twelve-Factor App — mini-tutorial</h1>
+<p class="meta">Metodologia budowy aplikacji SaaS · 12 zasad · cloud-native · deploy · pytania rekrutacyjne<br>
+Format: HTML (otwórz w przeglądarce — podwójne kliknięcie lub przeciągnij na kartę)<br>
+Źródło: <a href="https://12factor.net/">12factor.net</a> (Heroku, 2011)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty</a></li>
+    <li><a href="#czesc-2">12 faktorów — szczegóły</a></li>
+    <li><a href="#czesc-3">Jak faktory się łączą</a></li>
+    <li><a href="#czesc-4">12-Factor a dziś (K8s, serverless)</a></li>
+    <li><a href="#czesc-5">Najczęstsze błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty</h2>
+
+<h3>1.1 Co to jest Twelve-Factor App</h3>
+<p>Metodologia <strong>12 zasad</strong> opisujących, jak budować nowoczesne aplikacje webowe (SaaS) — skalowalne, przenośne między środowiskami, gotowe na deploy w chmurze. Nie jest to framework ani narzędzie — to <strong>zbiór praktyk</strong> architektonicznych i operacyjnych.</p>
+
+<h3>1.2 Dla kogo i po co</h3>
+<p>Powstało przy Heroku, ale dziś dotyczy każdej aplikacji deployowanej na AWS, GCP, Azure, Kubernetes. Cel: ten sam kod idzie przez dev → staging → prod bez ręcznych poprawek; skalowanie i rollback są przewidywalne; zespół nie walczy ze środowiskiem.</p>
+
+<h3>1.3 Jedno zdanie na start</h3>
+<p><strong>Aplikacja to jeden artefakt konfigurowany środowiskiem, uruchamiany jako stateless proces, skalowany horyzontalnie, z logami na stdout i zależnościami jawnie zadeklarowanymi.</strong></p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — 12 faktorów</h2>
+
+<div class="factor-card" id="factor-1">
+  <h3><span class="factor-num">I</span> Codebase — Jedna baza kodu</h3>
+  <p><strong>Jeden repozytorium → wiele deployów.</strong> Jeden app = jeden repo Git. Wiele aplikacji = wiele rep. Wspólny kod wydziel do bibliotek (npm, Maven), nie kopiuj między repo.</p>
+  <p><strong>Przykład:</strong> <code>react-authors</code> na GitHubie — ten sam commit idzie na staging i prod. Osobne repo na frontend i backend = dwie aplikacje (OK), nie „dwie wersje tej samej”.</p>
+  <p><strong>Pułapka:</strong> monorepo z wieloma niezależnymi appami — każda musi mieć własną ścieżkę deployu.</p>
+</div>
+
+<div class="factor-card" id="factor-2">
+  <h3><span class="factor-num">II</span> Dependencies — Jawne zależności</h3>
+  <p><strong>Nigdy nie polegaj na tym, co „już jest w systemie”.</strong> Deklaruj zależności w pliku manifestu (<code>package.json</code>, <code>pom.xml</code>, <code>requirements.txt</code>) i izoluj (node_modules, venv, JAR z Maven).</p>
+  <p><strong>Przykład:</strong> <code>npm install</code> odtwarza identyczne drzewo na każdej maszynie. Nie instalujesz Node globalnie „bo tak zawsze było”.</p>
+  <p><strong>Pułapka:</strong> brak lockfile (<code>package-lock.json</code>) — build niedeterministyczny.</p>
+</div>
+
+<div class="factor-card" id="factor-3">
+  <h3><span class="factor-num">III</span> Config — Konfiguracja w środowisku</h3>
+  <p><strong>Config ≠ kod.</strong> Wszystko, co może się różnić między deployami (DB URL, klucze API, feature flags), trzymaj w <strong>zmiennych środowiskowych</strong> — nie w repo, nie w hardcoded plikach per env.</p>
+  <pre><code># DOBRZE — env
+DATABASE_URL=postgres://...
+API_KEY=${SECRET_FROM_VAULT}
+
+# ŹLE — w repo
+config-prod.properties  # z hasłem</code></pre>
+  <p><strong>Wyjątek:</strong> pliki konfiguracyjne bez sekretów (np. domyślny port) — OK, jeśli nie zawierają danych wrażliwych.</p>
+</div>
+
+<div class="factor-card" id="factor-4">
+  <h3><span class="factor-num">IV</span> Backing services — Usługi jako zasoby</h3>
+  <p><strong>Traktuj DB, cache, queue, storage jak „attached resources”</strong> — podłączane przez URL/credentials z env. Aplikacja nie wie, czy Postgres jest lokalny czy w AWS RDS — widzi tylko connection string.</p>
+  <p><strong>Przykład:</strong> dev: Postgres w Dockerze. Prod: RDS. Kod identyczny — zmienia się tylko <code>DATABASE_URL</code>.</p>
+  <p><strong>Pułapka:</strong> hardcoded <code>localhost:5432</code> w kodzie serwisu.</p>
+</div>
+
+<div class="factor-card" id="factor-5">
+  <h3><span class="factor-num">V</span> Build, release, run — Rozdziel etapy</h3>
+  <p>Trzy fazy muszą być <strong>ściśle oddzielone</strong>:</p>
+  <table>
+    <thead><tr><th>Etap</th><th>Co robi</th><th>Kto</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Build</strong></td><td>Kompilacja, bundling, artefakt (JAR, Docker image layer)</td><td>CI</td></tr>
+      <tr><td><strong>Release</strong></td><td>Build + config (immutable snapshot)</td><td>Platforma deploy</td></tr>
+      <tr><td><strong>Run</strong></td><td>Uruchomienie procesów release w środowisku</td><td>Runtime (K8s, Heroku)</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Pułapka:</strong> edycja plików na serwerze prod po deployu — następny deploy nadpisze zmiany.</p>
+</div>
+
+<div class="factor-card" id="factor-6">
+  <h3><span class="factor-num">VI</span> Processes — Procesy bezstanowe</h3>
+  <p><strong>Aplikacja wykonuje się jako jeden lub więcej procesów stateless.</strong> Żadnego trzymania sesji w pamięci procesu, plików uploadowanych na dysk lokalny, cache in-memory jako źródła prawdy.</p>
+  <p>Stan trzymaj w backing service (Redis, DB, S3). Każdy request może trafić na dowolny proces — load balancer nie gwarantuje sticky session (chyba że świadomie).</p>
+  <p><strong>Przykład:</strong> sesja użytkownika w Redis, nie w <code>HashMap</code> w JVM.</p>
+</div>
+
+<div class="factor-card" id="factor-7">
+  <h3><span class="factor-num">VII</span> Port binding — Eksport przez port</h3>
+  <p><strong>Aplikacja jest samowystarczalna</strong> — sama nasłuchuje na porcie HTTP (np. 8080) i eksportuje usługę. Nie wymaga embedowanego serwera aplikacji z zewnątrz (Apache + mod_php to antywzorzec 12-factor).</p>
+  <p><strong>Przykład:</strong> Spring Boot JAR, Node Express, Vite preview — proces binduje port. Reverse proxy (nginx) opcjonalnie przed nim.</p>
+</div>
+
+<div class="factor-card" id="factor-8">
+  <h3><span class="factor-num">VIII</span> Concurrency — Skaluj przez procesy</h3>
+  <p><strong>Skaluj przez uruchamianie większej liczby procesów</strong>, nie przez wewnętrzne wątki jako model skalowania. Każdy proces to kopia app; orchestrator (K8s, Heroku) rozkłada je na maszynach.</p>
+  <p>Model: <code>web=4, worker=2</code> — typy procesów w Procfile / K8s deployments. CPU-bound → więcej procesów; I/O-bound → też więcej procesów (lub virtual threads wewnątrz).</p>
+  <p><strong>Pułapka:</strong> jeden gigantyczny JVM z 500 wątkami zamiast 4 procesów × 125 — trudniejszy deploy i mniejsza odporność.</p>
+</div>
+
+<div class="factor-card" id="factor-9">
+  <h3><span class="factor-num">IX</span> Disposability — Szybki start i graceful shutdown</h3>
+  <p>Procesy muszą <strong>szybko startować</strong> (sekundy) i <strong>gracyjnie kończyć</strong> (SIGTERM → dokończ requesty → wyjdź). Elastyczne skalowanie i deploy bez downtime wymagają krótkiego życia procesów.</p>
+  <pre><code>// Spring Boot — graceful shutdown
+server.shutdown=graceful
+spring.lifecycle.timeout-per-shutdown-phase=30s</code></pre>
+  <p><strong>Pułapka:</strong> 5-minutowy warmup przy starcie — autoscaler nie nadąża; kill -9 bez drain — utracone requesty.</p>
+</div>
+
+<div class="factor-card" id="factor-10">
+  <h3><span class="factor-num">X</span> Dev/prod parity — Parzystość środowisk</h3>
+  <p><strong>Dev, staging i prod jak najbardziej podobne</strong> — ten sam typ DB, ten sam backing services (choć mniejsza skala), ten sam artefakt deploy. Gap czasowy (dev opóźniony o miesiące) i narzędziowy (SQLite dev vs Postgres prod) to źródło bugów „u mnie działa”.</p>
+  <p><strong>Praktyka:</strong> Docker Compose lokalnie z Postgres + Redis; CI deployuje ten sam image co prod.</p>
+</div>
+
+<div class="factor-card" id="factor-11">
+  <h3><span class="factor-num">XI</span> Logs — Logi jako strumień zdarzeń</h3>
+  <p><strong>App pisze logi na stdout/stderr</strong> — nie zarządza plikami logów, rotacją, archiwizacją. Platforma (K8s, CloudWatch, Datadog) zbiera, przechowuje i indeksuje strumień.</p>
+  <p>Log = linia zdarzenia z timestampem. Strukturalne logi (JSON) ułatwiają parsowanie.</p>
+  <p><strong>Pułapka:</strong> <code>log4j → /var/log/app.log</code> na dysku kontenera — znika przy restarcie poda.</p>
+</div>
+
+<div class="factor-card" id="factor-12">
+  <h3><span class="factor-num">XII</span> Admin processes — Zadania admina one-off</h3>
+  <p>Migracje DB, seed, one-time script — uruchamiaj jako <strong>osobny proces one-off</strong>, w tym samym release co app, ale nie w długo działającym serwerze web.</p>
+  <pre><code># Przykład
+kubectl run migrate --image=myapp:v1.2 --command -- java -jar app.jar migrate
+# lub w CI przed deployem
+flyway migrate</code></pre>
+  <p><strong>Pułapka:</strong> endpoint HTTP <code>/admin/migrate</code> w produkcji — ryzyko bezpieczeństwa.</p>
+</div>
+
+<hr>
+
+<h2 id="czesc-3">Część 3 — Jak faktory się łączą</h2>
+
+<pre><code>Git repo (I)
+  → CI build artefaktu (II, V)
+    → Release = artefakt + env config (III, V)
+      → Procesy stateless na porcie (VI, VII)
+        → Skaluj liczbą procesów (VIII)
+          → Backing services przez URL (IV)
+            → Logi na stdout (XI)
+              → Admin/migrate one-off (XII)</code></pre>
+
+<p>Łamanie jednego factoru zwykle psuje inne: brak config w env (III) → brak dev/prod parity (X); stan w pamięci (VI) → problem ze skalowaniem (VIII).</p>
+
+<hr>
+
+<h2 id="czesc-4">Część 4 — 12-Factor a dziś (K8s, serverless)</h2>
+
+<table>
+  <thead>
+    <tr><th>Temat</th><th>12-Factor mówi</th><th>Dziś</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Deploy</td><td>Release jako immutable unit</td><td>Docker image + K8s Deployment / Helm</td></tr>
+    <tr><td>Config</td><td>Env vars</td><td>+ ConfigMaps, Secrets, Vault (nadal inject do env)</td></tr>
+    <tr><td>Procesy</td><td>Stateless processes</td><td>Pods; sidecars dla proxy/logging</td></tr>
+    <tr><td>Concurrency</td><td>Scale processes</td><td>HPA, KEDA; serverless = extreme case</td></tr>
+    <tr><td>Logs</td><td>stdout</td><td>Fluent Bit → ELK / Loki / CloudWatch</td></tr>
+  </tbody>
+</table>
+
+<p>12-factor nie jest przestarzały — K8s i serverless to implementacje tych samych idei. „Beyond 12-factor”: distributed tracing, health checks (/health, /ready), infrastructure as code.</p>
+
+<hr>
+
+<h2 id="czesc-5" class="must-know">Część 5 — Najczęstsze błędy</h2>
+<ol>
+  <li><strong>Sekrety w repo</strong> — hasła w Git (łamanie III)</li>
+  <li><strong>Brak lockfile</strong> — niedeterministyczny build (II)</li>
+  <li><strong>Stan sesji w pamięci</strong> — nie skaluje się (VI)</li>
+  <li><strong>Upload na lokalny dysk kontenera</strong> — ginie przy restarcie (VI, IV → S3)</li>
+  <li><strong>SQLite dev, Postgres prod</strong> — inne SQL, inne zachowanie (X)</li>
+  <li><strong>Logi do pliku w kontenerze</strong> — brak centralizacji (XI)</li>
+  <li><strong>Edycja prod ręcznie</strong> — drift, niepowtarzalny release (V)</li>
+  <li><strong>Jeden repo, dwa deploye bez jasności</strong> — chaos w codebase (I)</li>
+  <li><strong>Brak graceful shutdown</strong> — 502 przy deployu (IX)</li>
+  <li><strong>Migracje przez endpoint web</strong> — security + coupling (XII)</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to jest Twelve-Factor App?</strong>
+  <p>12 zasad budowy skalowalnych aplikacji SaaS — od codebase po logi i admin tasks.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Wymień 12 faktorów.</strong>
+  <p>Codebase, Dependencies, Config, Backing services, Build/release/run, Processes, Port binding, Concurrency, Disposability, Dev/prod parity, Logs, Admin processes.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Factor I — Codebase?</strong>
+  <p>Jeden repo Git = jedna app; wiele deployów (staging, prod) z tego samego kodu.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Factor II — Dependencies?</strong>
+  <p>Jawna deklaracja w manifeście + izolacja — bez polegania na systemowych pakietach.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Factor III — Config?</strong>
+  <p>Konfiguracja (w tym sekrety) w env, nie w kodzie/repo.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Factor IV — Backing services?</strong>
+  <p>DB, queue, cache jako attached resources — podłączane URL z env, wymienialne bez zmiany kodu.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Factor V — Build, release, run?</strong>
+  <p>Build = kompilacja; Release = build + config (immutable); Run = uruchomienie procesów.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Factor VI — Processes / stateless?</strong>
+  <p>Brak stanu w pamięci procesu — stan w DB/Redis/S3; każdy request może iść na dowolny proces.</p>
+</div>
+<div class="qa-item">
+  <strong>9. Factor VII — Port binding?</strong>
+  <p>App sama nasłuchuje na porcie HTTP — samowystarczalny proces, nie embed w zewnętrznym serwerze.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Factor VIII — Concurrency?</strong>
+  <p>Skaluj przez więcej procesów (horizontal), nie przez „grubszy” jeden proces.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Factor IX — Disposability?</strong>
+  <p>Szybki start, graceful shutdown (SIGTERM), odporne na kill.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Factor X — Dev/prod parity?</strong>
+  <p>Dev i prod jak najbardziej podobne — ten sam stack, ten sam artefakt, mały gap czasowy.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Factor XI — Logs?</strong>
+  <p>Logi na stdout/stderr jako strumień — app nie zarządza plikami logów.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Factor XII — Admin processes?</strong>
+  <p>Migracje i skrypty admina jako one-off proces, nie w długo działającym serwerze.</p>
+</div>
+<div class="qa-item">
+  <strong>15. Gdzie trzymać hasło do DB?</strong>
+  <p>W env / Secrets (K8s, Vault) — nigdy w repo.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Config w pliku vs env — kiedy plik OK?</strong>
+  <p>Plik bez sekretów, ten sam we wszystkich env; wrażliwe zawsze z env/secret store.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Jak 12-factor mapuje się na Docker?</strong>
+  <p>Image = build; tag + env = release; container run = run. Stateless container, port expose.</p>
+</div>
+<div class="qa-item">
+  <strong>18. Procfile — co to?</strong>
+  <p>Deklaracja typów procesów (web, worker) — pochodzi z Heroku, idea z factor VIII.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Stateless vs sticky session?</strong>
+  <p>12-factor preferuje stateless; sticky session to kompromis — utrudnia skalowanie i deploy.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Gdzie trzymać upload plików?</strong>
+  <p>Backing service (S3, GCS) — nie lokalny dysk kontenera (IV, VI).</p>
+</div>
+<div class="qa-item">
+  <strong>21. Graceful shutdown w K8s?</strong>
+  <p>SIGTERM → preStop hook → drain connections → exit; terminationGracePeriodSeconds.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Immutable infrastructure — związek z factor V?</strong>
+  <p>Release nie mutuje się — nowy deploy = nowy release, rollback = poprzedni release.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Feature flags — config czy kod?</strong>
+  <p>Config (env / flag service) — factor III; włączanie bez rebuildu.</p>
+</div>
+<div class="qa-item">
+  <strong>24. Monorepo a factor I?</strong>
+  <p>OK jeśli każda app ma własną ścieżkę deploy; jeden repo może mieć wiele apps.</p>
+</div>
+<div class="qa-item">
+  <strong>25. 12-factor vs microservices?</strong>
+  <p>12-factor opisuje pojedynczą app; microservices = wiele 12-factor apps + komunikacja między nimi.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Health check — czy jest w 12-factor?</strong>
+  <p>Nie explicite — „beyond 12-factor”; dziś standard (/health, /ready) dla K8s probes.</p>
+</div>
+<div class="qa-item">
+  <strong>27. Structured logging (JSON) a factor XI?</strong>
+  <p>Zgodne — stdout JSON ułatwia agregację; factor mówi „event stream”, nie format.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Flyway/Liquibase — factor XII?</strong>
+  <p>Tak — migracja jako one-off job w pipeline, ten sam release co app.</p>
+</div>
+<div class="qa-item">
+  <strong>29. Serverless a factor VIII?</strong>
+  <p>Ekstremalna wersja — platforma skaluje procesy/funkcje; nadal stateless handlers.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Co łamie dev/prod parity najczęściej?</strong>
+  <p>Inna baza (SQLite vs Postgres), brak Dockera lokalnie, ręczne configi prod-only.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy .env w repo jest OK?</strong>
+  <p>.env.example bez sekretów — OK. .env z hasłami — łamanie III (nigdy commit).</p>
+</div>
+<div class="qa-item">
+  <strong>32. Czy factor VI zabrania cache?</strong>
+  <p>Nie — cache read-only/Redis jako backing service OK; in-memory jako source of truth — nie.</p>
+</div>
+<div class="qa-item">
+  <strong>33. nginx przed app — łamie port binding?</strong>
+  <p>Nie — app nadal binduje port; nginx to reverse proxy, opcjonalna warstwa.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Czy 12-factor wymaga chmury?</strong>
+  <p>Nie — to praktyki przenośne; działają on-prem z Docker/K8s.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Jeden JAR, wiele env — ile release?</strong>
+  <p>Ten sam build (artefakt), wiele release (build + różny config per env).</p>
+</div>
+<div class="qa-item">
+  <strong>36. WebSocket + stateless?</strong>
+  <p>Trudniejsze — stan połączenia; rozwiązania: sticky, Redis pub/sub, external broker.</p>
+</div>
+<div class="qa-item">
+  <strong>37. Cron w app vs osobny worker?</strong>
+  <p>Factor VIII — osobny worker process lepszy niż cron w każdym web procesie.</p>
+</div>
+<div class="qa-item">
+  <strong>38. ConfigMaps vs env w K8s?</strong>
+  <p>ConfigMap/Secret inject do env — nadal factor III (config poza kodem).</p>
+</div>
+<div class="qa-item">
+  <strong>39. 12-factor a GDPR / audit logs?</strong>
+  <p>Factor XI — logi na stdout; retention i compliance na poziomie platformy agregującej.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Najważniejszy factor na rozmowie?</strong>
+  <p>Subiektywnie: III (config) + VI (stateless) — bo łamią się najczęściej i psują skalowanie.</p>
+</div>
+
+</body>
+</html>

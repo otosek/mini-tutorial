@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DDD — Domain-Driven Design</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #9333ea;
+      --strategic: #7c3aed;
+      --tactical: #0891b2;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .layer-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .tag-strategic { background: #ede9fe; color: #5b21b6; }
+    .tag-tactical { background: #cffafe; color: #0e7490; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #faf5ff; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>DDD — Domain-Driven Design</h1>
+<p class="meta">Podział strategiczny i taktyczny · najważniejsze hasła · bez implementacji frameworków<br>
+Eric Evans (2003) · Vaughn Vernon · Domain-Driven Design</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#co-to">Co to jest DDD</a></li>
+    <li><a href="#podzial">Podział: strategiczne vs taktyczne</a></li>
+    <li><a href="#warstwy">Warstwy aplikacji</a></li>
+    <li><a href="#strategiczne">Hasła strategiczne</a></li>
+    <li><a href="#taktyczne">Hasła taktyczne</a></li>
+    <li><a href="#mapowanie">Mapowanie kontekstów</a></li>
+    <li><a href="#authors">Przykład: authors / titles / index</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="co-to">Co to jest DDD</h2>
+<p><strong>Domain-Driven Design</strong> to podejście do budowy oprogramowania, w którym <strong>model domeny biznesowej</strong> jest sercem systemu. Kod, nazwy klas i rozmowy zespołu mówią tym samym językiem co eksperci domenowi.</p>
+<p>DDD nie jest frameworkiem — to zestaw wzorców, heurystyk i podziału pracy. Sens ma przy <strong>złożonej domenie</strong>, nie przy CRUD bez reguł.</p>
+
+<hr>
+
+<h2 id="podzial" class="must-know">Podział DDD — dwa poziomy</h2>
+
+<table>
+  <thead>
+    <tr><th></th><th><span class="layer-tag tag-strategic">Strategiczne</span></th><th><span class="layer-tag tag-tactical">Taktyczne</span></th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Pytanie</strong></td><td>Gdzie są granice? Jak systemy współpracują?</td><td>Jak modelować w kodzie wewnątrz kontekstu?</td></tr>
+    <tr><td><strong>Skala</strong></td><td>Cały system / wiele zespołów</td><td>Jeden moduł / jeden zespół</td></tr>
+    <tr><td><strong>Artefakty</strong></td><td>Bounded Context, Context Map, Ubiquitous Language</td><td>Entity, Value Object, Aggregate, Repository</td></tr>
+    <tr><td><strong>Kiedy</strong></td><td>Na start projektu, przy podziale na zespoły</td><td>Przy implementacji reguł biznesowych</td></tr>
+  </tbody>
+</table>
+
+<pre><code>Strategiczne DDD          Taktyczne DDD
+─────────────────         ─────────────────
+Bounded Context    →      Aggregates
+Context Map        →      Entities / Value Objects
+Ubiquitous Language →     Domain Services
+Anti-corruption    →      Repositories
+                          Domain Events</code></pre>
+
+<hr>
+
+<h2 id="warstwy">Warstwy aplikacji (podział w kodzie)</h2>
+
+<pre><code>┌─────────────────────────────────────┐
+│  Presentation (UI, API controllers) │  ← React, REST
+├─────────────────────────────────────┤
+│  Application (use cases, orkiestr.) │  ← useAuthors, serwisy aplikacji
+├─────────────────────────────────────┤
+│  Domain (reguły, model)             │  ← Author, reguły, invarianty
+├─────────────────────────────────────┤
+│  Infrastructure (DB, HTTP, pliki)   │  ← authorList, Hibernate, fetch
+└─────────────────────────────────────┘</code></pre>
+
+<table>
+  <thead><tr><th>Warstwa</th><th>Odpowiada na</th><th>Przykład authors</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Domain</strong></td><td>Co wolno? Jakie reguły?</td><td><code>Author</code>, walidacja domenowa, „autor musi mieć unikalny email”</td></tr>
+    <tr><td><strong>Application</strong></td><td>Scenariusz użycia — krok po kroku</td><td>„Utwórz autora”, „Zaktualizuj autora” — koordynacja</td></tr>
+    <tr><td><strong>Infrastructure</strong></td><td>Skąd/skąd persystencja?</td><td><code>authorList.ts</code>, repo Hibernate, API HTTP</td></tr>
+    <tr><td><strong>Presentation</strong></td><td>Jak użytkownik woła?</td><td><code>AuthorsPage</code>, <code>AuthorForm</code></td></tr>
+  </tbody>
+</table>
+
+<p><strong>Zasada:</strong> Domain nie zna bazy ani Reacta. Zależności idą do wewnątrz — infrastructure implementuje interfejsy z domain.</p>
+
+<hr>
+
+<h2 id="strategiczne"><span class="layer-tag tag-strategic">Strategiczne</span> — najważniejsze hasła</h2>
+
+<div class="keyword">
+  <strong>Domain (domena)</strong>
+  <p>Obszar wiedzy i działalności biznesowej — „zarządzanie autorami i tytułami”, nie „React” ani „PostgreSQL”.</p>
+</div>
+
+<div class="keyword">
+  <strong>Ubiquitous Language (wspólny język)</strong>
+  <p>Ten sam słownik w rozmowach z biznesem, w kodzie i dokumentacji. <code>Author</code>, nie <code>UserRecord</code>. Hasło ≠ login w kontekście księgarstwa.</p>
+</div>
+
+<div class="keyword">
+  <strong>Bounded Context (ograniczony kontekst)</strong>
+  <p>Granica, w której model ma <strong>jedno znaczenie</strong>. Ten sam termin może znaczyć co innego w innym kontekście. Kontekst = granica spójności modelu i zespołu.</p>
+</div>
+
+<div class="keyword">
+  <strong>Context Map (mapa kontekstów)</strong>
+  <p>Diagram relacji między kontekstami — kto od kogo zależy, jak się integrują (upstream/downstream).</p>
+</div>
+
+<div class="keyword">
+  <strong>Core Domain</strong>
+  <p>To, co daje przewagę konkurencyjną — tu inwestujesz najlepszych ludzi i najwięcej uwagi.</p>
+</div>
+
+<div class="keyword">
+  <strong>Supporting Subdomain</strong>
+  <p>Ważne, ale nie unikalne — można kupić/zlecić (np. wysyłka maili).</p>
+</div>
+
+<div class="keyword">
+  <strong>Generic Subdomain</strong>
+  <p>Commodity — auth, logowanie, płatności standardowe. Nie wymyślaj od zera.</p>
+</div>
+
+<div class="keyword">
+  <strong>Anti-Corruption Layer (ACL)</strong>
+  <p>Warstwa tłumacząca między Twoim modelem a cudzym API — chroni domenę przed obcym językiem i strukturą.</p>
+</div>
+
+<hr>
+
+<h2 id="taktyczne"><span class="layer-tag tag-tactical">Taktyczne</span> — najważniejsze hasła</h2>
+
+<div class="keyword">
+  <strong>Entity (encja)</strong>
+  <p>Obiekt z <strong>tożsamością</strong> trwającą w czasie — <code>Author</code> z <code>id</code>. Dwa autory z tym samym id = ten sam autor.</p>
+</div>
+
+<div class="keyword">
+  <strong>Value Object (obiekt wartości)</strong>
+  <p>Bez własnej tożsamości — definiowany atrybutami. <code>Email</code>, <code>Money</code>, <code>Address</code>. Immutable, porównanie po wartościach.</p>
+</div>
+
+<div class="keyword">
+  <strong>Aggregate (agregat)</strong>
+  <p>Klaster encji + VO traktowany jako <strong>jedna jednostka spójności</strong>. Zmiany przez korzeń. Spójność transakcyjna w granicach agregatu.</p>
+</div>
+
+<div class="keyword">
+  <strong>Aggregate Root (korzeń agregatu)</strong>
+  <p>Jedyny punkt wejścia do agregatu — z zewnątrz referencje tylko do root. Np. <code>Order</code> jako root, <code>OrderLine</code> wewnątrz.</p>
+</div>
+
+<div class="keyword">
+  <strong>Repository</strong>
+  <p>Abstrakcja persystencji agregatu — „jak kolekcja w pamięci”. <code>AuthorRepository.save()</code>, <code>findById()</code>. Domain nie zna SQL.</p>
+</div>
+
+<div class="keyword">
+  <strong>Domain Service</strong>
+  <p>Operacja domenowa, która nie pasuje do jednej encji — np. „przenieś autora do innego wydawnictwa” wymagające kilku obiektów. Bez stanu.</p>
+</div>
+
+<div class="keyword">
+  <strong>Application Service</strong>
+  <p>Orkiestracja use case — transakcja, wywołanie repo, domain service, publikacja eventu. Cienka warstwa, mało logiki biznesowej.</p>
+</div>
+
+<div class="keyword">
+  <strong>Domain Event (zdarzenie domenowe)</strong>
+  <p>Coś ważnego, co <strong>już się stało</strong> w domenie — <code>AuthorCreated</code>, <code>TitlePublished</code>. Inne agregaty reagują asynchronicznie.</p>
+</div>
+
+<div class="keyword">
+  <strong>Factory</strong>
+  <p>Tworzenie skomplikowanych agregatów z zachowaniem invariantów — gdy konstruktor to za mało.</p>
+</div>
+
+<div class="keyword">
+  <strong>Invariant (invariant)</strong>
+  <p>Reguła zawsze prawdziwa w agregacie — „email unikalny”, „suma pozycji = total zamówienia”. Chroni korzeń agregatu.</p>
+</div>
+
+<div class="keyword">
+  <strong>Specification</strong>
+  <p>Obiekt opisujący regułę selekcji/walidacji wielokrotnego użytku — „autor kwalifikujący się do promocji”.</p>
+</div>
+
+<hr>
+
+<h2 id="mapowanie">Mapowanie kontekstów — relacje</h2>
+
+<table>
+  <thead><tr><th>Relacja</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Partnership</strong></td><td>Dwa zespoły, wspólna ewolucja modelu</td></tr>
+    <tr><td><strong>Shared Kernel</strong></td><td>Wspólny fragment modelu — ryzyko, wymaga synchronizacji</td></tr>
+    <tr><td><strong>Customer-Supplier</strong></td><td>Downstream (klient) negocjuje z upstream (dostawca)</td></tr>
+    <tr><td><strong>Conformist</strong></td><td>Downstream kopiuje model upstream bez wpływu</td></tr>
+    <tr><td><strong>Anti-Corruption Layer</strong></td><td>Downstream tłumaczy obcy model na swój</td></tr>
+    <tr><td><strong>Open Host Service</strong></td><td>Upstream publikuje stabilne API dla wielu klientów</td></tr>
+    <tr><td><strong>Published Language</strong></td><td>Wspólny format wymiany (np. JSON schema, events)</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="authors">Przykład — projekt authors</h2>
+
+<pre><code>Bounded Contexts (katalogi src/):
+
+  authors/     → Author, reguły autorów, CRUD
+  titles/      → Title, powiązanie z autorem (inny model „autora” — tylko id/ref?)
+  index/       → wyszukiwanie, read model (może inny język: Document, Entry)
+
+Relacje:
+  titles  ──Customer/Supplier──►  authors
+  index   ──ACL / Conformist──►   authors + titles (odczyt)</code></pre>
+
+<table>
+  <thead><tr><th>Kontekst</th><th>Aggregate Root?</th><th>Warstwa dziś w projekcie</th></tr></thead>
+  <tbody>
+    <tr><td>authors</td><td><code>Author</code></td><td>Presentation + Application (useAuthors) + Infrastructure (authorList)</td></tr>
+    <tr><td>titles</td><td><code>Title</code> (?)</td><td>Do zbudowania — osobny model, nie kopiuj Author 1:1</td></tr>
+    <tr><td>index</td><td>— (query)</td><td>Often read-only / CQRS projection</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Uwaga:</strong> W monolicie foldery <code>src/authors</code> to początek podziału na konteksty — nie muszą od razu być osobnymi serwisami (microservices).</p>
+
+<hr>
+
+<h2 id="pokrewne">Hasła pokrewne (krótko)</h2>
+
+<table>
+  <thead><tr><th>Hasło</th><th>Relacja do DDD</th></tr></thead>
+  <tbody>
+    <tr><td><strong>CQRS</strong></td><td>Osobne modele zapisu i odczytu — często w kontekście index/query</td></tr>
+    <tr><td><strong>Event Sourcing</strong></td><td>Stan = sekwencja eventów — opcjonalne, nie wymóg DDD</td></tr>
+    <tr><td><strong>Hexagonal / Ports &amp; Adapters</strong></td><td>Architektura zgodna z DDD — domain w środku, adaptery na zewnątrz</td></tr>
+    <tr><td><strong>Clean Architecture</strong></td><td>Podobny podział warstw — Use Cases ≈ Application Services</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>Anemic Domain Model</strong> — encje tylko getter/setter, logika w serwisach „proceduralnych”</li>
+  <li><strong>Jeden wielki model</strong> — brak bounded contexts, wszystko w jednej bazie encji</li>
+  <li><strong>Agregat za duży</strong> — cała baza w jednym root → konflikty, wolne transakcje</li>
+  <li><strong>Referencje między agregatami po obiekcie</strong> — tylko ID, nie <code>Author</code> wewnątrz <code>Title</code> jako encja</li>
+  <li><strong>Repository dla każdej encji</strong> — repo tylko dla aggregate root</li>
+  <li><strong>DDD wszędzie</strong> — overkill przy prostym CRUD; DDD gdy reguły i złożoność rosną</li>
+  <li><strong>Ubiquitous Language tylko w kodzie</strong> — bez udziału ekspertów domeny słowa się rozjeżdżają</li>
+</ol>
+
+</body>
+</html>

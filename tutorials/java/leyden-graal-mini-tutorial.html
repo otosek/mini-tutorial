@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AOT class loading (Leyden) + Graal — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #ea580c;
+      --leyden: #2563eb;
+      --graal: #db2777;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .tech-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .tag-leyden { background: #dbeafe; color: #1e40af; }
+    .tag-graal { background: #fce7f3; color: #9d174d; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Ahead-of-Time class loading (Leyden) + Graal</h1>
+<p class="meta"><span class="tech-tag tag-leyden">Project Leyden</span> JEP 483 (JDK 24+) · <span class="tech-tag tag-graal">GraalVM</span> Native Image · AOT vs JIT<br>
+Format: samodzielny HTML, offline · Spring Boot, cold start, serverless</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">AOT w ekosystemie Java</a></li>
+    <li><a href="#czesc-2">Project Leyden i JEP 483</a></li>
+    <li><a href="#czesc-3">Workflow AOT cache</a></li>
+    <li><a href="#czesc-4">CDS → AppCDS → AOT cache</a></li>
+    <li><a href="#czesc-5">Kolejne JEPy Leyden</a></li>
+    <li><a href="#czesc-6">GraalVM — co to jest</a></li>
+    <li><a href="#czesc-7">Leyden vs Graal Native Image</a></li>
+    <li><a href="#czesc-8">Kiedy co wybrać</a></li>
+    <li><a href="#czesc-9">Typowe błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — AOT w ekosystemie Java</h2>
+
+<p>Java domyślnie = <strong>interpretacja + JIT</strong> (C1/C2 w HotSpot). Start aplikacji wymaga: wczytania klas, weryfikacji, linkowania, dopiero potem kompilacji gorących metod. To daje wysoki peak throughput, ale **wolny cold start** i długi warmup.</p>
+
+<table>
+  <thead>
+    <tr><th>Podejście</th><th>Kiedy praca</th><th>Runtime</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>JIT (HotSpot)</strong></td><td>w trakcie działania</td><td>pełny JVM, adaptacja</td></tr>
+    <tr><td><strong>Leyden AOT cache</strong></td><td>training run + build cache</td><td>pełny JVM, JIT nadal działa</td></tr>
+    <tr><td><strong>Graal Native Image</strong></td><td>build time</td><td>natywny binary, minimalny runtime</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Project Leyden i JEP 483</h2>
+
+<p><strong>Project Leyden</strong> (OpenJDK) — poprawa startup, warmup i footprint przez przenoszenie pracy z runtime do wcześniejszej fazy. Cel długoterminowy: AOT w ramach JVM jako alternatywa dla pełnej natywizacji GraalVM — <strong>bez rezygnacji z dynamiczności Javy</strong>.</p>
+
+<p><strong>JEP 483</strong> (JDK 24, dostarczony): <strong>Ahead-of-Time Class Loading &amp; Linking</strong>. Rozszerza CDS — klasy zapisane nie tylko sparsowane, ale w stanie <strong>loaded + linked</strong> (rozwiązane referencje, zweryfikowany bytecode, lambda forms).</p>
+
+<div class="keyword">
+  <strong>Efekt (Spring PetClinic, orientacyjnie)</strong>
+  <p>~40% szybszy start, ~21k klas gotowych od bootu — bez zmian w kodzie źródłowym. Klasy spoza cache nadal ładują się normalnie (open world).</p>
+</div>
+
+<hr>
+
+<h2 id="czesc-3">Część 3 — Workflow AOT cache</h2>
+
+<p>Typowy pipeline (JDK 24+; w 25+ uproszczony przez JEP 514):</p>
+
+<pre><code># 1. Training run — nagranie klas użytych przez aplikację
+java -XX:AOTMode=record -XX:AOTConfiguration=app.aotconfig \
+  -jar authors-api.jar
+
+# 2. Utworzenie cache z konfiguracji
+java -XX:AOTMode=create -XX:AOTConfiguration=app.aotconfig \
+  -XX:AOTCache=app.aot -jar authors-api.jar
+
+# 3. Produkcja — start z cache
+java -XX:AOTCache=app.aot -jar authors-api.jar</code></pre>
+
+<p>Training run powinien **realnie wykonać** ścieżki startowe aplikacji (health check, główne endpointy, inicjalizacja Spring). Cache jest **specyficzny dla wersji JDK, classpath i często buildu** aplikacji.</p>
+
+<pre><code># Wyłączenie linkowania przy tworzeniu (debug porównawczy)
+java -XX:AOTMode=create -XX:-AOTClassLinking ...</code></pre>
+
+<hr>
+
+<h2 id="czesc-4">CDS → AppCDS → AOT cache</h2>
+
+<table>
+  <thead>
+    <tr><th>Mechanizm</th><th>Co cache'uje</th><th>Od</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>CDS</strong></td><td>Metadane klas JDK (sparsowane)</td><td>JDK 5</td></tr>
+    <tr><td><strong>AppCDS</strong></td><td>+ klasy aplikacji (sparsowane)</td><td>JDK 10+</td></tr>
+    <tr><td><strong>JEP 483 AOT cache</strong></td><td>+ loaded + linked state</td><td>JDK 24</td></tr>
+  </tbody>
+</table>
+
+<p>CDS/AppCDS oszczędzają parse; Leyden oszczędza też **load i link** — najdrożniejsze fazy przy starcie dużej aplikacji (Spring Boot).</p>
+
+<hr>
+
+<h2 id="czesc-5">Kolejne JEPy Leyden (skrót)</h2>
+
+<table>
+  <thead>
+    <tr><th>JEP</th><th>JDK</th><th>Co dodaje</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>483</strong></td><td>24</td><td>AOT class loading &amp; linking</td></tr>
+    <tr><td><strong>514</strong></td><td>25</td><td>Lepsze CLI / ergonomia tworzenia cache</td></tr>
+    <tr><td><strong>515</strong></td><td>25</td><td>AOT method profiling — szybszy JIT warmup</td></tr>
+    <tr><td><strong>516</strong></td><td>26</td><td>Cache niezależny od GC (np. ZGC); baseline cache w JDK</td></tr>
+  </tbody>
+</table>
+
+<p>Leyden to **seria JEPów**, nie jeden release. Kolejne kroki (draft): AOT code compilation — kompilacja bytecode do native w cache (bliżej Graal, ale w HotSpot).</p>
+
+<hr>
+
+<h2 id="czesc-6" class="must-know">Część 6 — GraalVM</h2>
+
+<p><strong>GraalVM</strong> to ekosystem Oracle — nie jedna rzecz:</p>
+
+<table>
+  <thead>
+    <tr><th>Składnik</th><th>Opis</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Graal compiler</strong></td><td>Zaawansowany kompilator JIT (plugin do HotSpot od JDK 17+ jako opcja)</td></tr>
+    <tr><td><strong>Native Image</strong></td><td>AOT: bytecode → natywny executable (<code>native-image</code>)</td></tr>
+    <tr><td><strong>Truffle</strong></td><td>Framework do implementacji języków na Graal (Polyglot)</td></tr>
+    <tr><td><strong>libgraal</strong></td><td>Graal JIT skompilowany do natywnego — szybszy start samego kompilatora</td></tr>
+  </tbody>
+</table>
+
+<h3>Native Image — workflow</h3>
+<pre><code># Spring Boot 3+ (Maven)
+./mvnw -Pnative native:compile
+
+# lub bezpośrednio
+native-image -jar authors-api.jar
+
+# wynik: pojedynczy binary, bez zainstalowanego JDK na hoście</code></pre>
+
+<p><strong>Closed-world assumption:</strong> kompilator zakłada, że w runtime nie pojawią się nowe klasy poza tym, co widać w build time. Reflection, dynamic proxies, JNI, classpath plugins — wymagają konfiguracji (<code>reflect-config.json</code>, reachability metadata). Spring AOT + GraalVM metadata pomagają w Spring Boot 3.</p>
+
+<pre><code># Przykład konfiguracji reflection (Graal)
+{
+  "name": "com.example.Author",
+  "allDeclaredFields": true,
+  "allDeclaredMethods": true
+}</code></pre>
+
+<hr>
+
+<h2 id="czesc-7" class="must-know">Leyden vs Graal Native Image</h2>
+
+<table>
+  <thead>
+    <tr><th></th><th>Project Leyden (JEP 483+)</th><th>Graal Native Image</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Model</strong></td><td>Open world — pełna Java</td><td>Closed world — deklarujesz dynamikę</td></tr>
+    <tr><td><strong>Runtime</strong></td><td>HotSpot JVM</td><td>Natywny binary (Substrate VM)</td></tr>
+    <tr><td><strong>JIT po starcie</strong></td><td>Tak — peak performance zachowany</td><td>Ograniczony / brak pełnego HotSpot JIT</td></tr>
+    <tr><td><strong>Startup</strong></td><td>~40–60% szybciej vs baseline JVM</td><td>ms — najszybszy cold start</td></tr>
+    <tr><td><strong>Pamięć</strong></td><td>Nadal JVM heap</td><td>Często 30–50% mniej RSS</td></tr>
+    <tr><td><strong>Build</strong></td><td>+ training run, prosty cache</td><td>Długi build, metadata, debug trudniejszy</td></tr>
+    <tr><td><strong>Reflection / Class.forName</strong></td><td>Działa bez config</td><td>Wymaga reachability metadata</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Rekrutacyjna one-liner</strong>
+  <p>Leyden = szybszy start **w normalnym JVM**. Graal Native Image = **inny sposób deployu** (binary), nie „szybszy HotSpot”.</p>
+</div>
+
+<hr>
+
+<h2 id="czesc-8">Kiedy co wybrać</h2>
+
+<table>
+  <thead>
+    <tr><th>Scenariusz</th><th>Rekomendacja</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Spring Boot monolit / mikroserwis na K8s (długo żyje)</td><td>Leyden AOT cache + normalny JVM</td></tr>
+    <tr><td>Serverless, scale-to-zero, CLI</td><td>Graal Native Image</td></tr>
+    <tr><td>Dużo reflection, dynamiczne pluginy</td><td>Leyden lub JVM; Native Image tylko z metadata</td></tr>
+    <tr><td>Peak throughput po warmup</td><td>HotSpot JIT (Leyden nie szkodzi)</td></tr>
+    <tr><td>Minimalny obraz kontenera, brak JDK</td><td>Native Image</td></tr>
+    <tr><td>Zero zmian w pipeline CI</td><td>JDK 26 baseline cache (częściowy zysk out-of-box)</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="czesc-9">Typowe błędy</h2>
+<ol>
+  <li><strong>Training run bez realnego ruchu</strong> — cache nie zawiera klas z endpointów używanych dopiero w prod</li>
+  <li><strong>Cache z innej wersji JAR/JDK</strong> — invalidacja lub brak korzyści, czasem błędy</li>
+  <li><strong>Myślenie, że Leyden = Native Image</strong> — nadal potrzebujesz JVM na hoście</li>
+  <li><strong>Native Image bez Spring AOT</strong> — reflection w Hibernate/Spring failuje w runtime</li>
+  <li><strong>Pomijanie <code>native-image-agent</code></strong> — brak metadata dla reflection</li>
+  <li><strong>Benchmark tylko cold start bez peak throughput</strong> — Native Image może przegrać po rozgrzaniu JVM</li>
+  <li><strong>Graal JIT vs Native Image</strong> — to różne produkty; „używamy Graal” ≠ native binary</li>
+  <li><strong>Brak regeneracji cache po upgrade Spring/Java</strong> — stare cache bezużyteczne</li>
+  <li><strong>Closed-world w Leyden</strong> — nie dotyczy; klasy spoza cache ładują się JIT-em normalnie</li>
+  <li><strong>Deploy Native Image bez testów integracyjnych na binary</strong> — inne zachowanie GC, stack traces, JFR</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to Project Leyden?</strong>
+  <p>Inicjatywa OpenJDK: szybszy start, warmup i mniejszy footprint przez AOT w ramach HotSpot JVM.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Co wprowadza JEP 483?</strong>
+  <p>Ahead-of-time class loading and linking — cache klas w stanie loaded+linked (JDK 24).</p>
+</div>
+<div class="qa-item">
+  <strong>3. Czym różni się AOT cache od AppCDS?</strong>
+  <p>AppCDS cache'uje sparsowane klasy; JEP 483 także loaded i linked state.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Co to GraalVM Native Image?</strong>
+  <p>AOT kompilacja Javy do natywnego executable — bez pełnego JDK w runtime.</p>
+</div>
+<div class="qa-item">
+  <strong>5. JIT vs AOT — krótko?</strong>
+  <p>JIT kompiluje w runtime (adaptacja); AOT przed uruchomieniem (szybszy start, mniej dynamiki).</p>
+</div>
+<div class="qa-item">
+  <strong>6. Czy Leyden wymaga zmian w kodzie?</strong>
+  <p>Nie — poza krokiem training/create cache w pipeline.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Co to training run w Leyden?</strong>
+  <p>Uruchomienie aplikacji z <code>-XX:AOTMode=record</code> — JVM zapisuje, które klasy załadować do cache.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Closed-world assumption — kto?</strong>
+  <p>Graal Native Image — wszystkie klasy muszą być znane/rejestrowane w build time.</p>
+</div>
+<div class="qa-item">
+  <strong>9. Czy po Leyden nadal działa JIT?</strong>
+  <p>Tak — pełny HotSpot JIT; cache tylko przyspiesza start ładowania klas.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Dla kogo Native Image?</strong>
+  <p>Serverless, CLI, edge, kontenery z twardym limitem pamięci i cold start.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Co to CDS?</strong>
+  <p>Class Data Sharing — współdzielenie metadanych klas między procesami JVM.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Plik AOT cache?</strong>
+  <p>Typowo <code>.aot</code> — wynik <code>-XX:AOTMode=create</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Graal compiler vs Native Image?</strong>
+  <p>Graal compiler = JIT w JVM; Native Image = AOT do binary — różne narzędzia.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Spring Boot 3 + Graal?</strong>
+  <p>Profil <code>native</code>, Spring AOT przetwarza bean definitions pod closed world.</p>
+</div>
+<div class="qa-item">
+  <strong>15. Dlaczego wolny start Spring Boot?</strong>
+  <p>Tysiące klas, classpath scanning, auto-config, JIT dopiero po starcie — Leyden atakuje fazę ładowania.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Open world (Leyden) vs closed world (Graal)?</strong>
+  <p>Leyden: klasy spoza cache ładują się normalnie. Graal: nieznane klasy/reflection bez config = fail.</p>
+</div>
+<div class="qa-item">
+  <strong>17. JEP 515 — AOT method profiling?</strong>
+  <p>Profil metod z training run w cache — szybszy JIT warmup (JDK 25).</p>
+</div>
+<div class="qa-item">
+  <strong>18. JEP 516 — GC-agnostic cache?</strong>
+  <p>Cache działa z różnymi GC (np. ZGC); baseline cache w JDK 26.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Kiedy invalidować AOT cache?</strong>
+  <p>Zmiana JDK, JAR, classpath, znacząca zmiana kodu/dependencies.</p>
+</div>
+<div class="qa-item">
+  <strong>20. native-image-agent — po co?</strong>
+  <p>Nagrywa reflection, JNI, resources w trakcie testów → generuje config JSON.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Peak throughput: JVM vs Native Image?</strong>
+  <p>Po długim warmup HotSpot JIT często szybszy; Native Image stabilny ale niższy ceiling.</p>
+</div>
+<div class="qa-item">
+  <strong>22. CRaC / Coordinated Restore — relacja do Leyden?</strong>
+  <p>CRaC = snapshot JVM w punkcie; Leyden = cache klas bez pełnego snapshotu — komplementarne pomysły na start.</p>
+</div>
+<div class="qa-item">
+  <strong>23. -XX:AOTClassLinking wyłączone?</strong>
+  <p>Tworzy cache bez linkowania — mniejszy zysk, debug różnicy load vs link.</p>
+</div>
+<div class="qa-item">
+  <strong>24. Substrate VM?</strong>
+  <p>Minimalny runtime Graal Native Image (GC, wątki) — nie pełny HotSpot.</p>
+</div>
+<div class="qa-item">
+  <strong>25. PGO w Native Image?</strong>
+  <p>Profile-guided optimization — profile z JVM wstrzykiwane do drugiego buildu native.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Leyden a reflection?</strong>
+  <p>Pełne wsparcie — reflection działa; po prostu klasy mogły nie trafić do cache.</p>
+</div>
+<div class="qa-item">
+  <strong>27. Docker: distroless + Leyden vs Native?</strong>
+  <p>Leyden: obraz z JRE + cache. Native: obraz tylko z binary — mniejszy, bez JVM.</p>
+</div>
+<div class="qa-item">
+  <strong>28. libgraal?</strong>
+  <p>Graal JIT jako natywna biblioteka — szybszy start kompilatora w HotSpot z -XX:+UseJVMCICompiler.</p>
+</div>
+<div class="qa-item">
+  <strong>29. Dlaczego build Native Image trwa długo?</strong>
+  <p>Pełna analiza reachability, AOT kompilacja całego closure, generowanie metadanych.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Kierunek Leyden po JEP 483?</strong>
+  <p>AOT code compilation — bytecode→native w cache; dalsze skracanie warmup.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki</span></h3>
+
+<div class="qa-item">
+  <strong>31. „Leyden zastępuje GraalVM”?</strong>
+  <p>Nie — konkurencja/komplementarność; Leyden w OpenJDK, Graal Native Image osobny produkt Oracle.</p>
+</div>
+<div class="qa-item">
+  <strong>32. Cache z dev na prod?</strong>
+  <p>Ryzykowne — różny classpath, profile Spring; generuj cache per artefakt w CI.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Native Image + dynamic Class.forName(userInput)?</strong>
+  <p>Closed world — klasa musi być w metadata; inaczej ClassNotFoundException w runtime.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Leyden bez training — czy coś działa?</strong>
+  <p>JDK 26+ baseline cache częściowo pomaga; pełny zysk wymaga app-specific training.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Metryka tylko time-to-first-byte?</strong>
+  <p>Native wygrywa; dodaj p95 throughput po 10 min — JVM może wygrać.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Graal JIT domyślnie w JDK 21?</strong>
+  <p>Nie domyślnie w każdej dystrybucji — opcja w niektórych buildach (np. Oracle, custom).</p>
+</div>
+<div class="qa-item">
+  <strong>37. Hibernate + Native Image?</strong>
+  <p>Wymaga extensywnej konfiguracji entity/reflection — dlatego Spring AOT + metadata critical.</p>
+</div>
+<div class="qa-item">
+  <strong>38. AOT cache a modular JPMS?</strong>
+  <p>Cache zależy od module path — zmiana modułów wymaga regeneracji.</p>
+</div>
+<div class="qa-item">
+  <strong>39. Debugging Native Image vs JVM?</strong>
+  <p>Native: gdb, mniej typowych narzędzi Java; stack trace inny; JFR ograniczone.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Decyzja architekta: authors API na K8s HPA?</strong>
+  <p>Długowieczne pody → Leyden + JVM. Scale-to-zero / serverless → rozważ Native Image. Hybryda: Leyden teraz, Native dla wybranych mikroserwisów.</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,26 @@
+---
+description: Projekt nano-tutorials — mini-tutoriale HTML offline po polsku
+alwaysApply: true
+---
+
+# nano-tutorials
+
+Repozytorium samodzielnych mini-tutoriali HTML (offline, `file://`, język polski).
+
+## Struktura
+
+- `tutorials/index.html` — spis wszystkich tutoriali
+- `tutorials/{kategoria}/{temat}-mini-tutorial.html` — pojedynczy tutorial
+- Kategorie: `java/`, `react/`, `architecture/`, `aws/`, `postgresql/`, `hibernate/`, `kubernetes/`, `security/`, itd.
+
+## Generowanie nowych tutoriali
+
+Przy tworzeniu lub edycji plików w `tutorials/` stosuj reguły z `mini-tutorial-html.mdc`.
+
+Nie twórz plików markdown ani README, chyba że użytkownik wyraźnie poprosi.
+
+## Referencje wzorcowe
+
+- Pełny z pytaniami rekrutacyjnymi: `tutorials/hibernate/hibernate-mini-tutorial.html`
+- Średni bez pytań: `tutorials/architecture/ddd-mini-tutorial.html`, `tutorials/postgresql/postgresql-mini-tutorial.html`
+- Stack 3-w-1: `tutorials/react/react-stack-mini-tutorial.html`

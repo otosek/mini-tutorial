@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS — usługi poza Kubernetes</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #ff9900;
+      --aws: #232f3e;
+      --code-bg: #f4f4f5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.28rem; margin-top: 2.25rem; color: var(--aws); border-left: 4px solid var(--accent); padding-left: 0.65rem; }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; color: var(--accent); }
+
+    p { margin: 0.75rem 0; }
+    ul { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    .svc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .svc-name { font-weight: 700; color: var(--aws); }
+    .svc-tech { font-size: 0.88rem; color: #0d9488; margin: 0.25rem 0 0.4rem; }
+    .svc-desc { font-size: 0.92rem; color: var(--muted); margin: 0; }
+
+    .map-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--aws); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>AWS — usługi poza Kubernetes</h1>
+<p class="meta">Mapa usług AWS · przypisanie do technologii ze stacku (Java, React, Postgres, OAuth…) · bez EKS jako centrum · sekcja ML/LLM z Bedrock<br>
+Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#mapa">Mapa stack → AWS</a></li>
+    <li><a href="#compute">Compute</a></li>
+    <li><a href="#storage">Storage</a></li>
+    <li><a href="#database">Bazy danych</a></li>
+    <li><a href="#network">Sieć i CDN</a></li>
+    <li><a href="#identity">Tożsamość i sekrety</a></li>
+    <li><a href="#messaging">Messaging i eventy</a></li>
+    <li><a href="#devops">DevOps i IaC</a></li>
+    <li><a href="#observability">Monitoring</a></li>
+    <li><a href="#security">Bezpieczeństwo</a></li>
+    <li><a href="#ml">Machine Learning i LLM</a></li>
+    <li><a href="#other">Inne przydatne</a></li>
+  </ol>
+</nav>
+
+<h2 id="mapa">Mapa: Twój stack → AWS</h2>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.88rem;line-height:1.55">React (authors SPA)     → S3 + CloudFront
+Spring Boot / Java API  → ECS Fargate / Elastic Beanstalk / Lambda
+PostgreSQL + Hibernate  → RDS PostgreSQL / Aurora PostgreSQL
+Redis / cache           → ElastiCache (Redis)
+OAuth / OIDC            → Cognito (+ ALB auth opcjonalnie)
+Pliki / upload          → S3 (+ presigned URL)
+Async / events          → SQS + SNS / EventBridge
+Secrets / config        → Secrets Manager / SSM Parameter Store
+DNS                     → Route 53
+API publiczne           → API Gateway → Lambda / ALB → ECS
+Logi / metryki          → CloudWatch + X-Ray
+CI/CD                   → CodePipeline + CodeBuild / GitHub Actions → ECR
+Infra as code           → CloudFormation / Terraform / CDK</pre>
+</div>
+
+<p><strong>EKS (Kubernetes)</strong> to jedna opcja pod API — poniżej alternatywy i usługi, które z EKS i tak łączysz (RDS, S3, Cognito…).</p>
+
+<hr>
+
+<h2 id="compute">Compute — uruchamianie kodu</h2>
+
+<div class="svc">
+  <div class="svc-name">EC2</div>
+  <div class="svc-tech">→ dowolny stack: Java, Docker ręcznie, legacy</div>
+  <p class="svc-desc">Wirtualne maszyny — pełna kontrola. Spring Boot na JAR + systemd, własny Docker Compose. Ty zarządzasz OS, patchami, skalowaniem (ASG).</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">ECS + Fargate</div>
+  <div class="svc-tech">→ Spring Boot w Docker, React SSR (Node), bez zarządzania serwerem</div>
+  <p class="svc-desc">Orkiestracja kontenerów AWS-native — prostsze niż EKS. Task definition + ALB. Fargate = serverless containers (płacisz per vCPU/RAM).</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Lambda</div>
+  <div class="svc-tech">→ krótkie funkcje, webhooks, transformacje S3, BFF lekki, scheduled jobs</div>
+  <p class="svc-desc">FaaS — Java 21 (SnapStart dla cold start), Node, Python. Limit czasu 15 min. Integracja: API Gateway, SQS, EventBridge.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Elastic Beanstalk</div>
+  <div class="svc-tech">→ szybki deploy Spring Boot / Tomcat / Docker — „Platform as a Service”</div>
+  <p class="svc-desc">Wrzucasz JAR/WAR — AWS stawia EC2, LB, autoscaling. Mniej kontroli niż ECS, szybszy start niż ręczne EC2.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">App Runner</div>
+  <div class="svc-tech">→ prosty container z Git/ECR — HTTP API bez ECS config</div>
+  <p class="svc-desc">Uproszczony hosting kontenerów z autoscaling — między Beanstalk a Fargate pod kątem prostoty.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Batch</div>
+  <div class="svc-tech">→ długie joby Java, ETL, raporty Hibernate off-hours</div>
+  <p class="svc-desc">Kolejki jobów na EC2/Fargate — migracje danych, nightly batch.</p>
+</div>
+
+<hr>
+
+<h2 id="storage">Storage</h2>
+
+<div class="svc">
+  <div class="svc-name">S3</div>
+  <div class="svc-tech">→ statyczny React build, backupy, upload plików, data lake, artefakty CI</div>
+  <p class="svc-desc">Object storage — nieograniczona skala. Klasy: Standard, IA, Glacier. Wersjonowanie, lifecycle, event → Lambda.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">EBS</div>
+  <div class="svc-tech">→ dysk EC2, baza na instancji (nie prod RDS)</div>
+  <p class="svc-desc">Block storage przy VM — gp3, io2. Snapshoty → inny AZ/region.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">EFS</div>
+  <div class="svc-tech">→ współdzielony NFS — wiele EC2/ECS, shared files</div>
+  <p class="svc-desc">Elástyczny file storage — rzadziej niż S3 w nowych architekturach.</p>
+</div>
+
+<hr>
+
+<h2 id="database">Bazy danych i cache</h2>
+
+<div class="svc">
+  <div class="svc-name">RDS (PostgreSQL, MySQL, MariaDB)</div>
+  <div class="svc-tech">→ Hibernate/JPA, Spring Data, Flyway/Liquibase</div>
+  <p class="svc-desc">Managed relational DB — backup, Multi-AZ, read replicas. PostgreSQL = naturalny wybór pod Twój stack.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Aurora PostgreSQL</div>
+  <div class="svc-tech">→ PostgreSQL compatible, wyższa skala odczytu, global DB</div>
+  <p class="svc-desc">Storage auto-scale, szybsze repliki niż RDS — koszt wyższy, HA lepsze pod duży ruch.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">DynamoDB</div>
+  <div class="svc-tech">→ key-value/document, serverless, sesje, idempotency keys, event store light</div>
+  <p class="svc-desc">NoSQL — single-digit ms, pay per request. Nie zamiennik Postgres dla relacji — inne use case.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">ElastiCache (Redis / Memcached)</div>
+  <div class="svc-tech">→ cache Hibernate second level, sesje, rate limit, React Query backend cache</div>
+  <p class="svc-desc">Managed Redis — pub/sub, TTL. Spring Cache + Redis.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">DocumentDB</div>
+  <div class="svc-tech">→ MongoDB-compatible (legacy migracje)</div>
+  <p class="svc-desc">Gdy masz dokumenty Mongo — nie mylić z DynamoDB.</p>
+</div>
+
+<hr>
+
+<h2 id="network">Sieć, CDN, API</h2>
+
+<div class="svc">
+  <div class="svc-name">VPC</div>
+  <div class="svc-tech">→ izolacja sieci — public/private subnets, NAT, security groups</div>
+  <p class="svc-desc">Fundament — RDS w private subnet, ALB w public, Lambda w VPC dla DB access.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Route 53</div>
+  <div class="svc-tech">→ DNS authors.example.com, health checks, routing policies</div>
+  <p class="svc-desc">Hosted zones, alias na CloudFront/ALB, failover DNS.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">CloudFront</div>
+  <div class="svc-tech">→ CDN dla React (S3 origin), TLS, cache static assets</div>
+  <p class="svc-desc">Edge locations — niskie latency SPA globalnie. OAC/OAI do S3.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">ALB / NLB</div>
+  <div class="svc-tech">→ load balancer przed ECS/EC2 — HTTPS termination, path routing</div>
+  <p class="svc-desc">ALB = HTTP(S), WebSocket. NLB = TCP ultra-low latency. Integracja Cognito auth na ALB.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">API Gateway</div>
+  <div class="svc-tech">→ public REST/WebSocket API → Lambda, VPC Link → ECS</div>
+  <p class="svc-desc">Throttling, API keys, JWT authorizer (Cognito), wersjonowanie API.</p>
+</div>
+
+<hr>
+
+<h2 id="identity">Tożsamość, sekrety, config</h2>
+
+<div class="svc">
+  <div class="svc-name">IAM</div>
+  <div class="svc-tech">→ role dla ECS task, Lambda, CI — zero long-lived keys w kodzie</div>
+  <p class="svc-desc">Users, roles, policies — least privilege. Instance/task role zamiast access key w JAR.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Cognito</div>
+  <div class="svc-tech">→ OAuth 2 / OIDC dla React SPA, User Pools, social login</div>
+  <p class="svc-desc">Alternatywa Keycloak/Auth0 — JWT dla API (Spring Resource Server). Hosted UI login.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Secrets Manager</div>
+  <div class="svc-tech">→ hasła RDS, API keys — rotacja</div>
+  <p class="svc-desc">Spring Cloud AWS / env z task definition — nie w repo.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Systems Manager Parameter Store</div>
+  <div class="svc-tech">→ config niesekretny + SecureString — 12-factor config</div>
+  <p class="svc-desc">Tańsze niż Secrets Manager dla prostych parametrów.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">KMS</div>
+  <div class="svc-tech">→ szyfrowanie S3, RDS, Secrets — własne klucze CMK</div>
+  <p class="svc-desc">Envelope encryption — compliance (GDPR, audit).</p>
+</div>
+
+<hr>
+
+<h2 id="messaging">Messaging i integracja</h2>
+
+<div class="svc">
+  <div class="svc-name">SQS</div>
+  <div class="svc-tech">→ kolejka zadań — email po AuthorCreated, decoupling serwisów</div>
+  <p class="svc-desc">Standard (at-least-once) / FIFO (ordering). Worker Lambda/ECS konsumuje.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">SNS</div>
+  <div class="svc-tech">→ pub/sub — fan-out do wielu SQS/Lambda/email</div>
+  <p class="svc-desc">Topic → wiele subskrybentów. Event notification pattern.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">EventBridge</div>
+  <div class="svc-tech">→ event bus — reguły JSON, integracja SaaS, scheduled cron</div>
+  <p class="svc-desc">Zamiennik cron + SNS dla event-driven — schema registry, archiwum.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">MSK (Managed Kafka)</div>
+  <div class="svc-tech">→ Kafka dla high-throughput streams, saga events</div>
+  <p class="svc-desc">Gdy SQS za mało — ordering partitions, replay. Spring Kafka.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Step Functions</div>
+  <div class="svc-tech">→ orchestracja saga, workflow wizualny — kompensacje</div>
+  <p class="svc-desc">State machine wołająca Lambda/ECS — długie procesy biznesowe.</p>
+</div>
+
+<hr>
+
+<h2 id="devops">DevOps, registry, IaC</h2>
+
+<table>
+  <thead><tr><th>Usługa</th><th>Technologia / use case</th></tr></thead>
+  <tbody>
+    <tr><td><strong>ECR</strong></td><td>Registry Docker — obrazy Spring Boot → ECS/EKS</td></tr>
+    <tr><td><strong>CodePipeline + CodeBuild</strong></td><td>CI/CD — Maven <code>mvn package</code>, npm build, deploy</td></tr>
+    <tr><td><strong>CloudFormation</strong></td><td>IaC YAML — stack RDS + VPC + ECS</td></tr>
+    <tr><td><strong>CDK</strong></td><td>IaC w TypeScript/Java/Python — generuje CloudFormation</td></tr>
+    <tr><td><strong>Terraform</strong></td><td>Multi-cloud IaC — provider aws, moduły VPC/RDS</td></tr>
+    <tr><td><strong>CodeDeploy</strong></td><td>Blue/green deploy EC2/ECS/Lambda</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="observability">Monitoring i logi</h2>
+
+<div class="svc">
+  <div class="svc-name">CloudWatch</div>
+  <div class="svc-tech">→ logi stdout (12-factor), metryki JVM/ECS, alarmy SNS/PagerDuty</div>
+  <p class="svc-desc">Log groups, metric filters, dashboards. Logs z Lambda/ECS automatycznie.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">X-Ray</div>
+  <div class="svc-tech">→ distributed tracing — Spring Boot + AWS SDK</div>
+  <p class="svc-desc">Trace przez API Gateway → Lambda → RDS — debug latency.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">CloudWatch RUM</div>
+  <div class="svc-tech">→ Real User Monitoring — React SPA w przeglądarce</div>
+  <p class="svc-desc">Frontend performance, błędy JS — uzupełnia backend metrics.</p>
+</div>
+
+<hr>
+
+<h2 id="security">Bezpieczeństwo</h2>
+
+<table>
+  <thead><tr><th>Usługa</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><strong>WAF</strong></td><td>Ochrona ALB/CloudFront/API GW — SQLi, XSS, rate rules</td></tr>
+    <tr><td><strong>Shield</strong></td><td>DDoS — Standard free, Advanced płatny</td></tr>
+    <tr><td><strong>GuardDuty</strong></td><td>Threat detection — anomalie VPC, DNS</td></tr>
+    <tr><td><strong>Inspector</strong></td><td>Skan CVE obrazów ECR / EC2</td></tr>
+    <tr><td><strong>ACM</strong></td><td>Darmowe certyfikaty TLS dla ALB/CloudFront</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="ml">Machine Learning i LLM</h2>
+
+<p>Usługi AI w AWS układają się w trzy poziomy abstrakcji. Wybierasz najniższy, który wystarczy — im wyżej, tym mniej kodu i mniej kontroli.</p>
+
+<table>
+  <thead><tr><th>Poziom</th><th>Usługi</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1. Gotowe API</strong></td><td>Textract, Comprehend, Rekognition, Transcribe…</td><td>Zadanie jest standardowe (OCR, sentyment, transkrypcja) — zero wiedzy o ML</td></tr>
+    <tr><td><strong>2. Modele fundamentalne</strong></td><td>Bedrock, Amazon Q</td><td>Potrzebujesz LLM: chat, RAG, podsumowania, generowanie kodu</td></tr>
+    <tr><td><strong>3. Własne modele</strong></td><td>SageMaker AI</td><td>Trenujesz na własnych danych, masz zespół data science</td></tr>
+  </tbody>
+</table>
+
+<h3>Bedrock — z czego się składa</h3>
+
+<p>Bedrock to jedno API (<code>InvokeModel</code> / <code>Converse</code>) do modeli wielu dostawców, bez zarządzania infrastrukturą i bez wysyłania danych poza Twoje konto. Wokół samego wnioskowania AWS dołożył komponenty, które inaczej trzeba by pisać samodzielnie.</p>
+
+<table>
+  <thead><tr><th>Komponent</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Converse API</strong></td><td>Jednolity interfejs czatu dla wszystkich modeli — zmiana dostawcy bez przepisywania kodu. Obsługuje streaming, obrazy i tool use (function calling)</td></tr>
+    <tr><td><strong>Knowledge Bases</strong></td><td>Gotowy RAG: wskazujesz źródło (S3, Confluence, SharePoint, web), Bedrock robi chunking, embeddingi, zapis do bazy wektorowej i doklejanie kontekstu do promptu</td></tr>
+    <tr><td><strong>Agents</strong></td><td>Model planuje kroki i wywołuje Twoje API (przez OpenAPI lub Lambdę) — obsługa zamówień, operacje na bazie, integracje</td></tr>
+    <tr><td><strong>Guardrails</strong></td><td>Filtry treści, blokowane tematy, wykrywanie i maskowanie PII, kontrola halucynacji względem źródła. Da się je podpiąć także do modeli spoza Bedrock</td></tr>
+    <tr><td><strong>Prompt Management / Flows</strong></td><td>Wersjonowanie promptów poza kodem i wizualne łączenie kroków (prompt → Lambda → warunek → prompt)</td></tr>
+    <tr><td><strong>Model Evaluation</strong></td><td>Porównanie modeli na Twoim zbiorze — automatyczne metryki, ocena przez inny model (LLM-as-a-judge) lub przez ludzi</td></tr>
+    <tr><td><strong>Fine-tuning / distillation / Custom Model Import</strong></td><td>Dostrojenie modelu na własnych danych, przeniesienie wiedzy z dużego modelu do mniejszego, import własnych wag (np. dotrenowanej Llamy)</td></tr>
+    <tr><td><strong>Provisioned Throughput</strong></td><td>Zarezerwowana przepustowość zamiast rozliczenia za token — przewidywalna latencja i limity dla produkcji</td></tr>
+    <tr><td><strong>Batch inference</strong></td><td>Przetworzenie dużego zbioru offline, taniej niż wywołania on-demand</td></tr>
+    <tr><td><strong>Prompt caching / routing</strong></td><td>Cache powtarzalnego prefiksu promptu (tnie koszt i latencję) oraz automatyczne kierowanie prostszych zapytań do tańszego modelu</td></tr>
+    <tr><td><strong>Data Automation</strong></td><td>Wyciąganie ustrukturyzowanych danych z dokumentów, obrazów, audio i wideo jednym wywołaniem</td></tr>
+    <tr><td><strong>Inference profiles</strong></td><td>Cross-region — rozkładają ruch na kilka regionów przy limitach przepustowości; application — pozwalają rozliczać koszty per aplikacja/zespół</td></tr>
+  </tbody>
+</table>
+
+<h3>Bedrock — rodziny modeli</h3>
+
+<p>Katalog zmienia się co kilka tygodni i różni się między regionami; poniżej rodziny, które warto znać z nazwy. Dostęp do każdej trzeba najpierw włączyć w konsoli (<em>model access</em>).</p>
+
+<table>
+  <thead><tr><th>Model</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Anthropic Claude</strong></td><td>Najczęstszy wybór do zadań tekstowych wymagających jakości: analiza dokumentów, generowanie i przegląd kodu, długi kontekst. Warianty od najszybszego/najtańszego po najmocniejszy</td></tr>
+    <tr><td><strong>Amazon Nova</strong></td><td>Własna rodzina AWS — dobry stosunek ceny do jakości. Warianty tekstowo-multimodalne plus Canvas (obrazy), Reel (wideo) i Sonic (mowa)</td></tr>
+    <tr><td><strong>Amazon Titan</strong></td><td>Przede wszystkim <em>embeddingi</em> (tekstowe i multimodalne) pod wyszukiwanie semantyczne i RAG</td></tr>
+    <tr><td><strong>Meta Llama</strong></td><td>Modele otwarte — sensowne, gdy chcesz zachować możliwość przeniesienia obciążenia poza AWS lub dostroić model na własnych danych</td></tr>
+    <tr><td><strong>Mistral AI</strong></td><td>Lekkie i szybkie modele do zadań masowych: klasyfikacja, ekstrakcja, proste podsumowania</td></tr>
+    <tr><td><strong>Cohere</strong></td><td>Command do generowania, ale głównie <em>Embed</em> i <em>Rerank</em> — poprawa trafności wyników wyszukiwania w RAG</td></tr>
+    <tr><td><strong>AI21 Jamba</strong></td><td>Bardzo długi kontekst przy niskim koszcie — przetwarzanie obszernych dokumentów</td></tr>
+    <tr><td><strong>Stability AI</strong></td><td>Generowanie i edycja obrazów</td></tr>
+    <tr><td><strong>Modele w Marketplace</strong></td><td>Dziesiątki modeli specjalistycznych i niszowych (branżowe, językowe, wideo) uruchamiane na własnym endpoincie</td></tr>
+  </tbody>
+</table>
+
+<div class="map-box">
+<strong>Jak wybierać:</strong> zacznij od najtańszego modelu w rodzinie i zmierz jakość na własnych przykładach przez Model Evaluation. Przechodź wyżej dopiero, gdy metryki tego wymagają — różnica w cenie między najmniejszym a największym modelem bywa dwudziestokrotna. Do embeddingów wybieraj osobny, tani model (Titan, Cohere), nie model czatowy.
+</div>
+
+<h3>Gotowe usługi AI — bez trenowania</h3>
+
+<div class="svc">
+  <div class="svc-name">Textract</div>
+  <div class="svc-tech">→ OCR ze strukturą: faktury, formularze, tabele, dokumenty tożsamości</div>
+  <p class="svc-desc">Zwraca pola i relacje, nie tylko surowy tekst — typowe wejście do pipeline'u „dokument → JSON → baza”.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Comprehend</div>
+  <div class="svc-tech">→ NLP: sentyment, encje, języki, wykrywanie i redakcja PII</div>
+  <p class="svc-desc">Do klasyfikacji zgłoszeń i anonimizacji danych przed wysłaniem ich do LLM.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Rekognition</div>
+  <div class="svc-tech">→ analiza obrazu i wideo: obiekty, twarze, moderacja treści</div>
+  <p class="svc-desc">Weryfikacja uploadów użytkowników, wyszukiwanie po zawartości zdjęć.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Transcribe / Polly / Translate</div>
+  <div class="svc-tech">→ mowa na tekst, tekst na mowę, tłumaczenie maszynowe</div>
+  <p class="svc-desc">Transkrypcja spotkań i rozmów (także na żywo), lektor w aplikacji, lokalizacja treści z własnym słownikiem terminów.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Kendra / Personalize / Fraud Detector</div>
+  <div class="svc-tech">→ wyszukiwanie po dokumentach firmowych, rekomendacje, ocena ryzyka</div>
+  <p class="svc-desc">Gotowe modele domenowe — Kendra bywa alternatywą dla własnego RAG, gdy liczy się głównie wyszukiwanie, a nie generowanie odpowiedzi.</p>
+</div>
+
+<div class="svc">
+  <div class="svc-name">Amazon Q</div>
+  <div class="svc-tech">→ asystent: Q Developer w IDE i konsoli, Q Business nad danymi firmy</div>
+  <p class="svc-desc">Warstwa aplikacyjna nad modelami — gotowy produkt zamiast budowania własnego czatu.</p>
+</div>
+
+<h3>SageMaker AI — własne modele</h3>
+
+<p>Pełen cykl życia modelu: Studio jako środowisko pracy, Ground Truth do etykietowania, Feature Store, treningi na klastrach GPU, Autopilot (AutoML), JumpStart z gotowymi modelami do dotrenowania, Pipelines dla CI/CD modeli oraz Model Monitor i Clarify do wykrywania dryfu i biasu. Wnioskowanie w czterech trybach: real-time endpoint, serverless inference, asynchroniczne (duże payloady) i batch transform.</p>
+
+<p><strong>Pułapka:</strong> endpoint SageMaker nalicza się za każdą godzinę istnienia, niezależnie od liczby zapytań — zapomniana instancja GPU po eksperymencie to najczęstsza niespodzianka na fakturze. Bedrock rozlicza się per token, więc nieużywany „nic nie kosztuje”.</p>
+
+<h3>RAG na własnych danych — typowa architektura</h3>
+
+<pre><code>Dokumenty w S3
+   ↓ (ingest, chunking, embeddingi)
+Bedrock Knowledge Base → OpenSearch Serverless / Aurora pgvector
+   ↑ retrieve
+React → API Gateway → Lambda / ECS (Spring Boot)
+                        ↓ Converse API + Guardrails
+                      Bedrock (Claude / Nova)
+CloudWatch — logi promptów, koszt per token</code></pre>
+
+<p>Uprawnienia załatwia rola IAM (<code>bedrock:InvokeModel</code> na konkretne ARN modeli) — bez kluczy API w kodzie. Dane wysłane do Bedrock nie są używane do trenowania modeli, a ruch może iść przez VPC endpoint (PrivateLink), co zwykle rozstrzyga dyskusję z działem bezpieczeństwa.</p>
+
+<hr>
+
+<h2 id="other">Inne przydatne</h2>
+
+<table>
+  <thead><tr><th>Usługa</th><th>Technologia / przykład</th></tr></thead>
+  <tbody>
+    <tr><td><strong>SES</strong></td><td>Email transakcyjny — powiadomienia, reset hasła</td></tr>
+    <tr><td><strong>Athena</strong></td><td>SQL na plikach S3 (Parquet/JSON) — analityka logów</td></tr>
+    <tr><td><strong>Glue</strong></td><td>ETL serverless — katalog danych, joby Spark</td></tr>
+    <tr><td><strong>OpenSearch</strong></td><td>Full-text search — index domeny authors/titles (Elasticsearch fork)</td></tr>
+    <tr><td><strong>AppSync</strong></td><td>GraphQL managed — React Apollo z subskrypcjami</td></tr>
+    <tr><td><strong>Transfer Family</strong></td><td>SFTP managed → S3 — import plików partnerów</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>Przykładowe architektury (bez K8s)</h2>
+
+<h3>SPA + API (authors)</h3>
+<pre><code>Route 53 → CloudFront → S3 (React)
+                      → ALB → ECS Fargate (Spring Boot)
+                              → RDS PostgreSQL
+                              → ElastiCache Redis
+Cognito (OIDC) ← React · JWT → Spring Resource Server</code></pre>
+
+<h3>Serverless API</h3>
+<pre><code>API Gateway → Lambda (Java/Node) → DynamoDB
+            → Cognito Authorizer
+EventBridge → Lambda (async index update)</code></pre>
+
+<h3>Event-driven między domenami</h3>
+<pre><code>authors-service (ECS) → SNS (AuthorCreated)
+                      → SQS → index-worker (Lambda/ECS)
+                      → SQS → email-worker (SES)</code></pre>
+
+</body>
+</html>

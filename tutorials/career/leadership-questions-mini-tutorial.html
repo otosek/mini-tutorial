@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pytania liderskie — zaangażowanie i lead skills</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #b45309;
+      --signal: #166534;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fffbeb; font-weight: 600; }
+
+    .q-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.55rem 0;
+    }
+
+    .q-card strong { display: block; color: var(--accent); margin-bottom: 0.3rem; font-size: 0.95rem; }
+    .q-card .signal { font-size: 0.88rem; color: var(--signal); margin: 0.35rem 0 0; }
+    .q-card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    .cheatsheet {
+      background: #fffbeb;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 1rem 0 2rem;
+      font-size: 0.9rem;
+    }
+
+    .cheatsheet h2 { margin-top: 0; font-size: 1.1rem; }
+    .cheatsheet ul { margin: 0.4rem 0 0; }
+    .cheatsheet li { margin: 0.25rem 0; }
+
+    .interview-block {
+      background: var(--surface);
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      margin: 1rem 0 2rem;
+    }
+
+    .interview-block > h2 { margin-top: 0; }
+
+    .interview-block .cheatsheet {
+      border: 1px solid var(--border);
+      margin: 0 0 1rem;
+    }
+
+    .interview-block .cheatsheet h3 {
+      margin: 0 0 0.4rem;
+      font-size: 1rem;
+      color: var(--accent);
+    }
+
+    .interview-block .q-block h3 {
+      margin: 0 0 0.6rem;
+      font-size: 1rem;
+      color: var(--accent);
+    }
+
+    .interview-block .q-card { margin: 0.45rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Pytania liderskie — zaangażowanie i lead skills</h1>
+<p class="meta">5 pytań na rozmowę + 2 dodatkowe · rekrutacja i kickoff<br>
+Krótki tutorial · bez pytań technicznych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#rozmowa">Na rozmowę — rady + pytania</a></li>
+    <li><a href="#pytania-dodatkowe">2 pytania dodatkowe</a></li>
+    <li><a href="#zasada">Zasada ogólna</a></li>
+    <li><a href="#unikaj">Czego unikać</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<section class="interview-block" id="rozmowa">
+  <h2 class="must-know">Na rozmowę</h2>
+
+  <div class="cheatsheet" id="rady">
+    <h3>Jak odpowiadać</h3>
+    <ul>
+      <li><strong>Struktura (max ~2 min):</strong> wynik → co zrobiłeś → krótki kontekst. Nie od „w poprzedniej firmie…”.</li>
+      <li><strong>Techniczne:</strong> decyzja + trade-off („wybrałem X, bo Y; kosztem Z”).</li>
+      <li><strong>Lead:</strong> „Zaproponowałem A/B, rekomendacja …” — nie czekaj na polecenie.</li>
+      <li><strong>Błąd / konflikt:</strong> co poszło nie tak → co zmieniłeś (proces, test, monitoring).</li>
+      <li><strong>Nie wiesz?</strong> „Nie robiłem tego — sprawdziłbym …” zamiast zgadywania.</li>
+      <li><strong>Po pytaniu:</strong> 2 s pauzy → odpowiedź. Jak coś niejasne — dopytaj.</li>
+      <li><strong>Twoje pytania:</strong> 2–3 z listy poniżej + jedno follow-up po odpowiedzi.</li>
+    </ul>
+  </div>
+
+  <div class="q-block" id="pytania">
+    <h3>Pytania do zadania</h3>
+    <div class="q-card">
+      <strong>1. Z mojego researchu wynika, że przechodzicie z architektury thick client do SaaS — czy dobrze to rozumiem? Jak ta migracja wpływa na to, jak znacie i realizujecie oczekiwania klientów?</strong>
+      <p><em>Rekrutacja — po researchu firmy</em><br>
+      <span class="signal">→ Homework bez zarzutu; potwierdzenie faktów + pytanie o produkt i klienta. Jeśli coś źle — popraw i dopytaj o priorytety migracji.</span></p>
+    </div>
+    <div class="q-card">
+      <strong>2. Jaki problem biznesowy ma rozwiązać ten zespół w najbliższych 6 miesiącach?</strong>
+      <p><em>Rekrutacja, kickoff</em><br>
+      <span class="signal">→ Myślisz produktowo, nie „kolejny ticket”.</span></p>
+    </div>
+    <div class="q-card">
+      <strong>3. Jak zespół radzi sobie z długiem technicznym — czy jest na to budżet w sprintach?</strong>
+      <p><em>Rekrutacja</em><br>
+      <span class="signal">→ Dojrzałość, realizm, nie tylko greenfield fantasy.</span></p>
+    </div>
+    <div class="q-card">
+      <strong>4. Co oczekujecie od osoby na tym poziomie poza pisaniem kodu — i jak mierzycie sukces wdrożeń wykraczający poza sam fakt „wdrożone”?</strong>
+      <p><em>Rekrutacja, kickoff</em><br>
+      <span class="signal">→ Gotowość na mentoring, review, komunikację + outcome &gt; output.</span></p>
+    </div>
+    <div class="q-card">
+      <strong>5. Kto jest decydentem, gdy product i tech się nie zgadzają?</strong>
+      <p><em>Kickoff</em><br>
+      <span class="signal">→ Szukasz ścieżki eskalacji z góry.</span></p>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<h2 id="pytania-dodatkowe">2 pytania dodatkowe</h2>
+<p class="meta">Gdy zostanie czas albo rozmowa idzie głębiej w kontekst techniczny / proces.</p>
+
+<div class="q-card">
+  <strong>6. Co było najtrudniejszą decyzją techniczną w ostatnim roku i dlaczego tak zdecydowaliście?</strong>
+  <p><em>Rekrutacja</em><br>
+  <span class="signal">→ Szacunek do kontekstu, nie „ja bym zrobił inaczej od razu”.</span></p>
+</div>
+<div class="q-card">
+  <strong>7. Jak wygląda definicja „done” — kto akceptuje, jakie metryki?</strong>
+  <p><em>Rekrutacja, start projektu</em><br>
+  <span class="signal">→ Ownership, jakość, współpraca z PO/QA.</span></p>
+</div>
+
+<hr>
+
+<h2 id="zasada" class="must-know">Zasada ogólna</h2>
+
+<p>Dobre pytanie liderskie nie szuka <strong>populacji</strong> — szuka <strong>zrozumienia, priorytetów i odpowiedzialności</strong>. Pokazujesz, że myślisz o wyniku, ryzyku i ludziach, nie tylko o własnym zadaniu.</p>
+
+<table>
+  <thead><tr><th>Sygnał</th><th>Co słyszy druga strona</th></tr></thead>
+  <tbody>
+    <tr><td>Pytasz o <strong>cel biznesowy</strong></td><td>„Łączy kod z wartością”</td></tr>
+    <tr><td>Pytasz o <strong>ryzyko i trade-off</strong></td><td>„Myśli systemowo”</td></tr>
+    <tr><td>Pytasz o <strong>decyzje i dlaczego</strong></td><td>„Chce się uczyć kontekstu, nie tylko wykonywać”</td></tr>
+    <tr><td>Pytasz <strong>jak pomóc zespołowi</strong></td><td>„Orientacja na współpracę, nie ego”</td></tr>
+    <tr><td>Pytasz o <strong>miary sukcesu</strong></td><td>„Ownership — wie, kiedy skończyć”</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Formuła</strong>
+  <p>Kontekst → pytanie otwarte → (opcjonalnie) „Co by było dla Was sukcesem za 3 miesiące?” Zadaj 2–3 mocne pytania, nie 15 byle jakich.</p>
+</div>
+
+<hr>
+
+<h2 id="unikaj">Czego unikać</h2>
+
+<table>
+  <thead><tr><th>Słabe pytanie</th><th>Dlaczego</th></tr></thead>
+  <tbody>
+    <tr><td>„Czy mogę pracować remote?” (jedyne pytanie)</td><td>Brak zainteresowania produktem i zespołem</td></tr>
+    <tr><td>„Dlaczego tak źle zrobiliście X?”</td><td>Oskarżenie, nie ciekawość</td></tr>
+    <tr><td>15 pytań z Stack Overflow na rozmowie</td><td>Performing, nie słuchanie odpowiedzi</td></tr>
+    <tr><td>„Czy mogę od razu zmienić architekturę na …?”</td><td>Ego przed zrozumieniem kontekstu</td></tr>
+    <tr><td>Pytania, na które Google odpowiada w 5 s</td><td>Nie szanujesz czasu rozmowy</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li>Pytasz, żeby <strong>zabłysnąć</strong>, nie żeby zrozumieć — widać po braku follow-up</li>
+  <li>Zero pytań na koniec rozmowy — sygnał braku zaangażowania</li>
+  <li>Tylko pytania o narzędzia, zero o ludzi i proces</li>
+  <li>Nie notujesz odpowiedzi — wracasz do tych samych tematów tydzień później</li>
+  <li>Lead pytania bez działania po odpowiedzi — zespół przestaje odpowiadać szczerze</li>
+  <li>Zadawanie pytań publicznie, które powinny być 1:1 (wstyd w zespole)</li>
+  <li>„Co mam zrobić?” zamiast „Oto opcje A/B — co wybieramy i dlaczego?”</li>
+</ol>
+
+<hr>
+
+<p class="meta"><strong>Ćwiczenie:</strong> na rozmowę weź 2–3 pytania z sekcji „Na rozmowę”; 6–7 zostaw na zapas.</p>
+
+</body>
+</html>

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PostgreSQL — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #336791;
+      --json: #0d9488;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eff6ff; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .json-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #ccfbf1;
+      color: #0f766e;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>PostgreSQL — mini-tutorial</h1>
+<p class="meta">SQL · UPSERT · CTE · window functions · RETURNING · JSONB · optymalizacja<br>
+Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#podstawy">Podstawy i typy</a></li>
+    <li><a href="#sql">SQL — must know</a>
+      <ol>
+        <li><a href="#upsert">UPSERT (ON CONFLICT)</a></li>
+        <li><a href="#upsert-cte">UPSERT + CTE (WITH)</a></li>
+        <li><a href="#window">Window functions</a></li>
+        <li><a href="#returning">RETURNING</a></li>
+      </ol>
+    </li>
+    <li><a href="#jsonb">JSONB i operatory →</a></li>
+    <li><a href="#optymalizacja">Optymalizacja zapytań</a></li>
+    <li><a href="#indeksy">Indeksy</a></li>
+    <li><a href="#ciekawe">Inne ciekawe featury</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="podstawy">Podstawy</h2>
+
+<p><strong>PostgreSQL</strong> — relacyjna baza open source z rozbudowanym SQL, typami JSON, full-text, rozszerzeniami. MVCC — czytający nie blokują piszących (w przeciwieństwie do lock-heavy modeli).</p>
+
+<table>
+  <thead><tr><th>Typ</th><th>Użycie</th></tr></thead>
+  <tbody>
+    <tr><td><code>serial</code> / <code>bigserial</code></td><td>Auto-increment (legacy) — dziś preferuj <code>GENERATED … AS IDENTITY</code></td></tr>
+    <tr><td><code>uuid</code></td><td>ID rozproszone — <code>gen_random_uuid()</code> (pgcrypto / PG13+)</td></tr>
+    <tr><td><code>timestamptz</code></td><td>Czas ze strefą — zawsze w prod zamiast <code>timestamp</code></td></tr>
+    <tr><td><code>text</code> vs <code>varchar(n)</code></td><td><code>text</code> bez limitu — w PG praktycznie równoważne, bez kary</td></tr>
+    <tr><td><code>numeric(p,s)</code></td><td>Pieniądze — nie <code>float</code></td></tr>
+    <tr><td><code>jsonb</code></td><td>JSON binarny — indeksowalny, operatory <code>-&gt;</code></td></tr>
+    <tr><td><code>array</code></td><td><code>text[]</code>, <code>integer[]</code> — natywne tablice</td></tr>
+  </tbody>
+</table>
+
+<pre><code>CREATE TABLE authors (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    first_name  text NOT NULL,
+    last_name   text NOT NULL,
+    email       text NOT NULL UNIQUE,
+    metadata    jsonb NOT NULL DEFAULT '{}',
+    tags        text[] DEFAULT '{}',
+    created_at  timestamptz NOT NULL DEFAULT now()
+);</code></pre>
+
+<hr>
+
+<h2 id="sql" class="must-know">SQL — must know</h2>
+
+<h3>JOIN</h3>
+<pre><code>SELECT a.first_name, t.title
+FROM authors a
+JOIN titles t ON t.author_id = a.id
+WHERE a.created_at &gt; now() - interval '1 year';</code></pre>
+
+<h3 id="upsert">UPSERT — ON CONFLICT</h3>
+<p><strong>UPSERT</strong> = INSERT, a gdy wiersz już istnieje (konflikt unikalności) → UPDATE zamiast błędu. W Postgresie przez <code>ON CONFLICT … DO UPDATE</code> (inaczej niż <code>MERGE</code> w Oracle/SQL Server, choć PG 15+ ma też <code>MERGE</code>).</p>
+<ul>
+  <li><code>ON CONFLICT (email)</code> — kolumna/kolumny z UNIQUE lub PRIMARY KEY</li>
+  <li><code>EXCLUDED</code> — pseudo-tabela z wierszem, który próbowałeś wstawić</li>
+  <li><code>DO NOTHING</code> — pomiń duplikat bez aktualizacji</li>
+</ul>
+<pre><code>INSERT INTO authors (email, first_name, last_name)
+VALUES ('a@ex.com', 'Anna', 'Nowak')
+ON CONFLICT (email) DO UPDATE
+    SET first_name = EXCLUDED.first_name,
+        last_name  = EXCLUDED.last_name,
+        updated_at = now()
+WHERE authors.updated_at &lt; EXCLUDED.updated_at;  -- opcjonalnie: aktualizuj tylko gdy nowsze</code></pre>
+
+<h3 id="upsert-cte">UPSERT + CTE (WITH)</h3>
+<p><strong>CTE</strong> (<code>WITH</code>) definiuje tymczasowy wynik zapytania — czytelny staging przed INSERT/UPSERT. Przydatne przy imporcie wielu wierszy, deduplikacji lub transformacji danych w jednym statement (atomowo).</p>
+<pre><code>-- Batch UPSERT: dane w CTE → INSERT z ON CONFLICT
+WITH incoming AS (
+    SELECT * FROM (VALUES
+        ('a@ex.com', 'Anna', 'Nowak'),
+        ('b@ex.com', 'Jan',  'Kowalski')
+    ) AS v(email, first_name, last_name)
+),
+deduped AS (
+    SELECT DISTINCT ON (email) email, first_name, last_name
+    FROM incoming
+    ORDER BY email
+)
+INSERT INTO authors (email, first_name, last_name)
+SELECT email, first_name, last_name FROM deduped
+ON CONFLICT (email) DO UPDATE
+    SET first_name = EXCLUDED.first_name,
+        last_name  = EXCLUDED.last_name;</code></pre>
+<p>CTE + <code>RETURNING</code> (poniżej): wynik UPSERT w jednym zapytaniu — bez osobnego SELECT po imporcie.</p>
+<pre><code>WITH upserted AS (
+    INSERT INTO authors (email, first_name, last_name)
+    VALUES ('a@ex.com', 'Anna', 'Nowak')
+    ON CONFLICT (email) DO UPDATE
+        SET first_name = EXCLUDED.first_name
+    RETURNING id, email, (xmax = 0) AS inserted  -- true = nowy wiersz
+)
+SELECT * FROM upserted;</code></pre>
+
+<div class="keyword">
+  <strong>CTE — kiedy używać</strong>
+  <p>Czytelność (zamiast zagnieżdżonych subquery), wielokrotne odwołanie do tego samego zbioru, pipeline transformacji przed UPSERT. <code>WITH RECURSIVE</code> — osobno: hierarchie (patrz sekcja „Inne featury”).</p>
+</div>
+
+<h3 id="window">Window functions</h3>
+<p>Funkcje okienkowe liczą coś <strong>po wierszach</strong>, ale <strong>nie grupują</strong> wyniku jak <code>GROUP BY</code> — każdy wiersz zostaje, dostaje kolumnę z agregatem „w oknie”.</p>
+<table>
+  <thead><tr><th>Składnia</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><code>OVER ()</code></td><td>Cała partycja (wszystkie wiersze)</td></tr>
+    <tr><td><code>PARTITION BY col</code></td><td>Osobne okna per grupa (np. per autor)</td></tr>
+    <tr><td><code>ORDER BY col</code></td><td>Kolejność w oknie — ważne dla ROW_NUMBER, LAG</td></tr>
+    <tr><td><code>ROWS/RANGE BETWEEN …</code></td><td>Ruchome okno (np. suma z ostatnich 7 dni)</td></tr>
+  </tbody>
+</table>
+<table>
+  <thead><tr><th>Funkcja</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><code>ROW_NUMBER()</code></td><td>Numer wiersza w partycji (unikalny)</td></tr>
+    <tr><td><code>RANK()</code> / <code>DENSE_RANK()</code></td><td>Pozycja z remisami (RANK ma luki)</td></tr>
+    <tr><td><code>LAG(col)</code> / <code>LEAD(col)</code></td><td>Poprzedni / następny wiersz w oknie</td></tr>
+    <tr><td><code>SUM() OVER</code></td><td>Suma bieżąca, % całości bez GROUP BY</td></tr>
+  </tbody>
+</table>
+<pre><code>-- Numer wiersza per nazwisko
+SELECT first_name, last_name,
+       ROW_NUMBER() OVER (PARTITION BY last_name ORDER BY created_at) AS rn
+FROM authors;
+
+-- Top 1 tytuł per autor (bez LATERAL — filtr na rn = 1 w zewnętrznym query)
+SELECT * FROM (
+    SELECT t.*,
+           ROW_NUMBER() OVER (PARTITION BY author_id ORDER BY created_at DESC) AS rn
+    FROM titles t
+) x WHERE rn = 1;
+
+-- Porównanie z poprzednim miesiącem (LAG)
+SELECT date_trunc('month', created_at) AS month,
+       count(*) AS cnt,
+       LAG(count(*)) OVER (ORDER BY date_trunc('month', created_at)) AS prev_cnt
+FROM authors
+GROUP BY date_trunc('month', created_at);</code></pre>
+
+<h3 id="returning">RETURNING</h3>
+<p><code>RETURNING</code> zwraca wiersze <strong>dotknięte</strong> przez INSERT / UPDATE / DELETE — bez drugiego round-trip <code>SELECT</code>. W Spring/JPA często zastępuje <code>@GeneratedValue</code> + osobne odpytanie o ID.</p>
+<table>
+  <thead><tr><th>Operacja</th><th>Typowe użycie</th></tr></thead>
+  <tbody>
+    <tr><td><code>INSERT … RETURNING</code></td><td>Nowe <code>id</code>, <code>created_at</code>, defaults z DB</td></tr>
+    <tr><td><code>UPDATE … RETURNING</code></td><td>Lista zmienionych wierszy + nowe wartości</td></tr>
+    <tr><td><code>DELETE … RETURNING</code></td><td>Archiwizacja / audit — co usunięto</td></tr>
+    <tr><td><code>UPSERT … RETURNING</code></td><td>ID po konflikcie — insert i update w jednej odpowiedzi</td></tr>
+  </tbody>
+</table>
+<pre><code>-- INSERT — od razu id do aplikacji
+INSERT INTO authors (first_name, last_name, email)
+VALUES ('Jan', 'Kowalski', 'j@ex.com')
+RETURNING id, created_at;
+
+-- UPDATE — ile i które wiersze
+UPDATE authors SET metadata = metadata || '{"verified": true}'
+WHERE email LIKE '%@ex.com'
+RETURNING id, email;
+
+-- DELETE z audytem
+DELETE FROM authors WHERE deleted_at IS NOT NULL
+RETURNING id, email, deleted_at;
+
+-- UPSERT + RETURNING (sync cache / event po zapisie)
+INSERT INTO authors (email, first_name, last_name)
+VALUES ('a@ex.com', 'Anna', 'Nowak')
+ON CONFLICT (email) DO UPDATE SET first_name = EXCLUDED.first_name
+RETURNING id, email, xmax = 0 AS was_inserted;</code></pre>
+
+<div class="keyword">
+  <strong>Pułapka: RETURNING a trigger</strong>
+  <p><code>RETURNING</code> zwraca wiersz <strong>po</strong> triggerach BEFORE/AFTER — widzisz wartości już zmodyfikowane w DB (np. <code>updated_at</code> z triggera).</p>
+</div>
+
+<hr>
+
+<h2 id="jsonb" class="must-know"><span class="json-tag">JSONB</span> i operatory strzałkowe</h2>
+
+<p><strong>json</strong> — tekst, zachowuje whitespace. <strong>jsonb</strong> — zparsowany, binarny, wolniejszy insert, szybsze query i indeksy. W prod: prawie zawsze <strong>jsonb</strong>.</p>
+
+<h3>Operatory strzałkowe</h3>
+<table>
+  <thead><tr><th>Operator</th><th>Zwraca</th><th>Przykład</th></tr></thead>
+  <tbody>
+    <tr><td><code>-&gt;</code></td><td>jsonb (następny poziom)</td><td><code>metadata-&gt;'address'</code></td></tr>
+    <tr><td><code>-&gt;&gt;</code></td><td>text (wartość skalarna)</td><td><code>metadata-&gt;&gt;'city'</code></td></tr>
+    <tr><td><code>#&gt;</code></td><td>jsonb po ścieżce tablicowej</td><td><code>metadata#&gt;'{address,city}'</code></td></tr>
+    <tr><td><code>#&gt;&gt;</code></td><td>text po ścieżce</td><td><code>metadata#&gt;&gt;'{address,city}'</code></td></tr>
+    <tr><td><code>@&gt;</code></td><td>czy zawiera (json)</td><td><code>metadata @&gt; '{"vip": true}'</code></td></tr>
+    <tr><td><code>&lt;@</code></td><td>czy jest zawarty w</td><td>odwrotność @&gt;</td></tr>
+    <tr><td><code>?</code></td><td>klucz istnieje (top-level)</td><td><code>metadata ? 'phone'</code></td></tr>
+    <tr><td><code>?|</code></td><td>którykolwiek klucz</td><td><code>metadata ?| array['a','b']</code></td></tr>
+    <tr><td><code>?&amp;</code></td><td>wszystkie klucze</td><td><code>metadata ?&amp; array['a','b']</code></td></tr>
+    <tr><td><code>||</code></td><td>merge jsonb</td><td><code>metadata || '{"x":1}'</code></td></tr>
+    <tr><td><code>-</code> / <code>#-</code></td><td>usuń klucz / ścieżkę</td><td><code>metadata - 'temp'</code></td></tr>
+  </tbody>
+</table>
+
+<pre><code>-- Przykład danych
+-- metadata: {"address": {"city": "Kraków", "zip": "30-001"}, "vip": true}
+
+SELECT
+    metadata-&gt;'address'-&gt;&gt;'city'           AS city,      -- "Kraków"
+    metadata#&gt;&gt;'{address,city}'           AS city2,     -- to samo
+    metadata @&gt; '{"vip": true}'            AS is_vip,    -- true
+    metadata ? 'phone'                     AS has_phone  -- false
+FROM authors;
+
+-- Aktualizacja zagnieżdżonego pola
+UPDATE authors
+SET metadata = jsonb_set(metadata, '{address,city}', '"Warszawa"')
+WHERE id = '...';
+
+-- jsonb_path (PG 12+) — SQL/JSON path
+SELECT * FROM authors
+WHERE metadata @? '$.address.city ? (@ == "Kraków")';</code></pre>
+
+<h3>Indeks na JSONB</h3>
+<pre><code>-- GIN na całym jsonb — @&gt;, ?, ?|, ?&
+CREATE INDEX idx_authors_metadata ON authors USING GIN (metadata);
+
+-- Indeks na konkretną ścieżkę (expression index)
+CREATE INDEX idx_authors_city ON authors ((metadata-&gt;'address'-&gt;&gt;'city'));</code></pre>
+
+<hr>
+
+<h2 id="optymalizacja" class="must-know">Optymalizacja zapytań</h2>
+
+<h3>EXPLAIN (ANALYZE)</h3>
+<pre><code>EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT * FROM authors WHERE email = 'a@ex.com';</code></pre>
+
+<table>
+  <thead><tr><th>W planie szukaj</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Seq Scan</strong></td><td>Pełny skan tabeli — OK mała tabela, źle duża bez WHERE</td></tr>
+    <tr><td><strong>Index Scan / Index Only Scan</strong></td><td>Używa indeksu — Index Only = covering index</td></tr>
+    <tr><td><strong>Bitmap Index Scan</strong></td><td>Kilka indeksów / większy zakres — łączy w bitmapę</td></tr>
+    <tr><td><strong>Nested Loop</strong></td><td>Join małych zbiorów z indeksem po wewnętrznej</td></tr>
+    <tr><td><strong>Hash Join</strong></td><td>Hash na mniejszej stronie — dobre dla większych równoległych zbiorów</td></tr>
+    <tr><td><strong>cost / rows</strong></td><td>Szacunek planera — porównuj przed/po indeksie</td></tr>
+    <tr><td><strong>actual time</strong></td><td>Tylko z ANALYZE — prawdziwy czas</td></tr>
+  </tbody>
+</table>
+
+<h3>Checklist optymalizacji</h3>
+<ol>
+  <li><strong>WHERE / JOIN</strong> na kolumnach z indeksem</li>
+  <li><strong>SELECT *</strong> — unikaj; tylko potrzebne kolumny (Index Only Scan)</li>
+  <li><strong>ANALYZE</strong> — statystyki aktualne (autovacuum/analyze)</li>
+  <li><strong>N+1</strong> — batch / JOIN zamiast pętli w aplikacji</li>
+  <li><strong>LIKE '%foo%'</strong> — nie użyje B-tree; rozważ <code>pg_trgm</code> GIN</li>
+  <li><strong>Funkcja na kolumnie</strong> — <code>WHERE lower(email) = …</code> psuje indeks → expression index lub generated column</li>
+  <li><strong>Limit</strong> — paginacja przez <code>keyset</code> (WHERE id &gt; last) zamiast OFFSET 100000</li>
+</ol>
+
+<h3>VACUUM i bloat</h3>
+<p>MVCC zostawia martwe wiersze — <strong>VACUUM</strong> czyści, <strong>AUTOVACUUM</strong> domyślnie włączony. Długie transakcje blokują vacuum → rosnąca tabela mimo DELETE.</p>
+
+<hr>
+
+<h2 id="indeksy">Indeksy</h2>
+
+<table>
+  <thead><tr><th>Typ</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>B-tree</strong> (domyślny)</td><td><code>=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>BETWEEN</code>, <code>ORDER BY</code></td></tr>
+    <tr><td><strong>GIN</strong></td><td>jsonb, full-text, array, pg_trgm</td></tr>
+    <tr><td><strong>GiST</strong></td><td>geometria, range types, full-text (alternatywa)</td></tr>
+    <tr><td><strong>Partial index</strong></td><td><code>WHERE active = true</code> — mniejszy, szybszy</td></tr>
+    <tr><td><strong>Covering (INCLUDE)</strong></td><td>Index Only Scan — <code>CREATE INDEX … INCLUDE (col)</code></td></tr>
+    <tr><td><strong>Unique</strong></td><td>UNIQUE constraint = unique index</td></tr>
+  </tbody>
+</table>
+
+<pre><code>CREATE INDEX idx_authors_active_email
+    ON authors (email)
+    WHERE deleted_at IS NULL;   -- partial
+
+CREATE INDEX idx_titles_author
+    ON titles (author_id)
+    INCLUDE (title);            -- covering dla SELECT title WHERE author_id</code></pre>
+
+<hr>
+
+<h2 id="ciekawe">Inne ciekawe featury</h2>
+
+<div class="keyword">
+  <strong>Arrays</strong>
+  <p><code>WHERE 'sql' = ANY(tags)</code>, <code>array_agg(title)</code>, unnest. GIN indeks na array.</p>
+</div>
+
+<div class="keyword">
+  <strong>Full-Text Search (tsvector / tsquery)</strong>
+  <p><code>to_tsvector('polish', body) @@ to_tsquery('polish', 'autor &amp; książka')</code> — GIN indeks na tsvector.</p>
+</div>
+
+<div class="keyword">
+  <strong>LATERAL</strong>
+  <p>Subquery z dostępem do poprzedniego FROM — „top N per group” elegancko.</p>
+</div>
+<pre><code>SELECT a.*, t.latest_title
+FROM authors a
+CROSS JOIN LATERAL (
+    SELECT title AS latest_title FROM titles
+    WHERE author_id = a.id ORDER BY created_at DESC LIMIT 1
+) t;</code></pre>
+
+<div class="keyword">
+  <strong>Materialized views</strong>
+  <p>Cache wyniku zapytania — <code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code> dla read-heavy index.</p>
+</div>
+
+<div class="keyword">
+  <strong>Row-Level Security (RLS)</strong>
+  <p>Polityki per wiersz — multi-tenant w jednej tabeli: <code>CREATE POLICY … USING (tenant_id = current_setting('app.tenant'))</code>.</p>
+</div>
+
+<div class="keyword">
+  <strong>Advisory locks</strong>
+  <p><code>pg_advisory_lock(id)</code> — mutex aplikacyjny bez tabeli lock — joby, migracje.</p>
+</div>
+
+<div class="keyword">
+  <strong>Extensions</strong>
+  <p><code>pg_trgm</code> (podobne stringi), <code>pgcrypto</code>, <code>postgis</code> (geo), <code>citext</code> (case-insensitive text).</p>
+</div>
+
+<div class="keyword">
+  <strong>LISTEN / NOTIFY</strong>
+  <p>Lekki pub/sub wewnątrz PG — event do aplikacji bez kolejki zewnętrznej (ograniczone skalowanie).</p>
+</div>
+
+<div class="keyword">
+  <strong>Partitioning (deklaratywne)</strong>
+  <p>Tabela partycjonowana po dacie/kluczu — prune partycji w query planie.</p>
+</div>
+
+<div class="keyword">
+  <strong>Common Table Expressions — RECURSIVE</strong>
+  <p>Hierarchie — drzewo kategorii, org chart.</p>
+</div>
+
+<div class="keyword">
+  <strong>Generated columns (STORED)</strong>
+  <p>Kolumna wyliczana z innych — indeksowalna, spójna z JSON extract.</p>
+</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><code>timestamp</code> bez strefy — błędy przy DST i wielu regionach</li>
+  <li>JSON zamiast JSONB „bo prostsze” — brak indeksów, wolniejsze filtry</li>
+  <li><code>-&gt;</code> zamiast <code>-&gt;&gt;</code> w WHERE — porównujesz jsonb z text</li>
+  <li>Brak indeksu na FK — wolne JOIN i DELETE parent</li>
+  <li>OFFSET paginacja na dużych offsetach — keyset pagination</li>
+  <li>SELECT * + ORM bez lazy/eager świadomości — N+1</li>
+  <li>Zbyt wiele indeksów — spowalnia INSERT/UPDATE</li>
+  <li>Brak indeksu UNIQUE pod <code>ON CONFLICT (col)</code> — UPSERT fail w runtime</li>
+  <li>Window: <code>WHERE rn = 1</code> bez subquery — alias z OVER niedostępny w WHERE tego samego poziomu</li>
+  <li><code>RETURNING</code> pominięte — aplikacja robi drugi SELECT po INSERT (zbędny round-trip)</li>
+  <li>Ignorowanie EXPLAIN — „wolno” bez diagnozy planu</li>
+</ol>
+
+</body>
+</html>

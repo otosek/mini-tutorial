@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Foreign Memory API — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #7c3aed;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f5f3ff; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Foreign Memory API</h1>
+<p class="meta">Project Panama · FFM API · Java 22 (JEP 454) · <code>MemorySegment</code> · <code>Arena</code> · off-heap<br>
+Format: samodzielny HTML, offline · pakiet <code>java.lang.foreign</code></p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty</a></li>
+    <li><a href="#czesc-2">MemorySegment i Arena</a></li>
+    <li><a href="#czesc-3">Typy aren</a></li>
+    <li><a href="#czesc-4">MemoryLayout i dostęp do danych</a></li>
+    <li><a href="#czesc-5">FFM vs ByteBuffer / Unsafe / JNI</a></li>
+    <li><a href="#czesc-6">Foreign functions (skrót)</a></li>
+    <li><a href="#czesc-7">Typowe błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty</h2>
+
+<h3>1.1 Co to jest Foreign Memory API</h3>
+<p><strong>Foreign Function &amp; Memory API</strong> (FFM, Project Panama) to standardowy sposób w Javie na pracę z pamięcią <strong>poza stertą JVM</strong> (off-heap) oraz wywoływanie kodu natywnego — bez ręcznego JNI. Część „memory” obejmuje alokację, layout i bezpieczny dostęp przez <code>MemorySegment</code>.</p>
+<p><strong>JEP 454</strong> — finalizacja w <strong>Java 22</strong> (wcześniej preview/incubator). Pakiet: <code>java.lang.foreign</code>.</p>
+
+<h3>1.2 Jaki problem rozwiązuje</h3>
+<ul>
+  <li><strong>ByteBuffer</strong> — ograniczony, 2 GB limit, brak deterministycznego scope</li>
+  <li><strong>sun.misc.Unsafe</strong> — niebezpieczny, deprecated, use-after-free = crash JVM</li>
+  <li><strong>JNI</strong> — dużo boilerplate C, łatwo o wyciek pamięci i błędy wątków</li>
+</ul>
+<p>FFM daje: <strong>scoped memory</strong> (arena zamyka → segment unieważniony), wyjątki zamiast crashy, VarHandle do struktur.</p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — MemorySegment i Arena</h2>
+
+<div class="keyword">
+  <strong>MemorySegment</strong>
+  <p>Reprezentuje <strong>ciągły region pamięci</strong> (on-heap lub off-heap). Nie alokujesz segmentu „sam” — zwykle przez <code>Arena</code>.</p>
+</div>
+
+<div class="keyword">
+  <strong>Arena</strong>
+  <p>Zarządza <strong>cyklem życia</strong> segmentów: alokacja + deterministyczne zwolnienie przy <code>close()</code>. Try-with-resources = automatyczne zamknięcie scope.</p>
+</div>
+
+<pre><code>import java.lang.foreign.*;
+
+try (Arena arena = Arena.ofConfined()) {
+    MemorySegment segment = arena.allocate(64);
+    segment.set(ValueLayout.JAVA_INT, 0, 42);
+    int value = segment.get(ValueLayout.JAVA_INT, 0);
+    // arena.close() → segment nieważny, pamięć zwolniona
+}</code></pre>
+
+<p>Próba dostępu po zamknięciu areny → <code>IllegalStateException</code> (segment „not alive”), nie undefined behavior jak w C.</p>
+
+<h3>allocateFrom — kopiowanie z Javy</h3>
+<pre><code>try (Arena arena = Arena.ofConfined()) {
+    MemorySegment cString = arena.allocateFrom("Authors API");
+    // UTF-8, null-terminated — gotowe pod wywołanie natywne
+}</code></pre>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Typy aren</h2>
+
+<table>
+  <thead>
+    <tr><th>Arena</th><th>Scope</th><th>Wątki</th><th>Kiedy</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>ofConfined()</code></td><td>do <code>close()</code></td><td>tylko właściciel (twórca)</td><td>domyślny wybór — szybki, deterministyczny</td></tr>
+    <tr><td><code>ofShared()</code></td><td>do <code>close()</code></td><td>wielowątkowy</td><td>segment współdzielony między wątkami</td></tr>
+    <tr><td><code>ofAuto()</code></td><td>GC / cleaner</td><td>zależy</td><td>wygoda, brak deterministycznego momentu free</td></tr>
+    <tr><td><code>global</code></td><td>bez końca</td><td>—</td><td>pamięć nigdy nie zwalniana; <code>close()</code> rzuca wyjątek</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Pułapka: confined + inny wątek</strong>
+  <p>Dostęp do segmentu z confined areny z wątku, który nie jest owner → wyjątek. Do współdzielenia użyj <code>ofShared()</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="czesc-4">Część 4 — MemoryLayout i dostęp do danych</h2>
+
+<p><code>ValueLayout</code> opisuje typ prymitywny (JAVA_INT, JAVA_LONG, ADDRESS…). <code>StructLayout</code> / <code>SequenceLayout</code> — struktury C-like z alignment.</p>
+
+<pre><code>StructLayout authorLayout = MemoryLayout.structLayout(
+    ValueLayout.JAVA_LONG.withName("id"),
+    ValueLayout.JAVA_INT.withName("titleCount"),
+    ValueLayout.ADDRESS.withName("namePtr")
+);
+
+try (Arena arena = Arena.ofConfined()) {
+    MemorySegment block = arena.allocate(authorLayout);
+    block.set(authorLayout, "id", 1L);
+    block.set(authorLayout, "titleCount", 5);
+    long id = block.get(authorLayout, "id");
+}</code></pre>
+
+<p><strong>VarHandle z layout path</strong> — type-safe dostęp bez ręcznych offsetów:</p>
+
+<pre><code>VarHandle idHandle = authorLayout.varHandle(
+    MemoryLayout.PathElement.groupElement("id"));
+idHandle.set(block, 0L, 99L);</code></pre>
+
+<p><strong>SegmentScope</strong> — każdy segment wie, czy jego arena żyje. <code>segment.isAccessibleBy(Thread.currentThread())</code> sprawdza uprawnienia wątku.</p>
+
+<hr>
+
+<h2 id="czesc-5">FFM vs ByteBuffer / Unsafe / JNI</h2>
+
+<table>
+  <thead>
+    <tr><th></th><th>FFM (MemorySegment)</th><th>Direct ByteBuffer</th><th>JNI</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Bezpieczeństwo</td><td>scope, bounds check</td><td>ograniczone</td><td>zależy od C</td></tr>
+    <tr><td>Max rozmiar</td><td>~Long.MAX_VALUE</td><td>~2 GB (int index)</td><td>—</td></tr>
+    <tr><td>Zwolnienie</td><td>arena.close()</td><td>GC / cleaner</td><td>ręczne w C</td></tr>
+    <tr><td>Native calls</td><td>Linker + MethodHandle</td><td>tylko przez JNI</td><td>natywne</td></tr>
+    <tr><td>Status JDK 22+</td><td>standard</td><td>legacy interop</td><td>ograniczany (JEP 472)</td></tr>
+  </tbody>
+</table>
+
+<p>Typowy use case w aplikacji Java (bez własnego C): biblioteki natywne (SQLite, compress, crypto), zero-copy I/O, integracja z istniejącymi .so/.dll przez FFM zamiast pisać JNI wrapper.</p>
+
+<hr>
+
+<h2 id="czesc-6">Część 6 — Foreign functions (skrót)</h2>
+<p>Ta sama FFM API obejmuje wywołania natywne — nie tylko pamięć:</p>
+
+<pre><code>Linker linker = Linker.nativeLinker();
+SymbolLookup lookup = SymbolLookup.loaderLookup()
+    .or(Linker.nativeLinker().defaultLookup());
+
+MethodHandle strlen = linker.downcallHandle(
+    lookup.find("strlen").orElseThrow(),
+    FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
+);
+
+try (Arena arena = Arena.ofConfined()) {
+    MemorySegment str = arena.allocateFrom("hello");
+    long len = (long) strlen.invoke(str);
+}</code></pre>
+
+<p>Kluczowe typy: <code>Linker</code>, <code>FunctionDescriptor</code>, <code>SymbolLookup</code>, <code>MethodHandle</code> (downcall). Up-call (C → Java) też możliwy przez <code>Linker.upcallStub</code>.</p>
+
+<hr>
+
+<h2 id="czesc-7">Typowe błędy</h2>
+<ol>
+  <li><strong>Dostęp do segmentu po <code>arena.close()</code></strong> — use-after-free; zawsze try-with-resources</li>
+  <li><strong>Confined arena z wielu wątków</strong> — użyj <code>ofShared()</code></li>
+  <li><strong>Przekazanie segmentu do native code poza scope areny</strong> — native trzyma wskaźnik po free → crash; przedłuż życie areny</li>
+  <li><strong>Ręczne offsety bez layout</strong> — błędy alignment/padding; używaj StructLayout</li>
+  <li><strong>Myślenie, że ofAuto = natychmiast free</strong> — GC decyduje; dla determinizmu confined/shared</li>
+  <li><strong>Global arena „na wszystko”</strong> — wyciek natywnej pamięci jak w C</li>
+  <li><strong>Mylenie ADDRESS z long</strong> — na 64-bit ADDRESS to layout wskaźnika, nie zawsze long w C</li>
+  <li><strong>Brak <code>--enable-native-access</code></strong> — moduły z FFM mogą wymagać flagi (JDK 22+)</li>
+  <li><strong>JNI + FFM mieszane bez planu</strong> — dwa modele zarządzania pamięcią</li>
+  <li><strong>Duży off-heap bez monitoringu</strong> — JVM heap mało pokaże; śledź native memory (NMT, JFR)</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to Foreign Memory API?</strong>
+  <p>Część FFM API (Project Panama) do bezpiecznej alokacji i dostępu do pamięci off-heap przez MemorySegment i Arena.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Od której wersji Java jest standardem?</strong>
+  <p>Java 22 — JEP 454 (Foreign Function &amp; Memory API).</p>
+</div>
+<div class="qa-item">
+  <strong>3. Co to MemorySegment?</strong>
+  <p>Obiekt reprezentujący ciągły region pamięci (heap lub off-heap) z kontrolą scope i bounds.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Co robi Arena?</strong>
+  <p>Alokuje segmenty i zarządza ich cyklem życia — przy close zwalnia natywną pamięć i unieważnia segmenty.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Co to confined arena?</strong>
+  <p>Arena jednowątkowa (owner thread), deterministyczny scope do close — domyślny wybór wydajnościowy.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Co to shared arena?</strong>
+  <p>Arena wielowątkowa — segmenty dostępne z wielu wątków do momentu close.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Co się stanie po close areny przy odczycie segmentu?</strong>
+  <p>IllegalStateException — segment nie jest „alive”.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Co robi arena.allocateFrom(String)?</strong>
+  <p>Alokuje segment i kopiuje string jako UTF-8 z null terminator (C string).</p>
+</div>
+<div class="qa-item">
+  <strong>9. Jaki pakiet?</strong>
+  <p><code>java.lang.foreign</code></p>
+</div>
+<div class="qa-item">
+  <strong>10. FFM vs JNI — główna zaleta?</strong>
+  <p>Mniej boilerplate, bezpieczniejszy model pamięci (scope), pure Java bez obowiązkowego C glue code.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Co to ValueLayout?</strong>
+  <p>Opis layoutu wartości prymitywnej (np. JAVA_INT, ADDRESS) — rozmiar i alignment.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Czym różni się off-heap od heap?</strong>
+  <p>Off-heap nie podlega GC JVM; alokacja/zwolnienie przez Arena; nie liczy się do -Xmx wprost.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Co to Project Panama?</strong>
+  <p>Projekt OpenJDK: interoperacyjność Java ↔ native (FFM API zastępuje incubator/JNI w nowym kodzie).</p>
+</div>
+<div class="qa-item">
+  <strong>14. Try-with-resources z Arena — po co?</strong>
+  <p>Gwarantuje close() i zwolnienie natywnej pamięci nawet przy wyjątku.</p>
+</div>
+<div class="qa-item">
+  <strong>15. Arena.global — kiedy?</strong>
+  <p>Prawie nigdy w aplikacji — pamięć na całe życie procesu; close() nie działa.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. ofAuto vs ofConfined?</strong>
+  <p>ofAuto — scope do GC/cleaner, niedeterministyczne free. ofConfined — explicit close, deterministyczne, szybsze.</p>
+</div>
+<div class="qa-item">
+  <strong>17. StructLayout — po co?</strong>
+  <p>Mapowanie struktur C (padding, alignment) — get/set po nazwach pól zamiast ręcznych offsetów.</p>
+</div>
+<div class="qa-item">
+  <strong>18. VarHandle z layout path?</strong>
+  <p>Type-safe dostęp do pól struktury w segmencie — alternatywa dla segment.get(layout, "field").</p>
+</div>
+<div class="qa-item">
+  <strong>19. Linker.downcallHandle — co zwraca?</strong>
+  <p>MethodHandle do wywołania funkcji natywnej z Javy zgodnie z FunctionDescriptor.</p>
+</div>
+<div class="qa-item">
+  <strong>20. FunctionDescriptor?</strong>
+  <p>Opis sygnatury native: typ zwracany + typy argumentów jako MemoryLayout.</p>
+</div>
+<div class="qa-item">
+  <strong>21. SymbolLookup?</strong>
+  <p>Wyszukiwanie symboli (np. strlen) w załadowanej bibliotece natywnej.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Dlaczego FFM szybsze od JNI (orientacyjnie)?</strong>
+  <p>Mniej warstw, MethodHandle, brak generowania stubów JNI per call w typowym użyciu.</p>
+</div>
+<div class="qa-item">
+  <strong>23. SegmentAllocator — relacja do Arena?</strong>
+  <p>Arena extends SegmentAllocator — arena alokuje i kontroluje lifetime segmentów.</p>
+</div>
+<div class="qa-item">
+  <strong>24. MemorySegment z ByteBuffer?</strong>
+  <p>Możliwa konwersja (heap/direct buffer) — most do legacy API.</p>
+</div>
+<div class="qa-item">
+  <strong>25. JEP 472 — JNI?</strong>
+  <p>Przygotowanie do ograniczenia JNI — nowy kod native interop powinien iść w FFM.</p>
+</div>
+<div class="qa-item">
+  <strong>26. ADDRESS layout?</strong>
+  <p>Reprezentuje wskaźnik natywny (size zależy od platformy) — argument do funkcji C przyjmujących pointer.</p>
+</div>
+<div class="qa-item">
+  <strong>27. Native access restriction?</strong>
+  <p>Moduły wywołujące FFM mogą wymagać <code>--enable-native-access=modulename</code> — kontrola bezpieczeństwa.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Kiedy off-heap w typowej aplikacji Spring?</strong>
+  <p>Rzadko wprost — raczej przez bibliotekę (Netty direct buffers, driver DB, codec) migrującą na FFM.</p>
+</div>
+<div class="qa-item">
+  <strong>29. sequenceLayout?</strong>
+  <p>Layout tablicy elementów stałego rozmiaru — np. tablica 10 intów w strukturze C.</p>
+</div>
+<div class="qa-item">
+  <strong>30. reinterpret na segmencie?</strong>
+  <p>Nowy segment ten sam adres, inny rozmiar — resize po native call zwracającym bufor.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki</span></h3>
+
+<div class="qa-item">
+  <strong>31. Segment przekazany do native async po close areny?</strong>
+  <p>Use-after-free w C — JVM nie chroni; arena musi żyć przez cały czas użycia w native.</p>
+</div>
+<div class="qa-item">
+  <strong>32. Confined arena + virtual thread inny niż owner?</strong>
+  <p>Virtual thread = osobny Thread — dostęp z innego VT do confined segment → wyjątek.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Czy FFM zastępuje całkowicie DirectByteBuffer?</strong>
+  <p>Stopniowo — wiele API nadal używa ByteBuffer; FFM to preferowany kierunek od Java 22.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Unsafe.allocateMemory vs Arena?</strong>
+  <p>Unsafe — manual free, brak scope. Arena — structured, exceptions zamiast crash.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Global arena w connection pool?</strong>
+  <p>Zły pomysł — wyciek off-heap; per-request confined arena lub pool segmentów ze znanym scope.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Alignment w StructLayout — dlaczego ważny?</strong>
+  <p>C compiler dodaje padding — zły layout = złe odczyty pól struktury native.</p>
+</div>
+<div class="qa-item">
+  <strong>37. Czy GC śledzi off-heap FFM?</strong>
+  <p>Nie jak obiekty heap — native memory osobno (NMT); arena.close zwalnia natychmiast.</p>
+</div>
+<div class="qa-item">
+  <strong>38. downcall z wrong FunctionDescriptor?</strong>
+  <p>Undefined behavior po stronie native / crash — descriptor musi dokładnie matchować C ABI.</p>
+</div>
+<div class="qa-item">
+  <strong>39. ofShared + close z innego wątku?</strong>
+  <p>Dozwolone (w przeciwieństwie do confined) — współdzielone zamknięcie scope.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Kiedy NIE używać FFM?</strong>
+  <p>Prosta aplikacja CRUD bez native — wystarczy heap. FFM gdy: biblioteka C, zero-copy, performance off-heap, zastąpienie JNI.</p>
+</div>
+
+</body>
+</html>

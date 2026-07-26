@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kubernetes — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #326ce5;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eff6ff; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+
+    .concept-card h3 { margin-top: 0; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>Kubernetes — mini-tutorial</h1>
+<p class="meta">Orkiestracja kontenerów · Pod, Deployment, Service · networking · storage · pytania rekrutacyjne<br>
+Format: HTML (otwórz w przeglądarce — podwójne kliknięcie lub przeciągnij na kartę)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty</a></li>
+    <li><a href="#czesc-2">Architektura klastra</a></li>
+    <li><a href="#czesc-3">Pod i workloady</a></li>
+    <li><a href="#czesc-4">Networking — Service, Ingress</a></li>
+    <li><a href="#czesc-5">Config, Secrets, storage</a></li>
+    <li><a href="#czesc-6">Probes, resources, skalowanie</a></li>
+    <li><a href="#czesc-7">kubectl — najważniejsze komendy</a></li>
+    <li><a href="#czesc-8">Najczęstsze błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty</h2>
+
+<h3>1.1 Co to jest Kubernetes</h3>
+<p><strong>Kubernetes (K8s)</strong> to platforma do orkiestracji kontenerów — automatycznie deployuje, skaluje, restartuje i balansuje obciążenie aplikacji w klastrze maszyn. Nie budujesz kontenerów (to robi Docker); K8s decyduje <em>gdzie</em> i <em>jak</em> je uruchomić.</p>
+
+<h3>1.2 Jaki problem rozwiązuje</h3>
+<p>Bez orkiestracji: ręczne deploye na VM, brak auto-healingu, skalowanie „ręką”, rolling update = downtime. K8s daje deklaratywny model („chcę 3 repliki tego image”) i control plane, który dąży do desired state.</p>
+
+<h3>1.3 Kluczowe pojęcia w jednym zdaniu</h3>
+<p><strong>Pod</strong> = najmniejsza jednostka (1+ kontenerów). <strong>Deployment</strong> = zarządza replikami Podów. <strong>Service</strong> = stały adres sieciowy do Podów. <strong>Namespace</strong> = logiczna izolacja zasobów.</p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Architektura klastra</h2>
+
+<table>
+  <thead>
+    <tr><th>Komponent</th><th>Rola</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Control plane</strong></td><td>Mózg klastra — API server, scheduler, controller manager, etcd</td></tr>
+    <tr><td><strong>Node (worker)</strong></td><td>Maszyna uruchamiająca Pody — kubelet + kube-proxy + runtime (containerd)</td></tr>
+    <tr><td><strong>API server</strong></td><td>Jedyny punkt wejścia — kubectl i kontrolery rozmawiają z nim</td></tr>
+    <tr><td><strong>etcd</strong></td><td>Baza key-value — przechowuje stan klastra (desired + actual)</td></tr>
+    <tr><td><strong>Scheduler</strong></td><td>Przypisuje nowe Pody do Node'ów (zasoby, affinity, taints)</td></tr>
+    <tr><td><strong>Controller manager</strong></td><td>Pętle kontrolne — Deployment, ReplicaSet, Node controller itd.</td></tr>
+    <tr><td><strong>kubelet</strong></td><td>Agent na Node — uruchamia kontenery, raportuje stan do API</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Desired state vs actual state:</strong> piszesz YAML (desired) → kontrolery obserwują różnice → naprawiają (np. Pod umarł → nowy Pod).</p>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Pod i workloady</h2>
+
+<div class="concept-card">
+  <h3>Pod</h3>
+  <p>Grupa 1+ kontenerów współdzielących network namespace i storage volumes. Krótko żyjący — ma unikalny IP, ale <strong>IP się zmienia</strong> przy restarcie. Rzadko tworzysz Poda bezpośrednio.</p>
+  <pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.25
+    ports:
+    - containerPort: 80</code></pre>
+</div>
+
+<div class="concept-card">
+  <h3>Deployment</h3>
+  <p>Najczęstszy workload — utrzymuje N replik Podów, robi rolling update i rollback. Zarządza ReplicaSetem pod spodem.</p>
+  <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authors-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: authors-api
+  template:
+    metadata:
+      labels:
+        app: authors-api
+    spec:
+      containers:
+      - name: api
+        image: myregistry/authors-api:1.2.0
+        ports:
+        - containerPort: 8080</code></pre>
+</div>
+
+<h3>Inne workloady — kiedy który</h3>
+<table>
+  <thead>
+    <tr><th>Typ</th><th>Kiedy</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Deployment</strong></td><td>Stateless app — API, frontend, worker bez lokalnego stanu</td></tr>
+    <tr><td><strong>StatefulSet</strong></td><td>Stabilna tożsamość (pod-0, pod-1), persistent storage — DB, Kafka</td></tr>
+    <tr><td><strong>DaemonSet</strong></td><td>Po jednym Podzie na każdym Node — log agent, monitoring</td></tr>
+    <tr><td><strong>Job / CronJob</strong></td><td>Jednorazowe / cykliczne zadania — migracje, batch</td></tr>
+  </tbody>
+</table>
+
+<h3>Labels i selectors</h3>
+<p><strong>Labels</strong> — pary klucz/wartość na obiektach (<code>app: authors-api</code>). <strong>Selectors</strong> — jak Service i Deployment znajdują swoje Pody. Bez poprawnych labeli Service nie routuje ruchu — klasyczny bug.</p>
+
+<hr>
+
+<h2 id="czesc-4" class="must-know">Część 4 — Networking</h2>
+
+<h3>4.1 Service — stały adres do dynamicznych Podów</h3>
+<table>
+  <thead>
+    <tr><th>Typ</th><th>Dostęp</th><th>Użycie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>ClusterIP</strong></td><td>Tylko wewnątrz klastra (domyślny)</td><td>Komunikacja między serwisami</td></tr>
+    <tr><td><strong>NodePort</strong></td><td>Port na każdym Node (30000–32767)</td><td>Dev, prosty dostęp z zewnątrz</td></tr>
+    <tr><td><strong>LoadBalancer</strong></td><td>Zewnętrzny LB od cloud providera</td><td>Prod — publiczny endpoint</td></tr>
+    <tr><td><strong>Headless</strong></td><td>ClusterIP: None</td><td>StatefulSet — bezpośredni DNS per Pod</td></tr>
+  </tbody>
+</table>
+
+<pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: authors-api
+spec:
+  selector:
+    app: authors-api
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP</code></pre>
+
+<h3>4.2 Ingress — HTTP routing z zewnątrz</h3>
+<p>Ingress to reguły routingu (host, path → Service). Sam w sobie nie ma IP — wymaga <strong>Ingress Controller</strong> (nginx, traefik, AWS ALB). TLS termination często tutaj.</p>
+<pre><code>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authors
+spec:
+  rules:
+  - host: authors.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: authors-api
+            port:
+              number: 80</code></pre>
+
+<h3>4.3 DNS w klastrze</h3>
+<p>Service <code>authors-api</code> w namespace <code>default</code> → DNS: <code>authors-api.default.svc.cluster.local</code>. Pody mogą się wołać po nazwie Service bez znać IP.</p>
+
+<hr>
+
+<h2 id="czesc-5">Część 5 — Config, Secrets, Storage</h2>
+
+<h3>5.1 ConfigMap i Secret</h3>
+<p><strong>ConfigMap</strong> — dane niesekretne (config files, env). <strong>Secret</strong> — wrażliwe (hasła, tokeny) — base64 w etcd (nie szyfrowanie!), w prod używaj encryption at rest + external secret store.</p>
+<pre><code># Inject jako env
+env:
+- name: DATABASE_URL
+  valueFrom:
+    secretKeyRef:
+      name: db-credentials
+      key: url</code></pre>
+
+<h3>5.2 PersistentVolume (PV) i PVC</h3>
+<p><strong>PV</strong> — zasób storage w klastrze. <strong>PVC</strong> — request na storage przez Pod. Dynamic provisioning tworzy PV automatycznie (np. EBS, Azure Disk). Pod + emptyDir = dane giną przy restarcie Pod.</p>
+
+<hr>
+
+<h2 id="czesc-6" class="must-know">Część 6 — Probes, resources, skalowanie</h2>
+
+<h3>6.1 Health probes</h3>
+<table>
+  <thead>
+    <tr><th>Probe</th><th>Cel</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>livenessProbe</strong></td><td>App żyje? Nie → restart kontenera</td></tr>
+    <tr><td><strong>readinessProbe</strong></td><td>App gotowa na ruch? Nie → wyciągnięcie z Service endpoints</td></tr>
+    <tr><td><strong>startupProbe</strong></td><td>Wolny start — blokuje liveness do pierwszego sukcesu</td></tr>
+  </tbody>
+</table>
+<p><strong>Pułapka:</strong> liveness woła endpoint zależny od DB — DB padnie → restart wszystkich Podów w pętli.</p>
+
+<h3>6.2 Requests i limits</h3>
+<pre><code>resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"      # 0.25 rdzenia
+  limits:
+    memory: "512Mi"
+    cpu: "500m"</code></pre>
+<p><strong>requests</strong> — scheduler używa do placementu. <strong>limits</strong> — max; przekroczenie memory → OOMKill; CPU → throttling.</p>
+
+<h3>6.3 HPA — Horizontal Pod Autoscaler</h3>
+<p>Skaluje liczbę replik Deploymentu na podstawie CPU, memory lub custom metrics. Wymaga metrics-server (CPU/memory) lub Prometheus adapter (custom).</p>
+
+<h3>6.4 Rolling update i rollback</h3>
+<pre><code>kubectl rollout status deployment/authors-api
+kubectl rollout undo deployment/authors-api</code></pre>
+<p>Strategia domyślna: maxUnavailable / maxSurge — zero-downtime deploy przy poprawnej readiness probe.</p>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — kubectl — najważniejsze komendy</h2>
+
+<pre><code># Kontekst i namespace
+kubectl config current-context
+kubectl get ns
+kubectl -n production get pods
+
+# Deploy i debug
+kubectl apply -f deployment.yaml
+kubectl get pods -w
+kubectl describe pod &lt;name&gt;          # Events — pierwsze co czytasz przy CrashLoop
+kubectl logs &lt;pod&gt; [-f] [-c container]
+kubectl exec -it &lt;pod&gt; -- /bin/sh
+
+# Skalowanie i rollout
+kubectl scale deployment/authors-api --replicas=5
+kubectl rollout history deployment/authors-api
+
+# Szybki pod tymczasowy
+kubectl run curl --rm -it --image=curlimages/curl -- sh</code></pre>
+
+<p><strong>Imperative vs declarative:</strong> na prod preferuj <code>apply -f</code> (GitOps) zamiast <code>kubectl run/create</code> ad hoc.</p>
+
+<hr>
+
+<h2 id="czesc-8" class="must-know">Część 8 — Najczęstsze błędy</h2>
+<ol>
+  <li><strong>Brak resource requests</strong> — scheduler nie wie gdzie posadzić; noisy neighbor</li>
+  <li><strong>limits memory = requests</strong> — brak headroom → OOMKill przy spike</li>
+  <li><strong>Liveness = readiness ten sam endpoint</strong> — restart zamiast tylko wyłączenia z LB</li>
+  <li><strong><code>latest</code> tag image</strong> — niedeterministyczny deploy, brak rollbacku</li>
+  <li><strong>Brak label selector match</strong> — Service nie routuje do Podów</li>
+  <li><strong>Stan w emptyDir / lokalnym dysku</strong> — utrata danych przy restarcie</li>
+  <li><strong>Secrets w YAML w Git</strong> — wyciek; użyj Sealed Secrets / Vault</li>
+  <li><strong>Deploy bez readiness probe</strong> — ruch idzie na niedostartowany Pod</li>
+  <li><strong>Ignorowanie <code>describe pod</code> Events</strong> — ImagePullBackOff, CrashLoop widoczne od razu</li>
+  <li><strong>Jeden namespace na wszystko</strong> — brak izolacji dev/staging/prod</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to jest Kubernetes?</strong>
+  <p>Platforma orkiestracji kontenerów — deploy, skalowanie, self-healing, networking.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Co to jest Pod?</strong>
+  <p>Najmniejsza jednostka — 1+ kontenery, wspólny network i volumes; efemeryczny IP.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Pod vs Deployment?</strong>
+  <p>Pod — jednostka runtime. Deployment — kontroler utrzymujący N replik Podów + rolling update.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Co to jest Service?</strong>
+  <p>Stały endpoint (ClusterIP/DNS) do dynamicznie zmieniających się Podów.</p>
+</div>
+<div class="qa-item">
+  <strong>5. ClusterIP vs NodePort vs LoadBalancer?</strong>
+  <p>ClusterIP — wewnątrz klastra. NodePort — port na Node. LoadBalancer — zewnętrzny LB cloud.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Co to jest Ingress?</strong>
+  <p>Reguły HTTP routingu (host/path → Service); wymaga Ingress Controller.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Co to jest namespace?</strong>
+  <p>Logiczna izolacja zasobów w klastrze — dev, staging, prod.</p>
+</div>
+<div class="qa-item">
+  <strong>8. ConfigMap vs Secret?</strong>
+  <p>ConfigMap — config niesekretny. Secret — dane wrażliwe (base64, nie szyfrowanie).</p>
+</div>
+<div class="qa-item">
+  <strong>9. liveness vs readiness?</strong>
+  <p>Liveness — żyje? (restart). Readiness — gotowy na ruch? (endpoint Service).</p>
+</div>
+<div class="qa-item">
+  <strong>10. requests vs limits?</strong>
+  <p>Requests — rezerwacja dla schedulera. Limits — max; przekroczenie memory → OOMKill.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Co to jest etcd?</strong>
+  <p>Baza key-value przechowująca stan klastra — desired i actual state.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Rola kubelet?</strong>
+  <p>Agent na Node — uruchamia kontenery, zgłasza stan do API server.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Co to jest ReplicaSet?</strong>
+  <p>Utrzymuje stałą liczbę replik Podów; Deployment zarządza ReplicaSetem.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Jak sprawdzić logi Poda?</strong>
+  <p><code>kubectl logs &lt;pod&gt; [-f]</code></p>
+</div>
+<div class="qa-item">
+  <strong>15. Co to ImagePullBackOff?</strong>
+  <p>Nie można pobrać image — zła nazwa, brak credentials, registry down.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Desired state vs actual state?</strong>
+  <p>YAML deklaruje desired; kontrolery ciągle naprawiają actual do zgodności.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Deployment vs StatefulSet?</strong>
+  <p>Deployment — stateless, losowe nazwy Podów. StatefulSet — stabilna tożsamość, ordered deploy, PVC per Pod.</p>
+</div>
+<div class="qa-item">
+  <strong>18. Co to taint i toleration?</strong>
+  <p>Taint na Node — „nie schedule'uj tu”. Toleration na Pod — „mogę tu wejść”. Dedicated nodes.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Affinity / anti-affinity?</strong>
+  <p>Reguły schedulera — np. Pody razem na tym samym Node (affinity) lub rozłożone (anti-affinity).</p>
+</div>
+<div class="qa-item">
+  <strong>20. HPA — jak działa?</strong>
+  <p>Obserwuje metryki (CPU/memory/custom) → skaluje replicas Deploymentu w min/max range.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Rolling update — maxSurge / maxUnavailable?</strong>
+  <p>Ile dodatkowych Podów podczas update / ile może być niedostępnych — kontrola zero-downtime.</p>
+</div>
+<div class="qa-item">
+  <strong>22. PV vs PVC?</strong>
+  <p>PV — zasób storage. PVC — claim/request; Pod mountuje PVC, nie PV bezpośrednio.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Headless Service — po co?</strong>
+  <p>ClusterIP: None — DNS zwraca IP każdego Poda; dla StatefulSet, peer discovery.</p>
+</div>
+<div class="qa-item">
+  <strong>24. CNI — co robi?</strong>
+  <p>Plugin sieciowy — przydziela IP Podom, routing między Node'ami (Calico, Flannel, Cilium).</p>
+</div>
+<div class="qa-item">
+  <strong>25. RBAC w K8s?</strong>
+  <p>Role/ClusterRole + RoleBinding — kto (ServiceAccount/user) może co na jakich zasobach.</p>
+</div>
+<div class="qa-item">
+  <strong>26. ServiceAccount — po co?</strong>
+  <p>Tożsamość Poda w klastrze — do RBAC i auth do API (np. sidecar, operator).</p>
+</div>
+<div class="qa-item">
+  <strong>27. GitOps — idea?</strong>
+  <p>Git = source of truth; Argo CD / Flux synchronizuje cluster state z repo (declarative).</p>
+</div>
+<div class="qa-item">
+  <strong>28. Helm — po co?</strong>
+  <p>Package manager — charty z templatami, values per env, wersjonowane release.</p>
+</div>
+<div class="qa-item">
+  <strong>29. Pod Disruption Budget (PDB)?</strong>
+  <p>Min dostępnych replik podczas voluntary disruption (node drain, cluster upgrade).</p>
+</div>
+<div class="qa-item">
+  <strong>30. Sidecar pattern?</strong>
+  <p>Dodatkowy kontener w Pod — proxy (Envoy), log shipper, config reloader obok app.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy Pod IP jest stały?</strong>
+  <p>Nie — zmienia się przy restarcie; używaj Service DNS.</p>
+</div>
+<div class="qa-item">
+  <strong>32. Czy Secret jest szyfrowany domyślnie?</strong>
+  <p>Nie — base64 w etcd; w prod włącz encryption at rest + external secrets.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Restart Deployment = nowy Pod?</strong>
+  <p>Tak — nowe Pody, nowe IP; stan lokalny ginie (bez PVC).</p>
+</div>
+<div class="qa-item">
+  <strong>34. Czy <code>kubectl delete pod</code> kasuje Deployment?</strong>
+  <p>Nie — Deployment tworzy nowy Pod (self-healing).</p>
+</div>
+<div class="qa-item">
+  <strong>35. Liveness sprawdza DB — problem?</strong>
+  <p>Tak — pad DB → wszystkie Pody restartowane w pętli; DB sprawdzaj w readiness.</p>
+</div>
+<div class="qa-item">
+  <strong>36. <code>latest</code> tag — problem?</strong>
+  <p>Tak — <code>imagePullPolicy: Always</code>, niedeterministyczny deploy, trudny rollback.</p>
+</div>
+<div class="qa-item">
+  <strong>37. Czy jeden kontener = jeden Pod zawsze?</strong>
+  <p>Nie — sidecary w tym samym Pod; ale Pod to granica skalowania i sieci.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Scheduler vs kubelet?</strong>
+  <p>Scheduler — wybiera Node. Kubelet — uruchamia kontenery na wybranym Node.</p>
+</div>
+<div class="qa-item">
+  <strong>39. CrashLoopBackOff — pierwsze kroki?</strong>
+  <p><code>kubectl logs</code>, <code>describe pod</code> Events, sprawdź command/args, env, probes.</p>
+</div>
+<div class="qa-item">
+  <strong>40. K8s vs Docker Compose?</strong>
+  <p>Compose — dev, jedna maszyna. K8s — prod cluster, self-healing, skalowanie, networking multi-node.</p>
+</div>
+
+</body>
+</html>

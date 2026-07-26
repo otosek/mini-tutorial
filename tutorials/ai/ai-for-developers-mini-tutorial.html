@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI dla programistów — newsy i opinie</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6366f1;
+      --pro: #166534;
+      --con: #991b1b;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef2ff; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .opinion {
+      border-left: 4px solid var(--accent);
+      background: #f5f3ff;
+      padding: 0.75rem 1rem;
+      margin: 0.75rem 0;
+      font-size: 0.92rem;
+    }
+
+    .opinion strong { color: var(--accent); }
+
+    .pro { color: var(--pro); font-weight: 600; }
+    .con { color: var(--con); font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>AI dla programistów — newsy i opinie</h1>
+<p class="meta">Krótszy tutorial · narzędzia, workflow, hype vs praktyka · stan 2025–2026<br>
+Bez pytań rekrutacyjnych · opinie = doświadczenie zespołów, nie prognozy giełdy</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#stan">Gdzie jesteśmy</a></li>
+    <li><a href="#narzedzia">Narzędzia dev</a></li>
+    <li><a href="#workflow">Workflow z AI</a></li>
+    <li><a href="#agenci">Agenci i automatyzacja</a></li>
+    <li><a href="#kod">AI a jakość kodu</a></li>
+    <li><a href="#corp">Enterprise i compliance</a></li>
+    <li><a href="#newsy">Newsy / trendy</a></li>
+    <li><a href="#opinie">Opinie (za i przeciw)</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="stan">Gdzie jesteśmy (2025–2026)</h2>
+
+<p>AI w programowaniu przeszło z „autouzupełniania linii” do <strong>całych sesji w IDE</strong>: chat z kontekstem repo, edycja wielu plików, terminal, reguły projektu, subagenci. To nie zastępuje inżyniera — zmienia <strong>tempo</strong> pisania boilerplate, eksploracji i debugowania.</p>
+
+<table>
+  <thead><tr><th>Faza</th><th>Co było</th><th>Co jest</th></tr></thead>
+  <tbody>
+    <tr><td>2021–22</td><td>Copilot = sugestia następnej linii</td><td>Mało kontekstu projektu</td></tr>
+    <tr><td>2023–24</td><td>Chat w IDE, @-mentions plików</td><td>Refactor w wielu plikach</td></tr>
+    <tr><td>2025–26</td><td>Agenci, reguły, MCP, cloud agents</td><td>Dłuższe zadania autonomiczne (z nadzorem)</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Must know ★</strong>
+  <p>Model nie „wie” Twojego projektu — widzi to, co dasz w kontekście (otwarte pliki, rules, grep, indeks repo). Im lepszy kontekst, tym mniej halucynacji.</p>
+</div>
+
+<hr>
+
+<h2 id="narzedzia">Narzędzia dla programistów</h2>
+
+<table>
+  <thead><tr><th>Typ</th><th>Przykłady</th><th>Do czego</th></tr></thead>
+  <tbody>
+    <tr><td>IDE + agent</td><td>Cursor, Windsurf, JetBrains AI</td><td>Codzienna praca, diff, terminal</td></tr>
+    <tr><td>Plugin w IDE</td><td>GitHub Copilot, Continue</td><td>Inline completion + chat</td></tr>
+    <tr><td>Chat standalone</td><td>ChatGPT, Claude, Gemini</td><td>Architektura, wyjaśnienia, pseudokod</td></tr>
+    <tr><td>Code review bot</td><td>Bugbot, CodeRabbit, własne CI</td><td>PR review, security scan</td></tr>
+    <tr><td>CLI / SDK</td><td>Cursor CLI, OpenAI API, Anthropic API</td><td>Automatyzacja, własne narzędzia</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Modele</strong> (stan 2026): Claude, GPT, Gemini — rotacja „najlepszego” co kwartał. W praktyce: wybierz model dostępny w Twoim IDE + polityce firmy; nie uzależniaj procesu od jednego vendora bez fallbacku.</p>
+
+<hr>
+
+<h2 id="workflow" class="must-know">Workflow z AI — co działa</h2>
+
+<ol>
+  <li><strong>Małe zadania</strong> — jeden plik, jeden bug, jeden test → szybki zysk</li>
+  <li><strong>Reguły projektu</strong> — <code>.cursor/rules</code>, AGENTS.md: stack, konwencje, czego nie dotykać</li>
+  <li><strong>Review diff</strong> — AI generuje, człowiek akceptuje linia po linii (jak junior)</li>
+  <li><strong>Exploration</strong> — „gdzie jest X?”, „jak działa flow Y?” — szybsze niż solo grep</li>
+  <li><strong>Testy i edge cases</strong> — AI dobry w wypisywaniu przypadków, które pominąłeś</li>
+  <li><strong>Dokumentacja / tutorial HTML</strong> — szablony, spójność; weryfikuj fakty</li>
+</ol>
+
+<div class="opinion">
+  <strong>Opinia:</strong> Największy ROI to nie „napisz mi całą aplikację”, tylko <strong>skrócenie pętli</strong> read → write → test → fix o 30–50% na znanym stacku.
+</div>
+
+<hr>
+
+<h2 id="agenci">Agenci i automatyzacja</h2>
+
+<p><strong>Agent</strong> = model + narzędzia (pliki, shell, grep, MCP) + pętla aż do „done”. Trend: Cloud Agents (PR z issue), Bugbot na CI, background tasks w IDE.</p>
+
+<table>
+  <thead><tr><th>Plus</th><th>Minus</th></tr></thead>
+  <tbody>
+    <tr><td>Refactor 10 plików overnight</td><td>Może zepsuć więcej niż człowiek w pośpiechu</td></tr>
+    <tr><td>CI fix loop</td><td>Koszt tokenów + czas review</td></tr>
+    <tr><td>MCP — baza, Jira, Slack w kontekście</td><td>Nowy attack surface / wycieki</td></tr>
+  </tbody>
+</table>
+
+<p><strong>MCP (Model Context Protocol)</strong> — standard podpinania zewnętrznych źródeł do agenta. Praktycznie: czytaj dokumentację wewnętrzną, tickety — bez kopiowania do chatu ręcznie.</p>
+
+<hr>
+
+<h2 id="kod">AI a jakość kodu</h2>
+
+<table>
+  <thead><tr><th>Obszar</th><th>Realistycznie</th></tr></thead>
+  <tbody>
+    <tr><td>Boilerplate, CRUD, DTO</td><td class="pro">Szybciej</td></tr>
+    <tr><td>Algorytmy nietypowe</td><td class="con">Sprawdź 2×, często błędy subtelne</td></tr>
+    <tr><td>Security (auth, crypto)</td><td class="con">Nigdy blind trust — review senior</td></tr>
+    <tr><td>Legacy bez kontekstu</td><td class="con">Halucynuje API, które nie istnieją</td></tr>
+    <tr><td>Testy</td><td class="pro">Dobre szkielety; asercje wymagają wiedzy domeny</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Halucynacja</strong>
+  <p>Model podaje pewnie brzmiącą bibliotekę/metodę, której nie ma. Lekarstwo: uruchom kod, test, linter — nie ufaj samemu chatowi.</p>
+</div>
+
+<hr>
+
+<h2 id="corp">Enterprise i compliance</h2>
+<ul>
+  <li><strong>Polityka danych</strong> — czy kod źródłowy może iść do chmury modelu? (on-prem / VPC / zero retention)</li>
+  <li><strong>Secrets</strong> — AI wklei klucz do promptu; hooki i .gitignore obowiązkowe</li>
+  <li><strong>Audit</strong> — kto zaakceptował diff od agenta? Ten sam proces co PR od człowieka</li>
+  <li><strong>Licencje</strong> — output AI a copyright (szara strefa; polityka prawna firmy)</li>
+  <li><strong>SOC2 / ISO</strong> — vendor AI w due diligence</li>
+</ul>
+
+<hr>
+
+<h2 id="newsy">Newsy i trendy (skrót)</h2>
+
+<table>
+  <thead><tr><th>Trend</th><th>Co to znaczy dla deva</th></tr></thead>
+  <tbody>
+    <tr><td>Agenci w IDE i CI</td><td>Mniej ręcznego klikania, więcej nadzoru nad diffem</td></tr>
+    <tr><td>Reguły / skills / pamięć projektu</td><td>Standaryzacja w zespole — „jak używamy AI tu”</td></tr>
+    <tr><td>MCP ecosystem</td><td>Integracje: DB read-only, Linear, Datadog</td></tr>
+    <tr><td>Większe okna kontekstu</td><td>Całe repo w teorii — w praktyce i tak kurujesz pliki</td></tr>
+    <tr><td>Multimodal (screen, diagram)</td><td>Mockup → kod UI — szybkie prototypy</td></tr>
+    <tr><td>Local / open models</td><td>Ollama, Llama — offline, słabsze niż frontier na trudnym kodzie</td></tr>
+    <tr><td>AI w rekrutacji</td><td>Live coding z Copilotem — inne kryteria niż 2019</td></tr>
+    <tr><td>Vibe coding</td><td>Bez review = dług techniczny w tempie rekordowym</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="opinie">Opinie — za i przeciw</h2>
+
+<h3><span class="pro">Za</span></h3>
+<ul>
+  <li>Demokratyzacja boilerplate — mniej czasu na szukanie składni</li>
+  <li>Onboarding w obcym repo — szybsze „gdzie co jest”</li>
+  <li>Dokumentacja i tutoriale — pierwszy szkic w minuty</li>
+  <li>Dostępność — junior z dobrym procesem review nie stoi w miejscu</li>
+  <li>Automatyzacja nudnych refaktorów (rename, migracja API)</li>
+</ul>
+
+<h3><span class="con">Przeciw / ryzyka</span></h3>
+<ul>
+  <li>Atrofia umiejętności — „nie czytam kodu, tylko akceptuję”</li>
+  <li>Jednolity „AI smell” — ten sam styl, te same błędy w całej branży</li>
+  <li>Fałszywe poczucie bezpieczeństwa na security-critical code</li>
+  <li>Koszt subskrypcji × zespół vs realny zysk (mierz, nie wierz na słowo)</li>
+  <li>Vendor lock-in na workflow IDE</li>
+</ul>
+
+<div class="opinion">
+  <strong>Opinia:</strong> AI to <strong>super-charged Stack Overflow</strong>, nie architekt. Decyzje (bounded context, transakcje, auth) nadal Twoje. Model nie poniesie odpowiedzialności za prod incident.
+</div>
+
+<div class="opinion">
+  <strong>Opinia:</strong> Zespoły, które wygrywają, traktują AI jak <strong>bardzo szybkiego stażystę</strong> — zawsze z review, testami i regułami repo. Zespoły, które przegrają — „ship without reading”.
+</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li>Brak reguł projektu — AI generuje inny styl w każdym pliku</li>
+  <li>Akceptacja diffu bez uruchomienia testów</li>
+  <li>Wklejanie secrets / PII do chatu</li>
+  <li>„Napisz cały mikroserwis” bez iteracji i granic</li>
+  <li>Ufanie wersjom API z pamięci modelu (stare Java/Spring/React)</li>
+  <li>Ignorowanie polityki firmy — shadow IT z własnym ChatGPT</li>
+  <li>Brak pomiaru — „czujemy, że szybciej” bez metryk cycle time</li>
+  <li>Rezygnacja z code review „bo AI sprawdziło”</li>
+</ol>
+
+<hr>
+
+<p class="meta"><strong>Praktyczny start w projekcie nano-tutorials:</strong> reguły w <code>.cursor/rules/</code> (<code>mini-tutorial-html.mdc</code>) · czytelna wersja w <code>tutorials/tutorial-generator-rules.html</code> · review każdego diffu · testy po każdej większej zmianie od agenta.</p>
+
+</body>
+</html>

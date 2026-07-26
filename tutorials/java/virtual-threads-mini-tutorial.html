@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Java Virtual Threads — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #059669;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #ecfdf5; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>Java Virtual Threads — mini-tutorial</h1>
+<p class="meta">Project Loom · Java 21+ · lekki wątek na każde zadanie · pinning · kiedy używać · pytania rekrutacyjne<br>
+Format: HTML (otwórz w przeglądarce — podwójne kliknięcie lub przeciągnij na kartę)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty</a></li>
+    <li><a href="#czesc-2">Platform vs Virtual</a></li>
+    <li><a href="#czesc-3">Jak to działa pod spodem</a></li>
+    <li><a href="#czesc-4">Tworzenie i API</a></li>
+    <li><a href="#czesc-5">Kiedy używać / kiedy nie</a></li>
+    <li><a href="#czesc-6">Pinning</a></li>
+    <li><a href="#czesc-7">ThreadLocal, ScopedValue, Structured Concurrency</a></li>
+    <li><a href="#czesc-8">Integracja (Spring, JDBC, HTTP)</a></li>
+    <li><a href="#czesc-9">Najczęstsze błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty</h2>
+
+<h3>1.1 Co to są Virtual Threads</h3>
+<p><strong>Virtual thread</strong> (wątek wirtualny) to lekki wątek zarządzany przez JVM, a nie przez system operacyjny. Od Java 21 są standardem (Project Loom). API wygląda jak zwykły <code>Thread</code>, ale koszt utworzenia i blokady I/O jest orders of magnitude niższy niż u platform thread.</p>
+
+<h3>1.2 Jaki problem rozwiązują</h3>
+<p>Platform thread = 1:1 z wątkiem OS. Każdy zajmuje ~1 MB stosu, tworzenie i przełączanie kontekstu jest drogie. Model „thread pool + N wątków” nie skaluje się do dziesiątek tysięcy równoczesnych połączeń (HTTP, DB, socket). Virtual threads pozwalają napisać <strong>prosty kod synchroniczny</strong> (jak zawsze) i mimo to obsłużyć ogromną liczbę równoległych zadań I/O-bound.</p>
+
+<h3>1.3 Ważna zasada</h3>
+<p>Virtual threads to <strong>nie szybsze CPU</strong> — to tańsze oczekiwanie. Nie zastępują <code>parallelStream()</code> ani wątków do obliczeń. Zastępują sztuczne limity pooli przy zadaniach, które głównie czekają.</p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Platform thread vs Virtual thread</h2>
+
+<table>
+  <thead>
+    <tr><th></th><th>Platform thread</th><th>Virtual thread</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Mapowanie</strong></td><td>1 wątek JVM = 1 wątek OS</td><td>M wirtualnych na N platform (carrier)</td></tr>
+    <tr><td><strong>Koszt utworzenia</strong></td><td>Duży (~ms, MB stosu)</td><td>Bardzo mały (~µs, KB)</td></tr>
+    <tr><td><strong>Skala</strong></td><td>Tysiące — trudno</td><td>Miliony — realne</td></tr>
+    <tr><td><strong>Blokada I/O</strong></td><td>Blokuje wątek OS</td><td>Wątek wirtualny „odpinany”, carrier wolny</td></tr>
+    <tr><td><strong>Typ zadania</strong></td><td>CPU-bound, długie obliczenia</td><td>I/O-bound, request-per-task</td></tr>
+    <tr><td><strong>Identyfikacja</strong></td><td><code>thread.isVirtual() == false</code></td><td><code>thread.isVirtual() == true</code></td></tr>
+  </tbody>
+</table>
+
+<p><strong>Przypomnienie:</strong> platform thread to „klasyczny” <code>new Thread(...)</code> lub wątki z puli <code>Executors.newFixedThreadPool(n)</code>.</p>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Jak to działa pod spodem</h2>
+
+<h3>3.1 Carrier threads (wątki nośne)</h3>
+<p>JVM utrzymuje małą pulę platform threads (domyślnie ≈ liczba rdzeni). To <strong>carriers</strong>. Virtual thread wykonuje kod na carrierze; gdy trafia na blokujące I/O, JVM go <strong>odpina</strong> (unmount) — carrier dostaje inny virtual thread. Po I/O virtual thread wraca na wolny carrier.</p>
+
+<h3>3.2 Continuations</h3>
+<p>Pod spodem Loom używa <strong>continuations</strong> — możliwość wstrzymania i wznowienia wykonania bez blokowania OS thread. To umożliwia „parkowanie” virtual thread przy <code>read()</code>, <code>sleep()</code>, <code>LockSupport.park()</code> itd.</p>
+
+<h3>3.3 Scheduler</h3>
+<p>Domyślny scheduler to <code>ForkJoinPool</code> w trybie work-stealing (<code>VirtualThreadScheduler</code>). Nie musisz go konfigurować na start — ważne, żeby wiedzieć: carriers ≠ twoja stara pula biznesowa; to osobna infrastruktura JVM.</p>
+
+<hr>
+
+<h2 id="czesc-4">Część 4 — Tworzenie i API</h2>
+
+<h3>4.1 Sposoby utworzenia</h3>
+<pre><code>// 1. Skrót
+Thread.startVirtualThread(() -&gt; doWork());
+
+// 2. Builder (zalecany — nazwa, handler wyjątków)
+Thread.ofVirtual()
+    .name("worker-", 0)
+    .uncaughtExceptionHandler((t, e) -&gt; log.error("fail", e))
+    .start(() -&gt; doWork());
+
+// 3. Executor — jeden virtual thread na zadanie (najczęstszy w serwisach)
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    executor.submit(() -&gt; doWork());
+}</code></pre>
+
+<h3>4.2 Czego NIE robić</h3>
+<pre><code>// ŹLE — pool virtual threads (antywzorzec!)
+Executors.newFixedThreadPool(200, Thread.ofVirtual().factory());
+
+// DOBRZE — jeden virtual thread na zadanie
+Executors.newVirtualThreadPerTaskExecutor();</code></pre>
+<p>Pula virtual threads nie ma sensu — są tak tanie, że tworzysz nowy na każde zadanie. Limitowanie sztucznie odtwarza problem platform threads.</p>
+
+<h3>4.3 <code>Thread.ofPlatform()</code> vs <code>Thread.ofVirtual()</code></h3>
+<p>Od Java 21 oba buildery są w API. Explicit: platform thread gdy potrzebujesz prawdziwego OS thread (np. pin native code, specyficzne wymagania). Reszta — virtual.</p>
+
+<hr>
+
+<h2 id="czesc-5" class="must-know">Część 5 — Kiedy używać / kiedy nie</h2>
+
+<h3>5.1 Używaj — I/O-bound</h3>
+<ul>
+  <li>Serwer HTTP — request = virtual thread (Tomcat 10.1+, Spring Boot 3.2+)</li>
+  <li>Wiele równoległych wywołań HTTP/DB/gRPC</li>
+  <li>Kod synchroniczny zamiast callbacków / reactive stacku</li>
+  <li>Wysoka liczba równoczesnych sesji czekających na sieć</li>
+</ul>
+
+<h3>5.2 Nie używaj (lub ostrożnie) — CPU-bound</h3>
+<ul>
+  <li>Ciężkie obliczenia, kompresja, kryptografia — użyj <code>ExecutorService</code> z platform threads lub <code>parallelStream</code> z limitem</li>
+  <li>Kod z masą <code>synchronized</code> na hot path — pinning (patrz część 6)</li>
+  <li>Biblioteki thread-local heavy bez refaktoru</li>
+</ul>
+
+<h3>5.3 Złota reguła</h3>
+<p><strong>„Virtual thread per task”</strong> dla I/O. <strong>„Platform thread pool”</strong> (mały, = rdzenie) dla CPU. Nie mieszaj modeli bez powodu.</p>
+
+<hr>
+
+<h2 id="czesc-6" class="must-know">Część 6 — Pinning</h2>
+
+<h3>6.1 Co to jest</h3>
+<p><strong>Pinning</strong> — virtual thread nie może się odpinać od carrier w trakcie blokady, więc carrier jest zajęty jak stary platform thread. Tracisz korzyść Loom.</p>
+
+<h3>6.2 Kiedy występuje</h3>
+<table>
+  <thead>
+    <tr><th>Przyczyna</th><th>Szczegóły</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>synchronized</code></td><td>Blokada w synchronized method/block — pin do JDK 24; potem częściowo łagodzone</td></tr>
+    <tr><td>Native code / JNI</td><td>Kod natywny może pinować carrier</td></tr>
+    <tr><td>Niektóre operacje w starych bibliotekach</td><td>Stare drivery, legacy locki</td></tr>
+  </tbody>
+</table>
+
+<h3>6.3 Jak wykryć</h3>
+<pre><code>// JVM flag
+-Djdk.tracePinnedThreads=full   // log przy pinowaniu
+-Djdk.tracePinnedThreads=short</code></pre>
+
+<h3>6.4 Jak naprawić</h3>
+<ul>
+  <li>Zamień <code>synchronized</code> na <code>ReentrantLock</code> — nie pinuje (używa <code>LockSupport</code>)</li>
+  <li>Aktualizuj biblioteki (JDBC drivers, connection pool — nowsze wersje Loom-aware)</li>
+  <li>Unikaj długich sekcji <code>synchronized</code> w kodzie na virtual threads</li>
+</ul>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — ThreadLocal, ScopedValue, Structured Concurrency</h2>
+
+<h3>7.1 ThreadLocal</h3>
+<p>Virtual threads mają własny <code>ThreadLocal</code>, ale przy milionach wątków — <strong>problem pamięci</strong>. Każdy ThreadLocal × milion wątków = dużo RAM. Unikaj ThreadLocal na hot path; preferuj przekazywanie kontekstu explicite.</p>
+
+<h3>7.2 ScopedValue (zamiennik ThreadLocal)</h3>
+<p><code>ScopedValue</code> — immutable kontekst wiązany z zakresem (<code>ScopedValue.where(...).run(...)</code>). Lepszy dla virtual threads: dzielony, tanie dziedziczenie w structured concurrency. W Java 21+ w preview/incubator — warto znać kierunek.</p>
+
+<h3>7.3 Structured Concurrency (JEP 462 — Java 21+ preview, stabilizacja w kolejnych wersjach)</h3>
+<pre><code>try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+    Subtask&lt;String&gt; user = scope.fork(() -&gt; fetchUser(id));
+    Subtask&lt;List&lt;Order&gt;&gt; orders = scope.fork(() -&gt; fetchOrders(id));
+    scope.join();
+    scope.throwIfFailed();
+    return combine(user.get(), orders.get());
+}</code></pre>
+<p>Grupuje powiązane virtual threads w hierarchię — anulowanie rodzica = anulowanie dzieci. Lepsze zarządzanie cyklem życia niż „gołe” <code>submit()</code>.</p>
+
+<hr>
+
+<h2 id="czesc-8">Część 8 — Integracja (Spring, JDBC, HTTP)</h2>
+
+<h3>8.1 Spring Boot 3.2+</h3>
+<pre><code># application.properties
+spring.threads.virtual.enabled=true</code></pre>
+<p>Włącza virtual threads dla Tomcat (request handling) i <code>@Async</code> (jeśli skonfigurowane). Prosty sposób na przetestowanie Loom w istniejącej aplikacji.</p>
+
+<h3>8.2 JDBC / connection pool</h3>
+<p>Blokujące <code>Connection</code> jest OK na virtual thread — wątek się odpnie, carrier robi co innego. Upewnij się, że pool (HikariCP) ma sensowny <code>maximumPoolSize</code> — to limit połączeń DB, nie wątków. Virtual threads ≠ nieskończone połączenia do bazy.</p>
+
+<h3>8.3 Reactive (WebFlux) vs Virtual threads</h3>
+<p>WebFlux — non-blocking end-to-end, mniej wątków, bardziej złożony kod. Virtual threads — blocking code, prostszy mental model. Dla typowego Spring MVC + JDBC virtual threads często wystarczą bez przepisywania na reactive.</p>
+
+<hr>
+
+<h2 id="czesc-9" class="must-know">Część 9 — Najczęstsze błędy na początku</h2>
+<ol>
+  <li><strong>Pula virtual threads</strong> — <code>newFixedThreadPool</code> + virtual factory — antywzorzec</li>
+  <li><strong>Oczekiwanie szybszego CPU</strong> — Loom nie przyspiesza obliczeń</li>
+  <li><strong>Ignorowanie pinningu</strong> — <code>synchronized</code> w bibliotece blokuje skalowanie</li>
+  <li><strong>ThreadLocal everywhere</strong> — wyciek pamięci przy masie wątków</li>
+  <li><strong>Brak limitu na DB pool</strong> — 100k virtual threads × 1 query = zalanie bazy</li>
+  <li><strong><code>ThreadLocal</code> z mutable state</strong> — trudne bugi przy migracji z platform pool</li>
+  <li><strong>Mieszanie modeli</strong> — część kodu reactive, część virtual — chaos</li>
+  <li><strong><code>ForkJoinPool.commonPool()</code> dla I/O</strong> — to pool CPU, nie do blokującego I/O</li>
+  <li><strong>Zakładanie, że <code>thread.getName()</code> = stały carrier</strong> — virtual thread może skakać między carriers</li>
+  <li><strong>Brak monitorowania</strong> — metryki: liczba virtual threads, pinned threads, carrier utilization</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to jest virtual thread?</strong>
+  <p>Lekki wątek JVM mapowany na małą pulę platform threads — tani w tworzeniu i przy blokadzie I/O.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Od której wersji Java?</strong>
+  <p>Java 21 — final feature (Project Loom).</p>
+</div>
+<div class="qa-item">
+  <strong>3. Virtual vs platform thread?</strong>
+  <p>Platform = 1:1 z OS, drogi. Virtual = M:N na carriers, tani, do I/O-bound.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Jak utworzyć virtual thread?</strong>
+  <p><code>Thread.startVirtualThread()</code>, <code>Thread.ofVirtual().start()</code>, <code>Executors.newVirtualThreadPerTaskExecutor()</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Czy virtual threads przyspieszają CPU?</strong>
+  <p>Nie — przyspieszają skalowanie zadań I/O-bound, nie obliczenia.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Co to jest carrier thread?</strong>
+  <p>Platform thread z puli JVM, na którym chwilowo wykonuje się virtual thread.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Dlaczego nie robić puli virtual threads?</strong>
+  <p>Są tak tanie, że sztuczne limitowanie odtwarza problem starych pooli.</p>
+</div>
+<div class="qa-item">
+  <strong>8. <code>thread.isVirtual()</code> — po co?</strong>
+  <p>Sprawdzenie, czy bieżący wątek jest virtual czy platform.</p>
+</div>
+<div class="qa-item">
+  <strong>9. Kiedy używać virtual threads?</strong>
+  <p>Wiele równoczesnych zadań I/O — HTTP, DB, socket, czekanie na sieć.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Co to jest pinning?</strong>
+  <p>Virtual thread nie może się odpinać od carrier — carrier zablokowany jak platform thread.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Co powoduje pinning?</strong>
+  <p><code>synchronized</code>, native code, niektóre stare biblioteki.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Jak uniknąć pinningu w lockach?</strong>
+  <p>Użyj <code>ReentrantLock</code> zamiast <code>synchronized</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Czy blocking JDBC jest OK na virtual thread?</strong>
+  <p>Tak — wątek się odpnie; carrier robi co innego. Limit to pool połączeń DB, nie wątki.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Spring Boot — jak włączyć?</strong>
+  <p><code>spring.threads.virtual.enabled=true</code> (Boot 3.2+).</p>
+</div>
+<div class="qa-item">
+  <strong>15. Virtual threads vs reactive (WebFlux)?</strong>
+  <p>Virtual = prosty blocking code, dużo wątków. Reactive = non-blocking, mało wątków, wyższa złożoność.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Jak działa unmount przy I/O?</strong>
+  <p>JVM parkuje continuation virtual thread; carrier bierze inny. Po I/O — mount na wolnym carrierze.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Domyślny scheduler virtual threads?</strong>
+  <p><code>ForkJoinPool</code> work-stealing — liczba carriers ≈ rdzenie CPU (domyślnie).</p>
+</div>
+<div class="qa-item">
+  <strong>18. <code>-Djdk.tracePinnedThreads</code> — po co?</strong>
+  <p>Diagnostyka — log stack trace gdy virtual thread jest pinowany.</p>
+</div>
+<div class="qa-item">
+  <strong>19. ThreadLocal + virtual threads — problem?</strong>
+  <p>Miliony wątków × ThreadLocal = duża pamięć; preferuj ScopedValue lub explicit context.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Co to jest ScopedValue?</strong>
+  <p>Immutable kontekst wiązany ze scope — bezpieczniejszy zamiennik ThreadLocal dla Loom.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Structured Concurrency — idea?</strong>
+  <p>Hierarchia zadań: anulowanie/shutdown rodzica = dzieci. <code>StructuredTaskScope</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Czy <code>CompletableFuture.supplyAsync()</code> używa virtual threads?</strong>
+  <p>Domyślnie nie — używa <code>ForkJoinPool.commonPool()</code>. Trzeba podać własny executor.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Jak podać virtual executor do <code>supplyAsync</code>?</strong>
+  <p><code>supplyAsync(task, Executors.newVirtualThreadPerTaskExecutor())</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>24. HikariCP + virtual threads — na co uważać?</strong>
+  <p><code>maximumPoolSize</code> limituje połączenia DB — virtual threads mogą czekać w kolejce poola.</p>
+</div>
+<div class="qa-item">
+  <strong>25. Tomcat z virtual threads?</strong>
+  <p>Tomcat 10.1+ — <code>VirtualThreadExecutor</code>; jeden virtual thread na request zamiast platform pool.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Czy <code>parallelStream()</code> korzysta z virtual threads?</strong>
+  <p>Nie — używa <code>ForkJoinPool.commonPool()</code> (platform). Osobne modele.</p>
+</div>
+<div class="qa-item">
+  <strong>27. Migracja z <code>FixedThreadPool(200)</code> — co zamiast?</strong>
+  <p><code>newVirtualThreadPerTaskExecutor()</code> — bez sztywnego limitu 200; ewentualnie semafory na zasoby zewnętrzne.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Semaphore vs thread pool limit?</strong>
+  <p>Semaphore limituje dostęp do zasobu (DB, API); virtual threads mogą czekać tanio bez blokowania carriers (jeśli bez pin).</p>
+</div>
+<div class="qa-item">
+  <strong>29. Continuation — co to?</strong>
+  <p>Mechanizm Loom: wstrzymanie/wznowienie wykonania bez blokowania OS thread.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Monitoring virtual threads w produkcji?</strong>
+  <p>JFR events (<code>jdk.VirtualThread*</code>), Micrometer, liczba pinned threads, queue HikariCP.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy każdy virtual thread = osobny OS thread?</strong>
+  <p>Nie — wiele virtual na małej liczbie carriers.</p>
+</div>
+<div class="qa-item">
+  <strong>32. Czy <code>synchronized</code> zawsze pinuje?</strong>
+  <p>W praktyce tak (JDK 21–24); JDK pracuje nad redukcją. Bezpieczniej <code>ReentrantLock</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Czy więcej virtual threads = więcej połączeń DB?</strong>
+  <p>Nie automatycznie — limituje connection pool, nie liczba wątków.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Czy virtual thread może zmienić carrier w trakcie?</strong>
+  <p>Tak — między mount/unmount; nie zakładaj affinity do OS thread.</p>
+</div>
+<div class="qa-item">
+  <strong>35. <code>Thread.sleep()</code> na virtual thread?</strong>
+  <p>OK — wątek się odpnie, carrier wolny.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Czy Loom zastępuje reactive programming?</strong>
+  <p>Nie w pełni — reactive nadal lepsze gdy cały stack non-blocking; Loom upraszcza blocking MVC.</p>
+</div>
+<div class="qa-item">
+  <strong>37. <code>InheritedThreadLocal</code> + virtual threads?</strong>
+  <p>Działa, ale koszt pamięci przy masowej skali — unikaj lub używaj ScopedValue.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Czy <code>Object.wait()</code> pinuje?</strong>
+  <p>Tak — jak <code>synchronized</code>; trzyma monitor i carrier.</p>
+</div>
+<div class="qa-item">
+  <strong>39. ExecutorService z virtual threads — shutdown?</strong>
+  <p>Try-with-resources (<code>AutoCloseable</code>) lub <code>shutdown()</code> + <code>awaitTermination</code> — jak zwykły executor.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Project Loom vs „green threads” sprzed lat?</strong>
+  <p>Podobna idea (lekki wątek), ale Loom integruje z OS I/O (blocking syscalls), carriers i istniejącym API <code>Thread</code> — nie green threads Javy 1.1.</p>
+</div>
+
+</body>
+</html>

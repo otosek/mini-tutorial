@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Query · Router · Hook Form — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #7c3aed;
+      --rq: #ef4444;
+      --rr: #ca8a04;
+      --rhf: #2563eb;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .lib-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+      vertical-align: middle;
+    }
+    .tag-rq { background: #fee2e2; color: #991b1b; }
+    .tag-rr { background: #fef3c7; color: #92400e; }
+    .tag-rhf { background: #dbeafe; color: #1e40af; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f5f3ff; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .hook-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+
+    .hook-card h3 { margin-top: 0; }
+
+    .flow-box {
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>React Query · React Router · React Hook Form</h1>
+<p class="meta">Jeden tutorial · nacisk na hooki · przykłady z projektu <strong>react-authors</strong><br>
+Format: HTML (podwójne kliknięcie w przeglądarce)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-0">Jak to działa razem</a></li>
+    <li><a href="#react-query">TanStack React Query — hooki</a></li>
+    <li><a href="#react-router">React Router — hooki</a></li>
+    <li><a href="#react-hook-form">React Hook Form — hooki</a></li>
+    <li><a href="#razem">Przepływ w AuthorsPage</a></li>
+    <li><a href="#bledy">Najczęstsze błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-0">Część 0 — Jak to działa razem</h2>
+
+<div class="flow-box">
+<pre><code>main.tsx
+  QueryClientProvider          ← cache serwerowy (React Query)
+    RouterProvider             ← nawigacja URL (React Router)
+      RootLayout + Outlet
+        AuthorsPage
+          useAuthors()         ← useQuery + useMutation
+          AuthorForm           ← useForm + zodResolver
+            register / errors</code></pre>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Biblioteka</th><th>Odpowiada na</th><th>Główny hook</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span class="lib-tag tag-rq">React Query</span></td><td>Skąd dane? Kiedy odświeżyć?</td><td><code>useQuery</code>, <code>useMutation</code></td></tr>
+    <tr><td><span class="lib-tag tag-rr">React Router</span></td><td>Co pokazać dla URL?</td><td><code>useNavigate</code>, <code>useParams</code></td></tr>
+    <tr><td><span class="lib-tag tag-rhf">Hook Form</span></td><td>Jak obsłużyć formularz?</td><td><code>useForm</code></td></tr>
+  </tbody>
+</table>
+
+<p><strong>Podział stanu:</strong> React Query = dane serwerowe (lista autorów). <code>useState</code> = UI lokalne (wybrany autor). RHF = stan formularza (pola input).</p>
+
+<hr>
+
+<h2 id="react-query"><span class="lib-tag tag-rq">React Query</span> TanStack Query — hooki</h2>
+
+<h3>Setup (bez hooka — raz w main.tsx)</h3>
+<pre><code>const queryClient = new QueryClient()
+
+&lt;QueryClientProvider client={queryClient}&gt;
+  &lt;RouterProvider router={router} /&gt;
+&lt;/QueryClientProvider&gt;</code></pre>
+<p><code>QueryClient</code> trzyma cache — jeden na całą app. Provider daje dostęp hookom.</p>
+
+<h3 class="must-know">Query keys — fundament cache</h3>
+<pre><code>export const authorKeys = {
+  all: ['authors'] as const,
+  detail: (id: string) =&gt; ['authors', id] as const,
+}</code></pre>
+<p>Klucz = identyfikator danych w cache. Hierarchia: <code>['authors']</code> invaliduje wszystko; <code>['authors', id]</code> — jeden rekord.</p>
+
+<!-- useQuery -->
+<div class="hook-card">
+  <h3><code>useQuery</code> — odczyt danych</h3>
+  <pre><code>const authorsQuery = useQuery({
+  queryKey: authorKeys.all,
+  queryFn: () =&gt; authorList.getAll(),
+})</code></pre>
+  <p><strong>Co robi:</strong> fetch przy mount, cache wynik, refetch wg reguł (focus okna, reconnect, staleTime).</p>
+  <p><strong>Zwraca (najważniejsze):</strong></p>
+  <table>
+    <thead><tr><th>Pole</th><th>Znaczenie</th></tr></thead>
+    <tbody>
+      <tr><td><code>data</code></td><td>Dane — undefined dopóki brak sukcesu</td></tr>
+      <tr><td><code>isPending</code> / <code>isLoading</code></td><td>Pierwsze ładowanie (v5: isPending bez cache)</td></tr>
+      <tr><td><code>isFetching</code></td><td>Trwa fetch (także background refetch)</td></tr>
+      <tr><td><code>isError</code>, <code>error</code></td><td>Błąd queryFn</td></tr>
+      <tr><td><code>refetch()</code></td><td>Ręczne odświeżenie</td></tr>
+      <tr><td><code>status</code></td><td><code>'pending' | 'error' | 'success'</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- useMutation -->
+<div class="hook-card">
+  <h3><code>useMutation</code> — zapis / zmiana</h3>
+  <pre><code>const saveAuthorMutation = useMutation({
+  mutationFn: ({ id, input }) =&gt;
+    id ? authorList.update(id, input) : authorList.create(input),
+  onSuccess: () =&gt; {
+    queryClient.invalidateQueries({ queryKey: authorKeys.all })
+  },
+})</code></pre>
+  <p><strong>Co robi:</strong> nie fetchuje automatycznie — wołasz <code>mutate()</code> / <code>mutateAsync()</code> przy akcji użytkownika.</p>
+  <p><strong>Zwraca:</strong> <code>mutate</code>, <code>mutateAsync</code>, <code>isPending</code>, <code>isError</code>, <code>isSuccess</code>, <code>reset</code>.</p>
+  <p><strong>invalidateQueries</strong> — oznacza cache jako stale → refetch aktywnych query z tym kluczem.</p>
+</div>
+
+<!-- useQueryClient -->
+<div class="hook-card">
+  <h3><code>useQueryClient</code> — dostęp do cache</h3>
+  <pre><code>const queryClient = useQueryClient()  // ten sam QueryClient z Provider
+
+queryClient.invalidateQueries({ queryKey: ['authors'] })
+queryClient.setQueryData(['authors'], newList)   // optimistic update
+queryClient.getQueryData(['authors'])
+queryClient.removeQueries({ queryKey: ['authors'] })</code></pre>
+  <p><strong>Nie tworzy</strong> nowego klienta — zwraca referencję z kontekstu.</p>
+</div>
+
+<h3>Inne hooki — skrót</h3>
+<table>
+  <thead>
+    <tr><th>Hook</th><th>Po co</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>useInfiniteQuery</code></td><td>Stronicowanie / infinite scroll — <code>fetchNextPage</code></td></tr>
+    <tr><td><code>useQueries</code></td><td>Wiele query równolegle (tablica konfiguracji)</td></tr>
+    <tr><td><code>useSuspenseQuery</code></td><td>Integracja z React Suspense — rzuca Promise</td></tr>
+    <tr><td><code>useIsFetching</code></td><td>Globalnie: czy cokolwiek fetchuje (spinner w headerze)</td></tr>
+    <tr><td><code>useMutationState</code></td><td>Stan mutacji z innego komponentu</td></tr>
+  </tbody>
+</table>
+
+<h3>Ważne opcje</h3>
+<table>
+  <thead>
+    <tr><th>Opcja</th><th>Domyślnie</th><th>Znaczenie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>staleTime</code></td><td>0</td><td>Jak długo dane „świeże” — bez refetch</td></tr>
+    <tr><td><code>gcTime</code> (cacheTime)</td><td>5 min</td><td>Jak długo trzymać w cache po unmount</td></tr>
+    <tr><td><code>enabled</code></td><td>true</td><td><code>false</code> — nie fetchuj (np. brak id)</td></tr>
+    <tr><td><code>retry</code></td><td>3</td><td>Ponowienia przy błędzie</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="react-router"><span class="lib-tag tag-rr">React Router</span> — hooki i API</h2>
+
+<h3>Setup — data router (Twój projekt)</h3>
+<pre><code>export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: &lt;RootLayout /&gt;,
+    children: [
+      { index: true, element: &lt;HomePage /&gt; },
+      { path: 'authors', element: &lt;AuthorsPage /&gt; },
+      { path: '*', element: &lt;NotFoundPage /&gt; },
+    ],
+  },
+])
+
+// main.tsx
+&lt;RouterProvider router={router} /&gt;</code></pre>
+<p><code>createBrowserRouter</code> — trasy definiujesz poza komponentem; loader/action (opcjonalnie) przed renderem.</p>
+
+<h3>Komponenty (nie hooki, ale must know)</h3>
+<table>
+  <thead><tr><th>Komponent</th><th>Rola</th></tr></thead>
+  <tbody>
+    <tr><td><code>&lt;Outlet /&gt;</code></td><td>Renderuje aktywną trasę child — w RootLayout</td></tr>
+    <tr><td><code>&lt;NavLink&gt;</code></td><td>Link z klasą <code>active</code> gdy trasa aktywna</td></tr>
+    <tr><td><code>&lt;Link&gt;</code></td><td>Nawigacja bez przeładowania strony</td></tr>
+  </tbody>
+</table>
+
+<!-- useNavigate -->
+<div class="hook-card">
+  <h3><code>useNavigate</code> — nawigacja imperatywna</h3>
+  <pre><code>const navigate = useNavigate()
+
+navigate('/authors')
+navigate(-1)                    // wstecz
+navigate('/authors', { replace: true })
+navigate('/authors', { state: { from: 'home' } })</code></pre>
+  <p>Po submit formularza, po logowaniu — gdy nie używasz <code>&lt;Link&gt;</code>.</p>
+</div>
+
+<!-- useParams -->
+<div class="hook-card">
+  <h3><code>useParams</code> — parametry z URL</h3>
+  <pre><code>// route: authors/:authorId
+const { authorId } = useParams()
+
+useQuery({
+  queryKey: authorKeys.detail(authorId!),
+  queryFn: () =&gt; authorList.getById(authorId!),
+  enabled: !!authorId,
+})</code></pre>
+  <p>Dynamiczne segmenty trasy — łączenie z React Query przez <code>enabled</code>.</p>
+</div>
+
+<!-- useSearchParams -->
+<div class="hook-card">
+  <h3><code>useSearchParams</code> — query string (?page=2)</h3>
+  <pre><code>const [searchParams, setSearchParams] = useSearchParams()
+const page = Number(searchParams.get('page') ?? '1')
+
+setSearchParams({ page: '2' })   // ?page=2</code></pre>
+  <p>Filtry, paginacja, sortowanie w URL — shareable linki.</p>
+</div>
+
+<!-- useLocation -->
+<div class="hook-card">
+  <h3><code>useLocation</code> — aktualna lokalizacja</h3>
+  <pre><code>const location = useLocation()
+// location.pathname  → '/authors'
+// location.search    → '?tab=list'
+// location.state     → dane z navigate(..., { state })</code></pre>
+  <p>Scroll restore, breadcrumbs, „skąd przyszedłem”.</p>
+</div>
+
+<!-- useMatch / useResolvedPath -->
+<div class="hook-card">
+  <h3><code>useMatch</code> · <code>useResolvedPath</code></h3>
+  <pre><code>const match = useMatch('/authors/:id')
+const resolved = useResolvedPath('../settings')</code></pre>
+  <p><code>useMatch</code> — czy trasa pasuje (aktywna sekcja menu). <code>useResolvedPath</code> — relatywna ścieżka względem bieżącej trasy.</p>
+</div>
+
+<!-- useOutletContext -->
+<div class="hook-card">
+  <h3><code>useOutletContext</code> — dane z layoutu do child</h3>
+  <pre><code>// RootLayout
+&lt;Outlet context={{ user }} /&gt;
+
+// Child page
+const { user } = useOutletContext&lt;{ user: User }&gt;()</code></pre>
+  <p>Alternatywa dla prop drilling w zagnieżdżonych trasach — Context też OK.</p>
+</div>
+
+<h3>Mount / unmount a stan</h3>
+<p>Zmiana trasy <code>/</code> → <code>/authors</code> → <code>AuthorsPage</code> mount. Wyjście = unmount → <code>useState</code> ginie, <strong>React Query cache zostaje</strong>. Dlatego lista autorów wraca po powrocie bez ponownego „pustego startu”.</p>
+
+<hr>
+
+<h2 id="react-hook-form"><span class="lib-tag tag-rhf">React Hook Form</span> — hooki</h2>
+
+<h3>Filozofia</h3>
+<p>Minimalne re-rendery — rejestracja pól przez <code>ref</code> (uncontrolled), walidacja na submit / on blur. Zod przez <code>zodResolver</code> — jeden schemat na runtime + TypeScript.</p>
+
+<!-- useForm -->
+<div class="hook-card">
+  <h3 class="must-know"><code>useForm</code> — główny hook</h3>
+  <pre><code>const {
+  register,
+  handleSubmit,
+  reset,
+  watch,
+  control,
+  formState: { errors, isSubmitting, isDirty, isValid },
+} = useForm&lt;CreateAuthorInput&gt;({
+  defaultValues,
+  resolver: zodResolver(createAuthorSchema),
+  mode: 'onTouched',           // kiedy walidować
+  reValidateMode: 'onChange',  // re-walidacja po błędzie
+})</code></pre>
+  <table>
+    <thead><tr><th>Return</th><th>Po co</th></tr></thead>
+    <tbody>
+      <tr><td><code>register(name)</code></td><td>Podpięcie inputa — spread na element</td></tr>
+      <tr><td><code>handleSubmit(fn)</code></td><td>Submit tylko gdy walidacja OK</td></tr>
+      <tr><td><code>reset(values)</code></td><td>Reset formularza — np. po zmianie wybranego autora</td></tr>
+      <tr><td><code>watch(name?)</code></td><td>Obserwuj wartości pól (re-render!)</td></tr>
+      <tr><td><code>control</code></td><td>Dla <code>Controller</code> — controlled components</td></tr>
+      <tr><td><code>formState.errors</code></td><td>Błędy walidacji per pole</td></tr>
+      <tr><td><code>setValue / getValues</code></td><td>Imperatywny odczyt/zapis pól</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<pre><code>// AuthorForm — wzorzec z projektu
+&lt;form onSubmit={handleSubmit(submitForm)}&gt;
+  &lt;input {...register('firstName')} /&gt;
+  {errors.firstName &amp;&amp; &lt;span&gt;{errors.firstName.message}&lt;/span&gt;}
+&lt;/form&gt;
+
+// reset gdy zmienia się wybrany autor (edycja)
+useEffect(() =&gt; {
+  reset(defaultValues)
+}, [defaultValues, reset])</code></pre>
+
+<!-- Controller -->
+<div class="hook-card">
+  <h3><code>Controller</code> + <code>control</code> — controlled / custom UI</h3>
+  <pre><code>&lt;Controller
+  name="categoryId"
+  control={control}
+  render={({ field, fieldState }) =&gt; (
+    &lt;Select
+      value={field.value}
+      onChange={field.onChange}
+      error={fieldState.error?.message}
+    /&gt;
+  )}
+/&gt;</code></pre>
+  <p>Gdy komponent nie obsługuje natywnego <code>ref</code> — MUI Select, DatePicker, React Select.</p>
+</div>
+
+<!-- useWatch -->
+<div class="hook-card">
+  <h3><code>useWatch</code> — obserwuj pole bez watch() z useForm</h3>
+  <pre><code>// W child — mniejszy zakres re-render niż watch() w rodzicu
+const email = useWatch({ control, name: 'email' })</code></pre>
+  <p>Izoluje re-render do komponentu, który naprawdę potrzebuje wartości.</p>
+</div>
+
+<!-- useFieldArray -->
+<div class="hook-card">
+  <h3><code>useFieldArray</code> — dynamiczna lista pól</h3>
+  <pre><code>const { fields, append, remove } = useFieldArray({
+  control,
+  name: 'titles',
+})
+
+{fields.map((field, index) =&gt; (
+  &lt;input key={field.id} {...register(`titles.${index}.name`)} /&gt;
+))}</code></pre>
+  <p>Wiele tytułów autora, wiersze faktury — append/remove wierszy formularza.</p>
+</div>
+
+<!-- useFormContext -->
+<div class="hook-card">
+  <h3><code>FormProvider</code> + <code>useFormContext</code></h3>
+  <pre><code>// Rodzic
+const methods = useForm(...)
+return (
+  &lt;FormProvider {...methods}&gt;
+    &lt;AuthorFormFields /&gt;
+  &lt;/FormProvider&gt;
+)
+
+// Głęboki child — bez prop drilling register/control
+const { register, formState: { errors } } = useFormContext&lt;CreateAuthorInput&gt;()</code></pre>
+  <p>Duże formularze wielosekcyjne — wspólny kontekst formularza.</p>
+</div>
+
+<h3>register vs Controller — kiedy co</h3>
+<table>
+  <thead><tr><th></th><th><code>register</code></th><th><code>Controller</code></th></tr></thead>
+  <tbody>
+    <tr><td>Input</td><td>Natywny input, textarea, select</td><td>Custom UI, MUI, third-party</td></tr>
+    <tr><td>Re-rendery</td><td>Minimalne</td><td>Więcej (controlled)</td></tr>
+    <tr><td>Projekt authors</td><td>FormField + register</td><td>Gdy dodasz DatePicker itd.</td></tr>
+  </tbody>
+</table>
+
+<h3>mode walidacji</h3>
+<table>
+  <thead><tr><th>mode</th><th>Kiedy waliduje</th></tr></thead>
+  <tbody>
+    <tr><td><code>onSubmit</code></td><td>Tylko przy submit (domyślny)</td></tr>
+    <tr><td><code>onBlur</code></td><td>Po opuszczeniu pola</td></tr>
+    <tr><td><code>onChange</code></td><td>Przy każdej zmianie</td></tr>
+    <tr><td><code>onTouched</code></td><td>Po pierwszym blur, potem onChange — <strong>Twój projekt</strong></td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="razem">Przepływ w AuthorsPage — wszystko razem</h2>
+
+<pre><code>AuthorsPage
+│
+├─ useAuthors()                    [React Query]
+│    ├─ useQuery → lista autorów (cache)
+│    └─ useMutation → save + invalidate
+│
+├─ useState(selectedAuthor)        [React — UI lokalne]
+│
+└─ AuthorForm                      [Hook Form]
+     ├─ useForm + zodResolver
+     ├─ reset(defaultValues)      ← sync z selectedAuthor
+     └─ onSubmit → saveAuthor()   → mutateAsync → invalidate → refetch listy</code></pre>
+
+<p><strong>Edycja autora:</strong> klik w liście → <code>selectedAuthor</code> → nowe <code>defaultValues</code> → <code>reset</code> w formularzu. <strong>Nowy autor:</strong> „Nowy autor” → <code>selectedAuthor = null</code> → pusty formularz.</p>
+
+<p><strong>Router:</strong> <code>/authors</code> renderuje <code>AuthorsPage</code> w <code>Outlet</code>. Query cache przeżywa wyjście na Home i powrót.</p>
+
+<hr>
+
+<h2 id="bledy" class="must-know">Najczęstsze błędy</h2>
+
+<h3>React Query</h3>
+<ol>
+  <li>Fetch w <code>useEffect</code> zamiast <code>useQuery</code> — brak cache, dedup, refetch</li>
+  <li>Brak <code>queryKey</code> lub niestabilny key (nowy obiekt co render)</li>
+  <li><code>useQueryClient()</code> mylone z <code>new QueryClient()</code> w hooku</li>
+  <li>Brak <code>invalidateQueries</code> po mutacji — stara lista na ekranie</li>
+  <li>Cały obiekt w key bez serializacji — cache miss</li>
+</ol>
+
+<h3>React Router</h3>
+<ol>
+  <li>Brak <code>Outlet</code> — child route się nie renderuje</li>
+  <li><code>NavLink to="/"</code> bez <code>end</code> — aktywny na każdej podstronie</li>
+  <li>Stan w <code>useState</code> zamiast URL — brak deep linków (<code>useParams</code> / <code>searchParams</code>)</li>
+  <li><code>BrowserRouter</code> vs <code>createBrowserRouter</code> — mieszanie API v6 data router</li>
+</ol>
+
+<h3>React Hook Form</h3>
+<ol>
+  <li>Brak <code>reset</code> przy zmianie <code>defaultValues</code> — formularz pokazuje stare dane</li>
+  <li><code>watch()</code> wszędzie — zbędne re-rendery całego formularza</li>
+  <li>Custom input bez <code>Controller</code> — wartość poza kontrolą RHF</li>
+  <li>Duplikacja schematu Zod i typów TS — użyj <code>z.infer</code></li>
+  <li><code>handleSubmit</code> pominięte — submit omija walidację</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Po co React Query?</strong>
+  <p>Cache, sync i stan serwerowych danych — fetch, refetch, loading/error bez ręcznego useEffect.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Co robi <code>useQuery</code>?</strong>
+  <p>Fetch danych po mount, cache pod queryKey, zwraca data/loading/error.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Co robi <code>useMutation</code>?</strong>
+  <p>Wykonuje operację zapisu — wołana ręcznie przez mutate/mutateAsync.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Co to queryKey?</strong>
+  <p>Identyfikator danych w cache — np. <code>['authors']</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Po co invalidateQueries?</strong>
+  <p>Oznacza cache jako nieaktualny → refetch aktywnych query.</p>
+</div>
+<div class="qa-item">
+  <strong>6. <code>useQueryClient</code> tworzy nowy klient?</strong>
+  <p>Nie — zwraca QueryClient z Provider context.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Po co React Router?</strong>
+  <p>Mapowanie URL → komponenty w SPA bez przeładowania strony.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Co robi <code>Outlet</code>?</strong>
+  <p>Renderuje aktywną zagnieżdżoną trasę child.</p>
+</div>
+<div class="qa-item">
+  <strong>9. <code>useNavigate</code> vs <code>Link</code>?</strong>
+  <p>Link — deklaratywnie w JSX. useNavigate — imperatywnie po akcji (submit, timer).</p>
+</div>
+<div class="qa-item">
+  <strong>10. Co robi <code>useParams</code>?</strong>
+  <p>Zwraca parametry dynamiczne z URL (:id).</p>
+</div>
+<div class="qa-item">
+  <strong>11. Po co React Hook Form?</strong>
+  <p>Formularze z minimalnymi re-renderami i prostą walidacją.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Co zwraca <code>useForm</code>?</strong>
+  <p>register, handleSubmit, reset, control, formState (errors), watch…</p>
+</div>
+<div class="qa-item">
+  <strong>13. Co robi <code>register('field')</code>?</strong>
+  <p>Podpina input do formularza — ref + onChange/onBlur.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Po co <code>handleSubmit</code>?</strong>
+  <p>Submit tylko po przejściu walidacji resolvera.</p>
+</div>
+<div class="qa-item">
+  <strong>15. zodResolver — po co?</strong>
+  <p>Łączy schemat Zod z RHF — walidacja runtime + typy TS.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. staleTime vs gcTime?</strong>
+  <p>staleTime — świeżość bez refetch. gcTime — jak długo trzymać w cache po unmount.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Optimistic update w React Query?</strong>
+  <p>onMutate → setQueryData z nową wartością → rollback w onError.</p>
+</div>
+<div class="qa-item">
+  <strong>18. <code>enabled: false</code> w useQuery?</strong>
+  <p>Nie fetchuj dopóki warunek false — np. brak authorId z useParams.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Dlaczego lista wraca po powrocie na route?</strong>
+  <p>React Query cache — dane poza useState komponentu.</p>
+</div>
+<div class="qa-item">
+  <strong>20. createBrowserRouter vs BrowserRouter?</strong>
+  <p>Data router — trasy + loadery/actions, lepsze dla RR v6.4+.</p>
+</div>
+<div class="qa-item">
+  <strong>21. <code>useSearchParams</code> — case?</strong>
+  <p>Filtry/paginacja w URL — shareable, back/forward działa.</p>
+</div>
+<div class="qa-item">
+  <strong>22. register vs Controller?</strong>
+  <p>register — native inputs, mało re-renderów. Controller — custom controlled UI.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Po co <code>reset(defaultValues)</code> w useEffect?</strong>
+  <p>RHF nie aktualizuje pól gdy props się zmienią — reset synchronizuje edycję.</p>
+</div>
+<div class="qa-item">
+  <strong>24. watch vs useWatch?</strong>
+  <p>watch z useForm — re-render rodzica. useWatch — izolowany re-render w child.</p>
+</div>
+<div class="qa-item">
+  <strong>25. FormProvider + useFormContext?</strong>
+  <p>Udostępnia metody formularza głębokim dzieciom bez prop drilling.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Query key factory pattern?</strong>
+  <p>authorKeys.all, authorKeys.detail(id) — spójna invalidacja hierarchii.</p>
+</div>
+<div class="qa-item">
+  <strong>27. mutate vs mutateAsync?</strong>
+  <p>mutate — fire-and-forget. mutateAsync — Promise, await w handlerze (Twój saveAuthor).</p>
+</div>
+<div class="qa-item">
+  <strong>28. isPending vs isFetching?</strong>
+  <p>isPending — brak danych jeszcze. isFetching — trwa request (także background).</p>
+</div>
+<div class="qa-item">
+  <strong>29. Loader w React Router + useQuery?</strong>
+  <p>Loader prefetch przed renderem LUB useQuery w komponencie — nie duplikuj bez potrzeby.</p>
+</div>
+<div class="qa-item">
+  <strong>30. mode onTouched w RHF?</strong>
+  <p>Walidacja po pierwszym blur pola, potem onChange — balans UX/wydajność.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. useEffect + fetch vs useQuery?</strong>
+  <p>useEffect — brak cache/dedup. useQuery — standard na dane serwerowe.</p>
+</div>
+<div class="qa-item">
+  <strong>32. QueryClient w komponencie?</strong>
+  <p>new QueryClient() w renderze = utrata cache co render — tylko w main.tsx.</p>
+</div>
+<div class="qa-item">
+  <strong>33. NavLink / bez end na home?</strong>
+  <p>Home aktywny na wszystkich podstronach — dodaj end na index link.</p>
+</div>
+<div class="qa-item">
+  <strong>34. defaultValues vs reset przy edycji?</strong>
+  <p>defaultValues tylko przy pierwszym mount — zmiana wymaga reset().</p>
+</div>
+<div class="qa-item">
+  <strong>35. Czy RHF to controlled?</strong>
+  <p>Domyślnie uncontrolled (ref) — mniej re-renderów niż useState per field.</p>
+</div>
+<div class="qa-item">
+  <strong>36. invalidateQueries vs refetchQueries?</strong>
+  <p>invalidate — stale + refetch jeśli aktywny. refetch — wymusza od razu.</p>
+</div>
+<div class="qa-item">
+  <strong>37. Strict Mode a useQuery?</strong>
+  <p>Dev double mount — 2 fetchy bez dedup; w prod raz. Opcja retry/staleTime łagodzi dev.</p>
+</div>
+<div class="qa-item">
+  <strong>38. useFieldArray — key?</strong>
+  <p>field.id z RHF — nie index (jak w React lists).</p>
+</div>
+<div class="qa-item">
+  <strong>39. Gdzie trzymać selectedAuthor?</strong>
+  <p>UI lokalne — useState OK. Gdy deep link do edycji — id w URL + useParams.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Trzy biblioteki — kto za co?</strong>
+  <p>Router = która strona. Query = dane serwerowe. RHF = stan formularza.</p>
+</div>
+
+</body>
+</html>

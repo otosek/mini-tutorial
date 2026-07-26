@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Java 8 → 25 — nowości</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #ea580c;
+      --lts: #15803d;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; }
+
+    p { margin: 0.75rem 0; }
+    ul { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.3rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .ver {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .ver-lts { background: #dcfce7; color: var(--lts); }
+    .ver-non { background: #f3f4f6; color: #4b5563; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    .feat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin: 0.55rem 0;
+    }
+
+    .feat strong { color: var(--accent); }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 0.9rem 1.1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.75rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Java 8 → 25 — najważniejsze nowości</h1>
+<p class="meta">Od Java 8 do JDK 25 · wersje LTS wyróżnione · skrót dla devów migrujących z „starej” Javy<br>
+LTS: 8, 11, 17, 21, 25 (co 2 lata od 21)</p>
+
+<nav class="toc">
+  <strong>Skok do wersji</strong>
+  <ol>
+    <li><a href="#mapa">Mapa LTS</a></li>
+    <li><a href="#j8">Java 8</a></li>
+    <li><a href="#j9">9–10</a></li>
+    <li><a href="#j11">Java 11</a></li>
+    <li><a href="#j12">12–16</a></li>
+    <li><a href="#j17">Java 17</a></li>
+    <li><a href="#j18">18–20</a></li>
+    <li><a href="#j21">Java 21</a></li>
+    <li><a href="#j22">22–24</a></li>
+    <li><a href="#j25">Java 25</a></li>
+    <li><a href="#migracja">Co wdrożyć najpierw</a></li>
+  </ol>
+</nav>
+
+<h2 id="mapa">Mapa wersji LTS</h2>
+
+<table>
+  <thead><tr><th>Wersja</th><th>Rok</th><th>Must know</th></tr></thead>
+  <tbody>
+    <tr><td><span class="ver ver-lts">8 LTS</span></td><td>2014</td><td>Lambda, Stream, Optional, java.time</td></tr>
+    <tr><td><span class="ver ver-lts">11 LTS</span></td><td>2018</td><td>HTTP Client, var (10→11), usunięcie Java EE z JDK</td></tr>
+    <tr><td><span class="ver ver-lts">17 LTS</span></td><td>2021</td><td>Records, sealed classes, pattern instanceof</td></tr>
+    <tr><td><span class="ver ver-lts">21 LTS</span></td><td>2023</td><td>Virtual Threads, pattern switch, sequenced collections</td></tr>
+    <tr><td><span class="ver ver-lts">25 LTS</span></td><td>2025</td><td>Scoped Values, compact headers, Leyden/AOT, JEP 512</td></tr>
+  </tbody>
+</table>
+<p>Wersje między LTS (9,10,12–16,18–20,22–24) — krótki cykl 6 mies.; na prod zwykle skaczesz LTS → LTS.</p>
+
+<hr>
+
+<h2 id="j8"><span class="ver ver-lts">Java 8</span> — rewolucja funkcjonalna</h2>
+
+<div class="feat"><strong>Lambda</strong> — funkcje jako wartości: <code>(a, b) -&gt; a + b</code></div>
+<div class="feat"><strong>Stream API</strong> — przetwarzanie kolekcji deklaratywnie: filter, map, reduce, collect</div>
+<div class="feat"><strong>Optional</strong> — jawna obsługa null zamiast NPE</div>
+<div class="feat"><strong>java.time</strong> — LocalDate, ZonedDateTime (koniec Date/Calendar)</div>
+<div class="feat"><strong>Default methods</strong> — implementacja w interfejsie bez łamania starych klas</div>
+<div class="feat"><strong>Method references</strong> — <code>Author::getName</code></div>
+
+<pre><code>List&lt;String&gt; names = authors.stream()
+    .filter(a -&gt; a.isActive())
+    .map(Author::getLastName)
+    .sorted()
+    .toList();   // toList od J16 — w J8: .collect(Collectors.toList())</code></pre>
+
+<hr>
+
+<h2 id="j9"><span class="ver ver-non">9–10</span></h2>
+
+<ul>
+  <li><strong>JPMS (moduły)</strong> — <code>module-info.java</code>, kontrola eksportu pakietów</li>
+  <li><strong>JShell</strong> — REPL do eksperymentów</li>
+  <li><strong>Factory methods kolekcji</strong> — <code>List.of()</code>, <code>Set.of()</code>, <code>Map.of()</code> (niemutowalne)</li>
+  <li><strong>Java 10: <code>var</code></strong> — inferencja typu zmiennej lokalnej (nie dla pól/metod)</li>
+</ul>
+
+<pre><code>var authors = List.of("Anna", "Jan");   // List&lt;String&gt;
+var map = Map.of("id", 1, "name", "X"); // max 10 par w Map.of</code></pre>
+
+<hr>
+
+<h2 id="j11"><span class="ver ver-lts">Java 11</span> — drugi LTS</h2>
+
+<ul>
+  <li><strong>HTTP Client</strong> — <code>java.net.http</code> (HttpClient, async, HTTP/2) — zamiast HttpURLConnection</li>
+  <li><strong>String:</strong> <code>isBlank()</code>, <code>lines()</code>, <code>strip()</code>, <code>repeat(n)</code></li>
+  <li><strong>Files.readString / writeString</strong></li>
+  <li><strong>Optional.isEmpty()</strong> — zamiast <code>!isPresent()</code></li>
+  <li>Usunięcie modułów Java EE / CORBA z JDK — JAXB, JAX-WS osobno</li>
+  <li><strong>Epsilon GC</strong> — no-op GC (benchmarki)</li>
+</ul>
+
+<pre><code>var client = HttpClient.newHttpClient();
+var request = HttpRequest.newBuilder(URI.create(url)).GET().build();
+var response = client.send(request, HttpResponse.BodyHandlers.ofString());</code></pre>
+
+<hr>
+
+<h2 id="j12"><span class="ver ver-non">12–16</span> — składnia nowoczesna</h2>
+
+<table>
+  <thead><tr><th>Wersja</th><th>Nowość</th></tr></thead>
+  <tbody>
+    <tr><td>12</td><td>Switch expressions (preview), Compact Number Formatting</td></tr>
+    <tr><td>13</td><td>Text blocks <code>"""</code> (preview)</td></tr>
+    <tr><td>14</td><td>Records (preview), helpful NPE messages, switch expressions standard</td></tr>
+    <tr><td>15</td><td>Text blocks standard, sealed classes (preview)</td></tr>
+    <tr><td>16</td><td><strong>Records</strong> standard, <strong>pattern matching instanceof</strong>, Stream.toList()</td></tr>
+  </tbody>
+</table>
+
+<pre><code>record Author(String id, String firstName, String lastName) {}
+
+if (obj instanceof Author a) {
+    System.out.println(a.firstName());  // bez cast
+}
+
+String json = """
+    { "name": "Anna" }
+    """;
+
+var result = switch (status) {
+    case ACTIVE -&gt; "ok";
+    case DRAFT  -&gt; "draft";
+    default     -&gt; "unknown";
+};</code></pre>
+
+<hr>
+
+<h2 id="j17"><span class="ver ver-lts">Java 17</span> — trzeci LTS</h2>
+
+<ul>
+  <li><strong>Sealed classes</strong> — zamknięta hierarchia: <code>sealed permits Circle, Square</code></li>
+  <li><strong>Pattern matching instanceof</strong> — finalizacja</li>
+  <li><strong>Foreign Function &amp; Memory API</strong> (incubator) — zastępca JNI</li>
+  <li>Deprecacja Security Manager (usunięty w 24)</li>
+  <li>MacOS/AArch64 port do GA</li>
+</ul>
+
+<pre><code>sealed interface Shape permits Circle, Rectangle { }
+final class Circle implements Shape { ... }</code></pre>
+
+<hr>
+
+<h2 id="j18"><span class="ver ver-non">18–20</span></h2>
+
+<ul>
+  <li><strong>18:</strong> UTF-8 domyślny charset, prosty <code>jwebserver</code></li>
+  <li><strong>19:</strong> Virtual Threads (preview), Structured Concurrency (preview), record patterns (preview)</li>
+  <li><strong>20:</strong> Scoped Values (preview), Virtual Threads drugi preview</li>
+</ul>
+
+<hr>
+
+<h2 id="j21" class="must-know"><span class="ver ver-lts">Java 21</span> — Virtual Threads LTS</h2>
+
+<ul>
+  <li><strong>Virtual Threads (final)</strong> — Project Loom — <code>Thread.startVirtualThread</code>, <code>Executors.newVirtualThreadPerTaskExecutor()</code></li>
+  <li><strong>Pattern matching for switch</strong> (final) — type patterns w switch</li>
+  <li><strong>Record patterns</strong> (final) — destrukturyzacja recordów</li>
+  <li><strong>Sequenced Collections</strong> — <code>SequencedCollection</code>, <code>reversed()</code></li>
+  <li>Generational ZGC — niższe opóźnienia GC</li>
+  <li>String templates (preview)</li>
+</ul>
+
+<pre><code>try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
+    ex.submit(() -&gt; fetchAuthors());
+}
+
+switch (obj) {
+    case Author(var id, var fn, var ln) when fn.length() &gt; 0 -&gt; ...
+    case null -&gt; ...
+    default -&gt; ...
+}</code></pre>
+
+<hr>
+
+<h2 id="j22"><span class="ver ver-non">22–24</span> — drobne + przygotowanie pod 25</h2>
+
+<table>
+  <thead><tr><th>Wersja</th><th>Wyróżnik</th></tr></thead>
+  <tbody>
+    <tr><td>22</td><td>Foreign Memory API (preview→final path), unnamed classes (preview)</td></tr>
+    <tr><td>23</td><td>Module import declarations (preview), flexible constructor bodies (preview), stream gatherers (preview)</td></tr>
+    <tr><td>24</td><td>Stream Gatherers (final), Class-File API (preview), Ahead-of-Time class loading (Leyden), usunięcie Security Manager</td></tr>
+  </tbody>
+</table>
+
+<pre><code>// Stream Gatherers (J24) — custom intermediate ops
+stream.gather(Gatherers.windowSliding(3))</code></pre>
+
+<hr>
+
+<h2 id="j25" class="must-know"><span class="ver ver-lts">Java 25</span> — LTS 2025</h2>
+
+<p>Największy skok produkcyjny po 21 — język prostszy na start, runtime szybszy, concurrency dojrzalsze.</p>
+
+<h3>Język i składnia (final / preview)</h3>
+<ul>
+  <li><strong>Scoped Values (JEP 506, final)</strong> — zamiennik ThreadLocal dla virtual threads</li>
+  <li><strong>Module Import Declarations (511)</strong> — <code>import module java.base;</code> krótsze importy</li>
+  <li><strong>Compact Source Files + Instance Main Methods (512)</strong> — <code>void main()</code> bez <code>public static</code> i klasy wrapper — hello world jednym plikiem</li>
+  <li><strong>Flexible Constructor Bodies (513)</strong> — kod przed <code>super()</code>/<code>this()</code> w konstruktorze</li>
+  <li><strong>Primitive patterns (507, preview)</strong> — pattern matching na typach prymitywnych w switch</li>
+  <li><strong>Structured Concurrency (505, 5. preview)</strong> — <code>StructuredTaskScope</code></li>
+  <li><strong>Stable Values (502, preview)</strong> — immutable lazy init (JEP)</li>
+</ul>
+
+<h3>Runtime, GC, wydajność (Project Leyden / HotSpot)</h3>
+<ul>
+  <li><strong>Compact Object Headers (519)</strong> — mniejszy overhead obiektów na heap</li>
+  <li><strong>Ahead-of-Time Method Profiling (515)</strong> — szybszy start, lepsze JIT po restarcie</li>
+  <li><strong>Ahead-of-Time Command-Line Ergonomics (514)</strong></li>
+  <li><strong>Generational Shenandoah (521)</strong> — GC niskich opóźnień z generacjami</li>
+  <li><strong>JFR:</strong> CPU-Time Profiling, Cooperative Sampling, Method Timing &amp; Tracing</li>
+</ul>
+
+<h3>API i inne</h3>
+<ul>
+  <li><strong>Key Derivation Function API (510)</strong> — crypto KDF w standard library</li>
+  <li><strong>Vector API (508, incubator)</strong> — SIMD</li>
+  <li>Usunięcie portu <strong>32-bit x86</strong></li>
+</ul>
+
+<pre><code>// JEP 512 — compact entry (uproszczony start)
+void main() {
+    IO.println("Hello Java 25");
+}
+
+// Scoped Values — kontekst bez kosztu ThreadLocal × miliony wątków
+private static final ScopedValue&lt;User&gt; CURRENT_USER = ScopedValue.newInstance();</code></pre>
+
+<hr>
+
+<h2 id="migracja">Co wdrożyć najpierw (ścieżka migracji)</h2>
+
+<table>
+  <thead><tr><th>Z wersji</th><th>Priorytet 1</th><th>Priorytet 2</th></tr></thead>
+  <tbody>
+    <tr><td>8 → 11</td><td>java.time, Stream (już masz), HTTP Client</td><td>var, List.of, moduły opcjonalnie</td></tr>
+    <tr><td>11 → 17</td><td>Records, sealed, pattern instanceof</td><td>switch expressions, text blocks</td></tr>
+    <tr><td>17 → 21</td><td><strong>Virtual Threads</strong> (I/O), pattern switch</td><td>sequenced collections</td></tr>
+    <tr><td>21 → 25</td><td>Scoped Values, compact headers (automat), Leyden benefits</td><td>Structured Concurrency, JEP 512 dla skryptów</td></tr>
+  </tbody>
+</table>
+
+<h3>Usunięte / deprecated — uważaj przy migracji</h3>
+<ul>
+  <li>Security Manager — usunięty (24)</li>
+  <li>32-bit x86 — usunięty (25)</li>
+  <li>Nashorn JavaScript — usunięty (15)</li>
+  <li>Applet API — dead</li>
+  <li>javax.* EE z JDK — osobne zależności (Jakarta EE)</li>
+</ul>
+
+</body>
+</html>

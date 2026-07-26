@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architektura systemów i rozproszone</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0e7490;
+      --mono: #4338ca;
+      --dist: #b45309;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .sec-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .tag-arch { background: #cffafe; color: #0e7490; }
+    .tag-dist { background: #ffedd5; color: #9a3412; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #ecfeff; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Architektura systemów — w tym rozproszone</h1>
+<p class="meta">Najważniejsze zagadnienia · style architektury · skalowanie · niezawodność · spójność danych<br>
+Bez pytań rekrutacyjnych — ściąga pojęć</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#style">Style architektury</a></li>
+    <li><a href="#skalowanie">Skalowanie i wydajność</a></li>
+    <li><a href="#komunikacja">Komunikacja między serwisami</a></li>
+    <li><a href="#dane">Dane i spójność</a></li>
+    <li><a href="#rozproszone">Systemy rozproszone — fundamenty</a></li>
+    <li><a href="#niezawodnosc">Niezawodność i odporność</a></li>
+    <li><a href="#obserwowalnosc">Obserwowalność i operacje</a></li>
+    <li><a href="#decyzje">Jak wybierać — ściąga decyzyjna</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="style"><span class="sec-tag tag-arch">Architektura</span> Style i podział</h2>
+
+<div class="keyword">
+  <strong>Monolit</strong>
+  <p>Jeden deployable — prosty start, wspólna baza, łatwy debug. Skala przez większą maszynę lub repliki całości. Pułapka: coupling rośnie z czasem.</p>
+</div>
+
+<div class="keyword">
+  <strong>Modularny monolit</strong>
+  <p>Monolit z wyraźnymi modułami (np. <code>authors</code>, <code>titles</code>) — granice w kodzie, jeden proces. Często lepszy start niż microservices.</p>
+</div>
+
+<div class="keyword">
+  <strong>Mikroserwisy</strong>
+  <p>Osobne serwisy, deploy, baza (database per service). Skala niezależna, technologie mix. Koszt: sieć, spójność, DevOps, obserwowalność.</p>
+</div>
+
+<div class="keyword">
+  <strong>SOA vs mikroserwisy</strong>
+  <p>SOA — większe serwisy, często ESB. Mikroserwisy — mniejsze, smart endpoints / dumb pipes (API + events, bez centralnego ESB).</p>
+</div>
+
+<div class="keyword">
+  <strong>Event-Driven Architecture (EDA)</strong>
+  <p>Serwisy komunikują się zdarzeniami (<code>AuthorCreated</code>). Luźne powiązanie, skalowanie async. Trudniejsze: debug, spójność końcowa, ordering.</p>
+</div>
+
+<div class="keyword">
+  <strong>Serverless / FaaS</strong>
+  <p>Funkcje na żądanie — zero ops serwerów, płatność per invocation. Cold start, limity czasu, vendor lock-in.</p>
+</div>
+
+<div class="keyword">
+  <strong>Layered / Hexagonal / Clean</strong>
+  <p>Podział warstw wewnątrz aplikacji — domain w środku, adaptery na zewnątrz. Nie zastępuje podziału na serwisy.</p>
+</div>
+
+<hr>
+
+<h2 id="skalowanie"><span class="sec-tag tag-arch">Architektura</span> Skalowanie i wydajność</h2>
+
+<table>
+  <thead><tr><th>Pojęcie</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Skalowanie pionowe (scale up)</strong></td><td>Większy CPU/RAM — proste, ma limit fizyczny</td></tr>
+    <tr><td><strong>Skalowanie poziome (scale out)</strong></td><td>Więcej instancji + load balancer — standard w chmurze</td></tr>
+    <tr><td><strong>Load balancer</strong></td><td>Rozkład ruchu — round-robin, least connections, health checks</td></tr>
+    <tr><td><strong>Stateless</strong></td><td>Instancja bez lokalnego stanu sesji — dowolna replika obsłuży request (12-factor)</td></tr>
+    <tr><td><strong>Cache</strong></td><td>Redis, CDN — zmniejsza obciążenie DB; invalidacja = trudny problem</td></tr>
+    <tr><td><strong>CDN</strong></td><td>Statyczne assety blisko użytkownika — edge caching</td></tr>
+    <tr><td><strong>Connection pool</strong></td><td>Limit połączeń DB — więcej instancji app ≠ więcej połączeń bez limitu</td></tr>
+    <tr><td><strong>Backpressure</strong></td><td>Odbijanie nadmiaru ruchu — kolejka, 429, throttle zamiast crash</td></tr>
+  </tbody>
+</table>
+
+<pre><code>Request → LB → [App₁ App₂ App₃] → Cache? → DB (primary / replicas)</code></pre>
+
+<hr>
+
+<h2 id="komunikacja">Komunikacja między serwisami</h2>
+
+<table>
+  <thead><tr><th>Typ</th><th>Przykład</th><th>Plusy / minusy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Sync REST/HTTP</strong></td><td>GET /api/authors</td><td>Proste, debug; coupling czasowy — A czeka na B</td></tr>
+    <tr><td><strong>gRPC</strong></td><td>Protobuf, HTTP/2</td><td>Szybkie, kontrakty; mniej przyjazne z przeglądarki</td></tr>
+    <tr><td><strong>Async messaging</strong></td><td>Kafka, RabbitMQ, SQS</td><td>Odporność na szczyty, decoupling; eventual consistency</td></tr>
+    <tr><td><strong>API Gateway</strong></td><td>Kong, AWS API GW</td><td>Jeden punkt wejścia — auth, rate limit, routing do mikroserwisów</td></tr>
+    <tr><td><strong>Service discovery</strong></td><td>K8s DNS, Consul</td><td>Dynamiczne adresy instancji — klient nie hardcoduje IP</td></tr>
+    <tr><td><strong>BFF</strong></td><td>Backend for Frontend</td><td>Osobne API pod web/mobile — agregacja bez tłumienia domeny w jednym GW</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Sync vs async — kiedy co</strong>
+  <p><strong>Sync</strong> — potrzebujesz odpowiedzi od razu (UI czeka). <strong>Async</strong> — możesz odłożyć (email, indeks, raport), wyższa odporność na awarie downstream.</p>
+</div>
+
+<hr>
+
+<h2 id="dane" class="must-know">Dane, transakcje, spójność</h2>
+
+<table>
+  <thead><tr><th>Pojęcie</th><th>Opis</th></tr></thead>
+  <tbody>
+    <tr><td><strong>ACID</strong></td><td>Transakcja SQL — Atomicity, Consistency, Isolation, Durability</td></tr>
+    <tr><td><strong>BASE</strong></td><td>Typowe w rozproszonych — Basically Available, Soft state, Eventual consistency</td></tr>
+    <tr><td><strong>Database per service</strong></td><td>Każdy mikroserwis własna baza — brak współdzielonych tabel; integracja przez API/events</td></tr>
+    <tr><td><strong>Replikacja</strong></td><td>Primary + read replicas — odczyt skalowany, opóźnienie repliki (lag)</td></tr>
+    <tr><td><strong>Sharding / partycjonowanie</strong></td><td>Podział danych horyzontalnie — shard key decyduje o węźle</td></tr>
+    <tr><td><strong>CQRS</strong></td><td>Osobny model zapisu i odczytu — write DB + read projections (index)</td></tr>
+    <tr><td><strong>Event Sourcing</strong></td><td>Stan = suma zdarzeń — audit, replay; złożoność operacyjna</td></tr>
+  </tbody>
+</table>
+
+<h3>Transakcje rozproszone</h3>
+<table>
+  <thead><tr><th>Wzorzec</th><th>Idea</th></tr></thead>
+  <tbody>
+    <tr><td><strong>2PC (two-phase commit)</strong></td><td>Koordynator — prepare/commit wszystkich uczestników. Blokujący, kruchy — rzadko w mikroserwisach</td></tr>
+    <tr><td><strong>Saga</strong></td><td>Sekwencja lokalnych transakcji + kompensacje przy błędzie. Orchestrated (centralny) vs Choreography (events)</td></tr>
+    <tr><td><strong>Outbox pattern</strong></td><td>Zapis do DB + event w jednej transakcji lokalnej — relay publikuje do brokera</td></tr>
+    <tr><td><strong>Idempotency</strong></td><td>Ten sam request 2× = ten sam efekt — klucz idempotency przy retry</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="rozproszone" class="must-know"><span class="sec-tag tag-dist">Rozproszone</span> Fundamenty</h2>
+
+<div class="keyword">
+  <strong>CAP theorem</strong>
+  <p>W partition (P) wybierasz między Consistency (C) a Availability (A). W praktyce P zawsze możliwy — trade-off C vs A + opóźnienie (latency).</p>
+</div>
+
+<div class="keyword">
+  <strong>PACELC</strong>
+  <p>Rozszerzenie CAP: przy Partition → A lub C; Else (normalnie) → Latency vs Consistency.</p>
+</div>
+
+<div class="keyword">
+  <strong>Eventual consistency (spójność końcowa)</strong>
+  <p>Repliki z czasem się zgodzą — akceptowalne w wielu systemach rozproszonych; UI musi to uwzględniać.</p>
+</div>
+
+<div class="keyword">
+  <strong>Network partition</strong>
+  <p>Sieć dzieli węzły — split-brain bez quorum. Rozwiązania: majority quorum, fencing tokens.</p>
+</div>
+
+<div class="keyword">
+  <strong>Quorum</strong>
+  <p>Decyzja wymaga większości węzłów (N/2+1) — unika split-brain przy partition.</p>
+</div>
+
+<div class="keyword">
+  <strong>Consensus (Raft, Paxos)</strong>
+  <p>Protokoły uzgodnienia wartości w klastrze — etcd (K8s), leader election, replicated log.</p>
+</div>
+
+<div class="keyword">
+  <strong>Leader / follower</strong>
+  <p>Jeden leader przyjmuje zapisy, reszta replikuje — failover przy awarii leadera (election).</p>
+</div>
+
+<div class="keyword">
+  <strong>Clock skew</strong>
+  <p>Zegary w węzłach nie są identyczne — nie polegaj na timestamp jako jedynym porządku (użyj logical clocks / version vectors).</p>
+</div>
+
+<div class="keyword">
+  <strong>At-least-once / at-most-once / exactly-once</strong>
+  <p>Dostawa wiadomości: retry → at-least-once; exactly-once drogie — idempotency + dedup w praktyce.</p>
+</div>
+
+<pre><code>         ┌─────────┐     events      ┌─────────┐
+         │ authors │ ───────────────►│  index  │
+         │ service │                 │ service │
+         └────┬────┘                 └────┬────┘
+              │ DB                           │ read DB
+              ▼                              ▼
+         [authors_db]                  [index_projection]
+              eventual consistency — index „dogoni” po chwili</code></pre>
+
+<hr>
+
+<h2 id="niezawodnosc"><span class="sec-tag tag-dist">Rozproszone</span> Niezawodność — wzorce</h2>
+
+<table>
+  <thead><tr><th>Wzorzec</th><th>Co robi</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Timeout</strong></td><td>Nie czekaj w nieskończoność na dead service</td></tr>
+    <tr><td><strong>Retry + exponential backoff</strong></td><td>Ponowienie z rosnącym opóźnieniem + jitter — unikaj thundering herd</td></tr>
+    <tr><td><strong>Circuit breaker</strong></td><td>Po N błędach — przerwij wołania, daj serwisowi odpocząć (open → half-open → closed)</td></tr>
+    <tr><td><strong>Bulkhead</strong></td><td>Izolacja pul (wątki, connections) — awaria jednej części nie zabija całości</td></tr>
+    <tr><td><strong>Rate limiting</strong></td><td>Ochrona przed przeciążeniem — token bucket, leaky bucket</td></tr>
+    <tr><td><strong>Graceful degradation</strong></td><td>Rekomendacje wyłączone, cache stale — partial response lepszy niż 500</td></tr>
+    <tr><td><strong>Health check</strong></td><td>/health (alive), /ready (może przyjąć ruch) — LB i K8s probes</td></tr>
+    <tr><td><strong>Chaos engineering</strong></td><td>Celowe awarie w prod-like — weryfikacja odporności (Chaos Monkey)</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Fail fast</strong> — szybko zwróć błąd zamiast blokować wątki. <strong>Design for failure</strong> — zakładaj, że sieć, DB i downstream padną.</p>
+
+<hr>
+
+<h2 id="obserwowalnosc">Obserwowalność i operacje</h2>
+
+<table>
+  <thead><tr><th>Filar</th><th>Narzędzia / idea</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Logs</strong></td><td>Strumień zdarzeń (stdout → ELK/Loki) — structured JSON</td></tr>
+    <tr><td><strong>Metrics</strong></td><td>Prometheus, Grafana — latency p95, error rate, RPS</td></tr>
+    <tr><td><strong>Traces</strong></td><td>OpenTelemetry, Jaeger — trace_id przez microservices</td></tr>
+    <tr><td><strong>SLI / SLO / SLA</strong></td><td>SLI = metryka; SLO = cel (99.9% uptime); SLA = kontrakt z konsekwencjami</td></tr>
+    <tr><td><strong>Error budget</strong></td><td>1 - SLO = dopuszczalne awarie — balans feature vs stabilność</td></tr>
+    <tr><td><strong>Correlation ID</strong></td><td>Jeden id przez cały request chain — debug rozproszony</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="decyzje">Ściąga decyzyjna</h2>
+
+<table>
+  <thead><tr><th>Pytanie</th><th>Kierunek</th></tr></thead>
+  <tbody>
+    <tr><td>Start projektu?</td><td>Modularny monolit → microservices dopiero przy potrzebie skali/zespołów</td></tr>
+    <tr><td>Spójność między serwisami?</td><td>Saga + events, nie 2PC przez HTTP</td></tr>
+    <tr><td>UI czeka na wynik?</td><td>Sync REST/gRPC</td></tr>
+    <tr><td>Indeks / email / raport?</td><td>Async queue + worker</td></tr>
+    <tr><td>Wysoki odczyt?</td><td>Cache + read replicas + CQRS</td></tr>
+    <tr><td>Downstream niestabilny?</td><td>Timeout, circuit breaker, fallback</td></tr>
+    <tr><td>Dużo danych?</td><td>Sharding, archiwizacja, partycjonowanie</td></tr>
+    <tr><td>Jeden punkt wejścia?</td><td>API Gateway + auth (OAuth/OIDC)</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>Microservices day one</strong> — złożoność bez potrzeby</li>
+  <li><strong>Wspólna baza między serwisami</strong> — coupling, brak niezależnego deployu</li>
+  <li><strong>Sync chain A→B→C→D</strong> — latency sumuje się, jeden fail = cascade</li>
+  <li><strong>Brak timeoutów i retry bez idempotency</strong> — duplikaty i zawieszone wątki</li>
+  <li><strong>Ignorowanie eventual consistency w UI</strong> — „zapisałem, czemu nie widać w index?”</li>
+  <li><strong>Cache bez strategii invalidacji</strong> — stale data forever</li>
+  <li><strong>Brak observability</strong> — „działa u mnie”, prod to czarna skrzynka</li>
+  <li><strong>Distributed monolith</strong> — wiele serwisów, ale wszystkie muszą deploy razem</li>
+</ol>
+
+</body>
+</html>

@@ -1,0 +1,106 @@
+---
+description: Reguły generowania mini-tutoriali HTML w tutorials/
+globs: tutorials/**/*.html
+alwaysApply: false
+---
+
+# Mini-tutorial HTML — reguły generowania
+
+## Format pliku
+
+- **Jeden plik HTML** — samodzielny, bez CDN, bez zewnętrznych fontów/obrazków. Działa przez podwójne kliknięcie (`file://`).
+- **Ścieżka:** `tutorials/{kategoria}/{temat}-mini-tutorial.html`
+- **Nazwa:** kebab-case, sufiks `-mini-tutorial.html`
+- **Kodowanie:** UTF-8, `lang="pl"`
+- **Szerokość:** `max-width: 820px`, wyśrodkowany body
+- **Link wstecz** (w podkatalogu): `<p class="back"><a href="../index.html">← Spis tutoriali</a></p>`
+
+## Struktura treści (kolejność sekcji)
+
+1. **H1** — temat krótko
+2. **Meta (`.meta`)** — 1–2 linie: co obejmuje + „Format: HTML…” + ewent. „Bez pytań”
+3. **Spis treści (`.toc`)** — linki kotwic `#sekcja`
+4. **Część 0 / Fundamenty** — „co to jest”, jedno zdanie podsumowujące
+5. **3–7 części merytorycznych (H2)** — rdzeń tematu; 2–3 z klasą `must-know`
+6. **Typowe błędy** — lista 8–10 punktów (H2)
+7. **Opcjonalnie: Pytania rekrutacyjne** — tylko gdy user prosi
+
+Między większymi H2 używaj `<hr>`.
+
+## Wielkość i głębokość
+
+| Wariant | Rozmiar | Kiedy |
+|---------|---------|-------|
+| **Pełny** | ~450–550 linii HTML, 40 pytań | Hibernate, React, K8s, OAuth — user chce rekrutację |
+| **Średni** | ~350–450 linii, bez pytań | DDD, architektura, Java 8–25, Postgres, AWS |
+| **Krótki** | ~200–280 linii, 10–15 pytań max | NIST hasła, bardzo wąski temat |
+
+- Opis pojęcia: **2–4 zdania**, potem przykład kodu/SQL/diagram
+- Tabele: preferowane zamiast długich akapitów porównawczych
+- Bloki kodu: **krótkie** (5–15 linii), działające
+- Nie duplikuj całej dokumentacji — **ściąga must-know**, nie podręcznik
+
+## Styl pisania
+
+- **Język:** polski, ty / bezosobowo technicznie
+- **Ton:** zwięźle, konkretnie — zero „w tym tutorialu dowiesz się…”
+- **Nazwy techniczne:** oryginalne (useQuery, jsonb, CAP) + krótkie wyjaśnienie po polsku
+- **Pułapki:** przy ważnych pojęciach dopisz „Pułapka:” lub sekcję błędów
+- **Bez:** marketingu, „daj znać jeśli chcesz”, nadmiernego boldowania
+
+## HTML i CSS — szablon
+
+Kopiuj CSS z istniejącego tutoriala (np. `tutorials/hibernate/hibernate-mini-tutorial.html`). Zmieniaj tylko `--accent` i opcjonalnie kolor `th` (tło nagłówka tabeli) — per temat:
+
+| Temat | --accent |
+|-------|----------|
+| Hibernate | `#2563eb` |
+| React | `#087ea4` |
+| Postgres | `#336791` |
+| AWS | `#ff9900` (+ h2 ciemny `#232f3e`) |
+| Index/spis | `#4338ca` |
+
+W blokach `<pre>` escapuj HTML: `<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`.
+
+## Komponenty UI
+
+| Klasa / element | Zastosowanie |
+|-----------------|--------------|
+| `.keyword` / `.concept-card` / `.svc` | Jedno pojęcie = tytuł + krótki opis |
+| `table` | Porównania, operatory, wersje, mapowania |
+| `pre > code` | SQL, Java, TS, bash, diagramy ASCII |
+| `.qa-item` | Pytanie rekrutacyjne + krótka odpowiedź (1–3 zdania) |
+| `.level-tag` | Junior / Senior / Pułapki — nad grupą pytań |
+| `.must-know` na H2 | 2–3 najważniejsze sekcje tematu |
+| `.map-box` / `.flow-box` | Diagram przepływu, architektura |
+| `.lib-tag` / `.ver-lts` | Etykiety bibliotek / wersji LTS |
+
+## Pytania rekrutacyjne (tylko na życzenie)
+
+User **explicite** prosi → dodaj sekcję H2 „Pytania rekrutacyjne — krótkie odpowiedzi”.
+
+- **40 pytań** — standard pełnego tutoriala
+- **3 poziomy:** Junior/Mid (15), Mid/Senior (15), Pułapki (10)
+- Format `.qa-item`: `<strong>N. Pytanie?</strong>` + `<p>Krótka odpowiedź.</p>`
+- Odpowiedź: **1–3 zdania**
+- User pisze „bez pytań” / „krótko” → **pomiń** sekcję; wpisz w meta „Bez pytań rekrutacyjnych”
+
+## Aktualizacja index.html
+
+Po każdym nowym tutorialu zaktualizuj `tutorials/index.html`:
+
+1. Zwiększ `<span class="count">N tutoriali</span>`
+2. Dodaj kartę `.card` w odpowiedniej sekcji H2 (Backend, Frontend, Bazy, Architektura, DevOps, Bezpieczeństwo…)
+3. Karta: `href`, `.card-title`, `.card-desc` (1 linia), `.card-path`
+4. Nowa kategoria? — dodaj nowy `<h2>` + `.card-list`
+
+## Checklist przed zapisem
+
+- [ ] Plik otwiera się offline, spis treści działa (kotwice)
+- [ ] Link „← Spis tutoriali” prowadzi do index.html
+- [ ] `max-width: 820px`, spójny CSS z rodziną tutorials/
+- [ ] 2–3 sekcje `must-know`
+- [ ] Sekcja „Typowe błędy” (8–10 pkt)
+- [ ] Długość w targetcie (średni ~400 linii)
+- [ ] index.html zaktualizowany
+- [ ] Brak zewnętrznych zależności (fonty, JS, CSS linkowany)

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikacje korporacyjne — wybory i trendy</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0f766e;
+      --rise: #166534;
+      --fade: #991b1b;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f0fdfa; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trend-up { color: var(--rise); font-weight: 600; }
+    .trend-down { color: var(--fade); font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Aplikacje korporacyjne — wybory i trendy</h1>
+<p class="meta">Krótszy tutorial · decyzje architektoniczne · stack „lubiany” w enterprise · trendy 2025–2026<br>
+Bez pytań rekrutacyjnych · subiektywnie-praktycznie, nie ranking vendorów</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#kontekst">Kontekst korporacyjny</a></li>
+    <li><a href="#architektura">Architektura</a></li>
+    <li><a href="#backend">Backend</a></li>
+    <li><a href="#frontend">Frontend</a></li>
+    <li><a href="#dane">Dane i integracje</a></li>
+    <li><a href="#security">Bezpieczeństwo</a></li>
+    <li><a href="#devops">DevOps i chmura</a></li>
+    <li><a href="#obserwowalnosc">Obserwowalność</a></li>
+    <li><a href="#ai">AI w enterprise</a></li>
+    <li><a href="#trendy">Co rośnie / schodzi</a></li>
+    <li><a href="#bledy">Typowe błędy wyboru</a></li>
+  </ol>
+</nav>
+
+<h2 id="kontekst">Kontekst korporacyjny</h2>
+<p>Aplikacja „korporacyjna” to zwykle: <strong>compliance</strong>, audyt, SSO, SLA, zespół 5–50 devów, systemy legacy obok, budżet na utrzymanie 5–10 lat. Technologia musi być <strong>znana rekrutacji</strong>, wspierana przez vendora/społeczność i zgodna z polityką bezpieczeństwa.</p>
+<p>Dobry wybór ≠ najnowszy hype. Dobry wybór = <strong>najmniej niespodzianek</strong> przy skali organizacji + droga migracji.</p>
+
+<hr>
+
+<h2 id="architektura" class="must-know">Architektura</h2>
+
+<table>
+  <thead><tr><th>Wybór</th><th>Kiedy tak</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Modular monolith</strong></td><td>Domyślnie — bounded contexts w modułach, jeden deploy, prostszy debug</td></tr>
+    <tr><td><strong>Mikroserwisy</strong></td><td>Osobne skale, zespoły Conway, jasne granice — nie „bo modne”</td></tr>
+    <tr><td><strong>Hexagonal / ports &amp; adapters</strong></td><td>Testowalność, wymiana DB/kolejki bez dotykania domeny</td></tr>
+    <tr><td><strong>DDD (light)</strong></td><td>Ubiquitous language, agregaty — bez ceremonii tylko dla ceremonii</td></tr>
+    <tr><td><strong>Event-driven (Kafka/SQS)</strong></td><td>Async, integracja wielu systemów — nie do każdego CRUD</td></tr>
+    <tr><td><strong>API-first + OpenAPI</strong></td><td>Kontrakt front/back, generacja klienta, bramki API</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Trend 2025–2026: „modular monolith first”</strong>
+  <p>Po fazie „microservices everywhere” firmy wracają do monolitu modułowego + wycinek serwisów tam, gdzie boli. Mniej operacyjnego overheadu niż 40 Podów na start.</p>
+</div>
+
+<hr>
+
+<h2 id="backend">Backend — co lubi enterprise (Java)</h2>
+
+<table>
+  <thead><tr><th>Warstwa</th><th>Popularny wybór</th><th>Uwaga</th></tr></thead>
+  <tbody>
+    <tr><td>Runtime</td><td><strong>Java 21 LTS</strong> → migracja na <strong>25 LTS</strong></td><td>Virtual threads, records, pattern matching</td></tr>
+    <tr><td>Framework</td><td><strong>Spring Boot 3.x</strong></td><td>De facto standard w PL/EU corp</td></tr>
+    <tr><td>API</td><td>REST + OpenAPI; GraphQL selektywnie</td><td>gRPC wewnątrz klastra</td></tr>
+    <tr><td>ORM</td><td>JPA/Hibernate + Spring Data</td><td>JdbcClient / jOOQ gdy SQL ciężki</td></tr>
+    <tr><td>Walidacja</td><td>Jakarta Validation + Bean Validation</td><td>Spójnie z frontem (Zod)</td></tr>
+    <tr><td>Testy</td><td>JUnit 5, Testcontainers, WireMock</td><td>Integracja z prawdziwym Postgres</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Nowości „pod spodem”, nie koniecznie w CV:</strong> Project Leyden (AOT cache startu), FFM API zamiast JNI, Stream Gatherers — adopt gdy JDK w projekcie dogoni.</p>
+
+<hr>
+
+<h2 id="frontend">Frontend</h2>
+
+<table>
+  <thead><tr><th>Wybór</th><th>Dlaczego w corp</th></tr></thead>
+  <tbody>
+    <tr><td><strong>React + TypeScript strict</strong></td><td>Pula devów, ecosystem, SPA admin/portal</td></tr>
+    <tr><td><strong>TanStack Query</strong></td><td>Server state bez magii Redux na każdy GET</td></tr>
+    <tr><td><strong>React Router</strong></td><td>Standard routing; deep links, guardy auth</td></tr>
+    <tr><td><strong>React Hook Form + Zod</strong></td><td>Formularze + schema współdzielona z API</td></tr>
+    <tr><td><strong>Vite</strong></td><td>Szybki dev/build — zastąpił webpack w greenfield</td></tr>
+  </tbody>
+</table>
+
+<p>Angular nadal w wielu bankach/telekomach (długi cykl życia). <strong>Greenfield</strong> częściej React. Next.js gdy potrzeba SSR/SEO — portale publiczne, nie typowy panel wewnętrzny.</p>
+
+<hr>
+
+<h2 id="dane" class="must-know">Dane i integracje</h2>
+
+<table>
+  <thead><tr><th>Rola</th><th>Technologia</th></tr></thead>
+  <tbody>
+    <tr><td>Source of truth</td><td><strong>PostgreSQL</strong></td></tr>
+    <tr><td>Cache</td><td>Redis / ElastiCache</td></tr>
+    <tr><td>Full-text / search</td><td>Elasticsearch (Java API Client)</td></tr>
+    <tr><td>Kolejka</td><td>Kafka (duże corp) / RabbitMQ / SQS (AWS)</td></tr>
+    <tr><td>Pliki</td><td>S3 / blob storage — nie DB na PDF</td></tr>
+    <tr><td>Sync search</td><td>Outbox / CDC (Debezium) — nie dual-write bez planu</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="security">Bezpieczeństwo</h2>
+<ul>
+  <li><strong>OAuth 2 + OIDC</strong> — Keycloak, Azure AD, Okta; Authorization Code + PKCE dla SPA</li>
+  <li><strong>BFF</strong> lub HttpOnly cookies — unikaj access token w localStorage</li>
+  <li><strong>MFA</strong> — standard; polityka haseł wg NIST (długość, nie rotacja 90 dni)</li>
+  <li><strong>CSP, CSRF, OWASP</strong> — baseline dla WWW</li>
+  <li><strong>Secrets</strong> — Vault / AWS Secrets Manager, nie w repo</li>
+  <li><strong>SBOM + skan CVE</strong> — wymagane w coraz większej liczbie RFP</li>
+</ul>
+
+<hr>
+
+<h2 id="devops">DevOps i chmura</h2>
+
+<table>
+  <thead><tr><th>Obszar</th><th>Typowy wybór</th></tr></thead>
+  <tbody>
+    <tr><td>Chmura</td><td>AWS / Azure / GCP — multi-cloud rzadko na start</td></tr>
+    <tr><td>Runtime</td><td><strong>Kubernetes</strong> (EKS/AKS) lub managed PaaS (ECS, Cloud Run)</td></tr>
+    <tr><td>IaC</td><td>Terraform / OpenTofu; Helm / Kustomize</td></tr>
+    <tr><td>CI/CD</td><td>GitHub Actions, GitLab CI, Jenkins (legacy)</td></tr>
+    <tr><td>Kontener</td><td>JRE distroless / Alpine + Leyden AOT cache w przyszłości</td></tr>
+    <tr><td>12-factor</td><td>Config w env, stateless processes, health probes</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Platform Engineering</strong>
+  <p>Zespoł platformy dostarcza „golden path” (szablony, K8s, observability) — dev nie składa infra od zera. Backstage, wewnętrzne developer portale.</p>
+</div>
+
+<hr>
+
+<h2 id="obserwowalnosc">Obserwowalność</h2>
+<ul>
+  <li><strong>OpenTelemetry</strong> — jeden standard traces/metrics/logs (zastępuje własne formaty)</li>
+  <li><strong>Structured logging</strong> — JSON, correlation-id przez cały request</li>
+  <li><strong>Dashboards + alerty</strong> — SLO/error budget zamiast alert na każdy WARN</li>
+  <li><strong>Health:</strong> liveness + readiness + startup probe (wolny Spring)</li>
+</ul>
+
+<hr>
+
+<h2 id="ai">AI w enterprise (2025–2026)</h2>
+
+<table>
+  <thead><tr><th>Realistycznie</th><th>Nie na serio (jeszcze)</th></tr></thead>
+  <tbody>
+    <tr><td>Copilot/Cursor dla devów — produktywność</td><td>„LLM zastąpi cały backend”</td></tr>
+    <tr><td>RAG na dokumentach wewnętrznych (polityki, runbooki)</td><td>Brak audytu promptów w prod</td></tr>
+    <tr><td>Chatbot do FAQ / search po knowledge base</td><td>Wysyłanie PII do publicznego API bez DPA</td></tr>
+    <tr><td>Embeddingi + vector DB obok ES</td><td>Jeden model „do wszystkiego” bez ewaluacji</td></tr>
+  </tbody>
+</table>
+
+<p>Corp wymaga: <strong>data residency</strong>, umowy z dostawcą AI, logowanie, guardrails, fallback gdy model padnie.</p>
+
+<hr>
+
+<h2 id="trendy">Co rośnie / schodzi</h2>
+
+<table>
+  <thead><tr><th>Trend</th><th>Kierunek</th></tr></thead>
+  <tbody>
+    <tr><td>Modular monolith, monorepo</td><td class="trend-up">↑</td></tr>
+    <tr><td>Virtual threads, Leyden AOT</td><td class="trend-up">↑</td></tr>
+    <tr><td>TypeScript strict wszędzie</td><td class="trend-up">↑</td></tr>
+    <tr><td>Passwordless / passkeys / MFA</td><td class="trend-up">↑</td></tr>
+    <tr><td>OpenTelemetry, eBPF (Cilium)</td><td class="trend-up">↑</td></tr>
+    <tr><td>Supply chain security (SBOM, SLSA)</td><td class="trend-up">↑</td></tr>
+    <tr><td>FinOps / cost per team</td><td class="trend-up">↑</td></tr>
+    <tr><td>Microservices „na dzień 1”</td><td class="trend-down">↓</td></tr>
+    <tr><td>RestHighLevelClient, Java 8, javax.*</td><td class="trend-down">↓</td></tr>
+    <tr><td>Rotacja hasła co 90 dni</td><td class="trend-down">↓</td></tr>
+    <tr><td>Heavy ESB (monolityczna szyna)</td><td class="trend-down">↓</td></tr>
+    <tr><td>„Big bang” rewrite co 5 lat</td><td class="trend-down">↓ → strangler fig</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy wyboru</h2>
+<ol>
+  <li>Mikroserwisy przed problemem organizacyjnym — koszt K8s + sieć + distributed debug</li>
+  <li>ES/Kafka „bo enterprise brzmi” — bez use case</li>
+  <li>Brak standardu observability — każdy zespół inny stack</li>
+  <li>Frontend bez TypeScript strict — dług rośnie niewidocznie</li>
+  <li>Auth własny zamiast IdP — lata utrzymania kryptografii</li>
+  <li>Ignorowanie NIST/OWASP — audyt blokuje release</li>
+  <li>AI w prod bez polityki danych — compliance nightmare</li>
+  <li>Zbyt wczesna optymalizacja (Graal native wszędzie) — build i debug drogie</li>
+</ol>
+
+<hr>
+
+<p class="meta"><strong>Stack authors (przykład greenfield corp-light):</strong> Java 21+ · Spring Boot · Postgres · React · TS strict · TanStack Query · OAuth OIDC · K8s · OpenTelemetry.</p>
+
+</body>
+</html>

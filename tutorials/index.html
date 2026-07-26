@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini-tutoriale — spis</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #4338ca;
+      --code-bg: #f4f4f5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.35rem;
+    }
+
+    h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--accent);
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .card-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.45rem;
+    }
+
+    @media (min-width: 1200px) {
+      .card-list {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+    }
+
+    .card {
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 1px 4px rgba(67, 56, 202, 0.1);
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 0.82rem;
+      line-height: 1.3;
+      color: var(--accent);
+      margin-bottom: 0.15rem;
+    }
+
+    .card-desc {
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: var(--muted);
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .count {
+      display: inline-block;
+      background: #eef2ff;
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15em 0.5em;
+      border-radius: 999px;
+    }
+
+    footer {
+      margin-top: 2rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Mini-tutoriale</h1>
+<p class="meta">Spis tutoriali HTML w projekcie <strong>react-authors</strong>. Kliknij kartę, aby otworzyć.</p>
+
+<p><span class="count">24 tutoriali</span></p>
+
+<h2>Backend / Java</h2>
+<div class="card-list">
+  <a class="card" href="hibernate/hibernate-mini-tutorial.html">
+    <div class="card-title">Hibernate / JPA</div>
+    <p class="card-desc">Stany encji, relacje, N+1, LazyInitException, błędy.</p>
+  </a>
+  <a class="card" href="java/virtual-threads-mini-tutorial.html">
+    <div class="card-title">Java Virtual Threads</div>
+    <p class="card-desc">Project Loom, pinning, kiedy używać, Spring Boot.</p>
+  </a>
+  <a class="card" href="java/selenium-junit-spock-mini-tutorial.html">
+    <div class="card-title">Selenium + JUnit + Spock</div>
+    <p class="card-desc">E2E UI, Page Object, waits, JUnit 5, Spock BDD.</p>
+  </a>
+  <a class="card" href="java/java-8-to-25-mini-tutorial.html">
+    <div class="card-title">Java 8 → 25</div>
+    <p class="card-desc">Lambda, modules, records, virtual threads — wersja po wersji.</p>
+  </a>
+  <a class="card" href="java/stream-gatherers-mini-tutorial.html">
+    <div class="card-title">Stream Gatherers</div>
+    <p class="card-desc">gather(), fold, scan, okna, mapConcurrent, własne gatherery.</p>
+  </a>
+  <a class="card" href="java/foreign-memory-mini-tutorial.html">
+    <div class="card-title">Foreign Memory API</div>
+    <p class="card-desc">FFM API, MemorySegment, Arena, layout, vs JNI/ByteBuffer.</p>
+  </a>
+  <a class="card" href="java/leyden-graal-mini-tutorial.html">
+    <div class="card-title">Leyden + Graal</div>
+    <p class="card-desc">JEP 483, AOT cache, CDS, Native Image vs Leyden.</p>
+  </a>
+</div>
+
+<h2>Bazy danych</h2>
+<div class="card-list">
+  <a class="card" href="postgresql/postgresql-mini-tutorial.html">
+    <div class="card-title">PostgreSQL</div>
+    <p class="card-desc">UPSERT, CTE, window functions, JSONB, EXPLAIN, RLS.</p>
+  </a>
+  <a class="card" href="elasticsearch/elasticsearch-mini-tutorial.html">
+    <div class="card-title">Elasticsearch</div>
+    <p class="card-desc">Java API Client — index, search, bulk, agregacje.</p>
+  </a>
+</div>
+
+<h2>Frontend / React</h2>
+<div class="card-list">
+  <a class="card" href="react/react-mini-tutorial.html">
+    <div class="card-title">React</div>
+    <p class="card-desc">Komponenty, hooks, stan, efekty, wydajność, React 19.</p>
+  </a>
+  <a class="card" href="react/react-stack-mini-tutorial.html">
+    <div class="card-title">Query · Router · Hook Form</div>
+    <p class="card-desc">TanStack Query, React Router, React Hook Form — hooki, projekt authors.</p>
+  </a>
+  <a class="card" href="typescript/typescript-mini-tutorial.html">
+    <div class="card-title">TypeScript</div>
+    <p class="card-desc">strict, generics, narrowing, utility types, Zod.</p>
+  </a>
+</div>
+
+<h2>Architektura</h2>
+<div class="card-list">
+  <a class="card" href="architecture/ddd-mini-tutorial.html">
+    <div class="card-title">DDD</div>
+    <p class="card-desc">Strategia vs taktyka, bounded context, agregaty, warstwy.</p>
+  </a>
+  <a class="card" href="architecture/system-architecture-mini-tutorial.html">
+    <div class="card-title">Architektura rozproszona</div>
+    <p class="card-desc">Microservices, CAP, saga, cache, circuit breaker, CQRS.</p>
+  </a>
+  <a class="card" href="architecture/corporate-tech-choices-mini-tutorial.html">
+    <div class="card-title">Stack korporacyjny</div>
+    <p class="card-desc">Enterprise, modular monolith, trendy 2025–26, AI.</p>
+  </a>
+</div>
+
+<h2>DevOps</h2>
+<div class="card-list">
+  <a class="card" href="aws/aws-services-mini-tutorial.html">
+    <div class="card-title">AWS</div>
+    <p class="card-desc">EC2, Lambda, RDS, S3, Cognito, SQS, Bedrock — mapowanie na stack.</p>
+  </a>
+  <a class="card" href="aws/aws-summary-mini-tutorial.html">
+    <div class="card-title">AWS Summary</div>
+    <p class="card-desc">Dyski, LB, ASG, RDS, S3 lifecycle, kolejki, serverless, ML.</p>
+  </a>
+  <a class="card" href="kubernetes/kubernetes-mini-tutorial.html">
+    <div class="card-title">Kubernetes</div>
+    <p class="card-desc">Pod, Deployment, Service, Ingress, probes, HPA, kubectl.</p>
+  </a>
+  <a class="card" href="twelve-factor/twelve-factor-mini-tutorial.html">
+    <div class="card-title">Twelve-Factor App</div>
+    <p class="card-desc">12 faktorów, K8s, typowe błędy wdrożeń.</p>
+  </a>
+</div>
+
+<h2>Bezpieczeństwo</h2>
+<div class="card-list">
+  <a class="card" href="auth/oauth2-oidc-mini-tutorial.html">
+    <div class="card-title">OAuth 2 + OIDC</div>
+    <p class="card-desc">Tokeny, Authorization Code + PKCE, scopes, BFF.</p>
+  </a>
+  <a class="card" href="security/nist-password-mini-tutorial.html">
+    <div class="card-title">NIST — hasła</div>
+    <p class="card-desc">800-63B: długość, wycieki, passphrase, MFA.</p>
+  </a>
+  <a class="card" href="security/www-security-mini-tutorial.html">
+    <div class="card-title">Bezpieczeństwo WWW</div>
+    <p class="card-desc">XSS, CSRF, CORS, CSP, SSRF, SSTI — React/Spring.</p>
+  </a>
+</div>
+
+<h2>AI / Narzędzia</h2>
+<div class="card-list">
+  <a class="card" href="ai/ai-for-developers-mini-tutorial.html">
+    <div class="card-title">AI dla programistów</div>
+    <p class="card-desc">IDE, agenci, MCP, workflow, hype vs praktyka.</p>
+  </a>
+</div>
+
+<h2>Kariera</h2>
+<div class="card-list">
+  <a class="card" href="career/leadership-questions-mini-tutorial.html">
+    <div class="card-title">Pytania liderskie</div>
+    <p class="card-desc">Ściąga na rozmowę, zaangażowanie, lead skills.</p>
+  </a>
+</div>
+
+<footer>
+  Offline — własne CSS, bez CDN.<br>
+  Reguły dla Cursor IDE: <code>.cursor/rules/</code> ·
+  <a href="tutorial-generator-rules.html">czytelna wersja HTML</a>
+</footer>
+
+</body>
+</html>
