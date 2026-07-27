@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vaadin Flow — kiedy, jak, praktyki</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #00b4f0;
+      --accent-dark: #007bb8;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.28rem; margin-top: 2.25rem; color: var(--accent-dark); }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; color: var(--accent-dark); }
+
+    h2.must-know::after { content: " ★"; color: var(--star); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.87rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #e0f7fc; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .map-box {
+      background: #e0f7fc;
+      border: 1px solid #b2ebf2;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    .tip {
+      background: #fffbeb;
+      border-left: 4px solid #d97706;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; padding-left: 1.4rem; }
+    .toc a { color: var(--accent-dark); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent-dark); }
+
+    .check {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .check li {
+      position: relative;
+      padding-left: 1.6rem;
+      margin: 0.45rem 0;
+    }
+
+    .check li::before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      color: var(--accent-dark);
+      font-weight: 700;
+    }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Vaadin Flow — kiedy, jak, praktyki</h1>
+<p class="meta">Budowa UI w czystej Javie · model server-driven · kiedy stosować / unikać · architektura · dobre praktyki · Flow vs Hilla vs React<br>
+Format: HTML offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Co to jest Flow</a></li>
+    <li><a href="#model">Model działania</a></li>
+    <li><a href="#kiedy">Kiedy stosować</a></li>
+    <li><a href="#kiedy-nie">Kiedy nie zalecane</a></li>
+    <li><a href="#architektura">Architektura aplikacji</a></li>
+    <li><a href="#praktyki">Dobre praktyki</a></li>
+    <li><a href="#wydajnosc">Wydajność i sesja</a></li>
+    <li><a href="#bezpieczenstwo">Bezpieczeństwo</a></li>
+    <li><a href="#vs">Flow vs Hilla vs React</a></li>
+    <li><a href="#mustknow">Must-know</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">0. Co to jest Vaadin Flow</h2>
+
+<p><strong>Vaadin Flow</strong> to framework do budowy aplikacji webowych w <strong>czystej Javie</strong>. Widoki, komponenty i logika UI żyją na serwerze; przeglądarka dostaje HTML/CSS i komunikuje się z serwerem przez WebSocket / HTTP — bez ręcznego REST-u i bez osobnego projektu React/Angular.</p>
+
+<p>Jedno zdanie: <em>piszesz UI jak Swing/Wicket, a użytkownik dostaje nowoczesną SPA w przeglądarce</em>. Zespół Java może prowadzić feature od bazy do ekranu w jednym języku i jednym IDE.</p>
+
+<div class="map-box">
+<strong>Stack typowy:</strong> Spring Boot (DI, Security, Data) + Vaadin Flow (UI) + JPA/Hibernate + PostgreSQL.<br>
+<strong>Licencja:</strong> open source (Apache 2) + komponenty/wsparcie komercyjne Vaadin (LTS do 15 lat na major).
+</div>
+
+<hr>
+
+<h2 id="model" class="must-know">1. Model działania — server-driven UI</h2>
+
+<pre><code>Przeglądarka                    Serwer (JVM)
+┌──────────────┐               ┌─────────────────────────┐
+│ HTML + CSS   │◄── diff UI ───│ Drzewo komponentów      │
+│ (client eng) │               │ (Button, Grid, Form…)   │
+│              │── event ─────►│ Listenery w Javie       │
+│              │               │ Session = stan UI       │
+└──────────────┘               │ + Application Services  │
+                               └─────────────────────────┘</code></pre>
+
+<ul>
+  <li><strong>Stan UI</strong> siedzi w sesji HTTP na serwerze — każde kliknięcie to event → Java → aktualizacja drzewa → patch do przeglądarki.</li>
+  <li><strong>Brak osobnego API</strong> tylko na potrzeby ekranu — serwisy wołasz bezpośrednio z widoku (przez warstwę application service).</li>
+  <li><strong>Routing</strong> deklaratywny: <code>@Route("orders")</code>, layouty <code>@Layout</code> / <code>RouterLayout</code>.</li>
+  <li><strong>Komponenty</strong> Vaadin (Grid, FormLayout, ComboBox, Dialog…) + własne lit-based / React embedded gdy trzeba.</li>
+</ul>
+
+<div class="trap"><strong>Konsekwencja modelu:</strong> serwer jest <em>stateful</em> względem UI. Każda otwarta karta przeglądarki trzyma drzewo komponentów w pamięci JVM. To nie jest „stateless REST za CDN” — skalowanie wygląda inaczej niż przy React + API.</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">2. Kiedy stosować</h2>
+
+<table>
+  <thead><tr><th>Sytuacja</th><th>Dlaczego Flow pasuje</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Aplikacje biznesowe / back-office</strong></td><td>Formy, siatki, workflowy, CRUD — Vaadin ma to z pudełka</td></tr>
+    <tr><td><strong>Zespół głównie Java</strong></td><td>Zero drugiej technologii UI; review i hiring w jednym stacku</td></tr>
+    <tr><td><strong>Szybki time-to-market wewnętrzny</strong></td><td>Nie budujesz BFF/REST/DTO sync na start; end-to-end w tygodniach</td></tr>
+    <tr><td><strong>Silna spójność walidacji</strong></td><td>Bean Validation i reguły domenowe w jednym miejscu (serwis), UI tylko UX</td></tr>
+    <tr><td><strong>Dynamiczne UI generowane w runtime</strong></td><td>Ekrany zależne od metadanych / ról — łatwiej w Javie niż w szablonie TS</td></tr>
+    <tr><td><strong>Bezpieczeństwo „by default”</strong></td><td>Logika nie wycieka do JS; mniej powierzchni ataku XSS na API publicznym</td></tr>
+    <tr><td><strong>Długie życie systemu (10+ lat)</strong></td><td>LTS Vaadin, migracje majorów, jeden język przez dekady</td></tr>
+    <tr><td><strong>Admin / portal wewnętrzny przy istniejącym Springu</strong></td><td>Dokładasz moduł UI do monolitów / modular monolith bez osobnego frontu</td></tr>
+  </tbody>
+</table>
+
+<div class="tip"><strong>Reguła kciuka:</strong> jeśli produkt to narzędzie dla pracowników firmy (operatorzy, back-office, CRM wewnętrzny) i zespół to mid/senior Java — Flow jest bardzo dobrym defaultem.</div>
+
+<hr>
+
+<h2 id="kiedy-nie">3. Kiedy nie zalecane</h2>
+
+<table>
+  <thead><tr><th>Sytuacja</th><th>Dlaczego Flow boli</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Publiczny marketing / SEO</strong></td><td>Content musi być w HTML dla crawlerów; Flow to SPA server-driven — słabe pod SEO. Osobna strona (SSR/SSG) albo Hilla/React</td></tr>
+    <tr><td><strong>Bardzo wysoki ruch anonimowy</strong></td><td>Sesja UI na usera × tysiące równoległych = pamięć i sticky sessions</td></tr>
+    <tr><td><strong>Offline-first / PWA z bogatą logiką offline</strong></td><td>Model wymaga serwera; offline to nie natywna siła Flow</td></tr>
+    <tr><td><strong>Zespół frontend (React/Vue) silniejszy niż Java UI</strong></td><td>Będą walczyć z idiomami; lepszy Hilla albo React + API</td></tr>
+    <tr><td><strong>Mikroserwisy z wieloma klientami UI</strong></td><td>Flow wiąże UI z jedną appką JVM; mobile/partnerzy i tak potrzebują API</td></tr>
+    <tr><td><strong>Pixel-perfect, mocno animowany UX konsumencki</strong></td><td>Da się, ale koszt customizacji i round-tripów jest wyższy niż w czystym kliencie</td></tr>
+    <tr><td><strong>Ekstremalnie niskie latency UI (gry, edytory real-time)</strong></td><td>Każda interakcja może iść na serwer — nie ten tool</td></tr>
+    <tr><td><strong>Wymóg „zero stanu na serwerze” (FaaS pure)</strong></td><td>Sesja UI nie pasuje do bezstanowych Lambd bez ciężkiej gimnastyki</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> wybór Flow „bo Java”, gdy produkt to sklep publiczny z SEO i 100k anonimowych sesji dziennie. Da się to postawić — ale płacisz sesjami, sticky LB i limitem skalowania, którego React+CDN nie ma.</div>
+
+<hr>
+
+<h2 id="architektura">4. Architektura — jak budować</h2>
+
+<pre><code>ui/          @Route, layouts, komponenty — TYLKO prezentacja
+application/ Application Services — transakcje, security, use-case
+domain/      encje, reguły (opcjonalnie bogaty model)
+infra/       JPA, REST out, kolejki
+
+Widok ──► ApplicationService ──► Repository / Port
+   ✗ nie wołaj repozytorium wprost z @Route
+   ✗ serwis nie zależy od Button / Grid</code></pre>
+
+<div class="keyword">
+  <strong>Application Service (stateless)</strong>
+  <p>Jeden use-case / spójna grupa metod. Otwiera transakcję, waliduje wejście, egzekwuje <code>@PreAuthorize</code>, zwraca DTO lub (przy prostym CRUD) encję. Nie trzyma stanu UI.</p>
+</div>
+
+<div class="keyword">
+  <strong>Widok = cienki</strong>
+  <p>Składa komponenty, binduje dane, woła serwis. Bez SQL, bez reguł biznesowych w listenerze przycisku.</p>
+</div>
+
+<div class="keyword">
+  <strong>DTO vs encja w UI</strong>
+  <p>Prosty formularz 1:1 z tabelą → encja OK. Złożony ekran / kilka agregatów → DTO. Lazy load poza transakcją w serwisie = klasyczny <code>LazyInitializationException</code> w Gridzie.</p>
+</div>
+
+<pre><code>@Route("orders")
+@PermitAll
+public class OrderListView extends VerticalLayout {
+
+  public OrderListView(OrderService orders) {
+    Grid&lt;OrderSummary&gt; grid = new Grid&lt;&gt;(OrderSummary.class, false);
+    grid.addColumn(OrderSummary::number).setHeader("Numer");
+    grid.setItems(query -&gt;
+        orders.findPage(query.getOffset(), query.getLimit()).stream());
+    add(grid);
+  }
+}
+
+@Service
+public class OrderService {
+  @PreAuthorize("hasAuthority('ORDER_READ')")
+  @Transactional(readOnly = true)
+  public List&lt;OrderSummary&gt; findPage(int offset, int limit) { ... }
+}</code></pre>
+
+<hr>
+
+<h2 id="praktyki" class="must-know">5. Dobre praktyki i wytyczne</h2>
+
+<h3>Widoki i nawigacja</h3>
+<ul class="check">
+  <li>Dane ładuj w <code>AfterNavigationObserver</code> / <code>BeforeEnter</code>, nie w konstruktorze (framework może tworzyć widok wcześniej).</li>
+  <li>Cleanup (subskrypcje, broadcaster) w <code>onDetach</code> — inaczej wyciek pamięci sesji.</li>
+  <li>Parametry trasy: <code>@Route("orders/:id")</code> + <code>BeforeEnterEvent</code>, nie ręczne parsowanie URL.</li>
+  <li>Layout wspólny (<code>MainLayout</code>) na nawigację i bezpieczeństwo menu — nie kopiuj sidebara.</li>
+</ul>
+
+<h3>Dane w Grid / Combo</h3>
+<ul class="check">
+  <li>Duże zbiory: <code>CallbackDataProvider</code> / lazy z paginacją w serwisie — nigdy <code>findAll()</code> do pamięci.</li>
+  <li>Filtrowanie i sortowanie po stronie bazy, nie streamem po 100k obiektów w JVM.</li>
+  <li><code>Binder&lt;T&gt;</code> + Bean Validation — błędy pól w UI, reguły krytyczne i tak w serwisie.</li>
+</ul>
+
+<h3>Styl i temat</h3>
+<ul class="check">
+  <li>CSS w motywie (<code>frontend/themes/...</code>), nie setki <code>getStyle().set(...)</code> w Javie.</li>
+  <li>Lumo / własny theme; spójne tokeny (kolory, spacing) zamiast magicznych pikseli.</li>
+  <li>Dostępność: natywne komponenty Vaadin są dobre z pudełka — nie psuj ich własnym HTML-em bez ARIA.</li>
+</ul>
+
+<h3>Kod i moduły</h3>
+<ul class="check">
+  <li>Większa appka → multi-modul Maven/Gradle: <code>ui</code> zależy od <code>application</code>, nigdy odwrotnie.</li>
+  <li>Constructor injection; unikaj <code>@Autowired</code> na polach w widokach testowalnych.</li>
+  <li>Nie pakuj logiki domenowej do listenerów <code>addClickListener</code>.</li>
+</ul>
+
+<h3>Push / tło</h3>
+<ul class="check">
+  <li>Aktualizacje z wątku tła: <code>ui.access(() -&gt; { ... })</code> — inaczej wyjątek wątku UI.</li>
+  <li>Włącz <code>@Push</code> świadomie; bez pusha i tak działa request-response.</li>
+  <li>Broadcast między sesjami: ostrożnie z silnymi referencjami do <code>UI</code> — zawsze słabe / unregister w detach.</li>
+</ul>
+
+<hr>
+
+<h2 id="wydajnosc">6. Wydajność i sesja</h2>
+
+<table>
+  <thead><tr><th>Temat</th><th>Wytyczna</th></tr></thead>
+  <tbody>
+    <tr><td>Pamięć sesji</td><td>Mierz heap per aktywna sesja UI; trzymaj widoki lekkie, nie cache'uj całych list w polach widoku</td></tr>
+    <tr><td>Timeout sesji</td><td>Ustaw realistyczny (np. 30 min); komunikuj wygaśnięcie użytkownikowi</td></tr>
+    <tr><td>Sticky sessions</td><td>Przy wielu nodach: sticky LB albo replikacja sesji (kosztowna) — planuj od dnia 1</td></tr>
+    <tr><td>Heartbeat</td><td>Domyślny heartbeat utrzymuje sesję; poznaj konfigurację przy proxy/timeoutach</td></tr>
+    <tr><td>Payload</td><td>Nie odświeżaj całego layoutu — aktualizuj konkretne komponenty</td></tr>
+    <tr><td>Wątki</td><td>Ciężka praca poza requestem UI (executor); wynik wraca przez <code>ui.access</code></td></tr>
+  </tbody>
+</table>
+
+<div class="tip"><strong>Kluczyk:</strong> zanim wrzucisz Flow za auto-scalingiem „jak REST”, narysuj ścieżkę sesji. Bez sticky lub shared session użytkownik dostanie błędy po przełączeniu poda.</div>
+
+<hr>
+
+<h2 id="bezpieczenstwo">7. Bezpieczeństwo</h2>
+
+<ul>
+  <li><strong>UI ≠ security.</strong> Ukryty przycisk to UX. Prawdziwa ochrona: <code>@PreAuthorize</code> / method security na application service.</li>
+  <li><strong>Vaadin + Spring Security</strong> — ścieżki <code>/VAADIN/**</code>, login view, <code>VaadinWebSecurity</code> (w nowszych starterach).</li>
+  <li><strong>Waliduj w serwisie</strong> nawet jeśli Binder sprawdził formularz — UI da się ominąć (inne wejście, job, API).</li>
+  <li><strong>Nie wystawiaj encji z leniwymi kolekcjami</strong> poza kontrolą — ryzyko nadmiarowych danych w sesji i błędów.</li>
+  <li><strong>CSRF / origin</strong> — framework chroni kanał Vaadin; własne endpointy REST i tak zabezpiecz osobno.</li>
+</ul>
+
+<pre><code>@Service
+public class OrderService {
+  @PreAuthorize("hasAuthority('ORDER_CANCEL')")
+  @Transactional
+  public void cancel(OrderId id, String reason) {
+    // reguły domenowe — niezależnie od tego, czy Button był widoczny
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="vs">8. Flow vs Hilla vs React (+ API)</h2>
+
+<table>
+  <thead><tr><th></th><th>Vaadin Flow</th><th>Vaadin Hilla</th><th>React + Spring API</th></tr></thead>
+  <tbody>
+    <tr><td>Język UI</td><td>Java</td><td>TypeScript</td><td>TypeScript/JS</td></tr>
+    <tr><td>Stan UI</td><td>Serwer</td><td>Klient</td><td>Klient</td></tr>
+    <tr><td>API</td><td>Zwykle niepotrzebne</td><td>Type-safe endpoints</td><td>REST/GraphQL ręczne</td></tr>
+    <tr><td>Skalowanie</td><td>Sesje / sticky</td><td>Backend bardziej stateless</td><td>CDN + stateless API</td></tr>
+    <tr><td>Zespół</td><td>Java-first</td><td>Fullstack / frontend</td><td>Frontend + backend</td></tr>
+    <tr><td>SEO / public</td><td>Słabo</td><td>Lepiej z wysiłkiem</td><td>Najlepsza kontrola (SSR)</td></tr>
+    <tr><td>Kiedy</td><td>Back-office, CRUD, Java team</td><td>Bogatszy UX, ten sam ekosystem Vaadin</td><td>Produkt konsumencki, multi-client</td></tr>
+  </tbody>
+</table>
+
+<p>Da się <strong>osadzać widoki React w Flow</strong> punktowo — gdy 90% aplikacji to formy biznesowe, a jeden ekran wymaga ciężkiego klienta. Nie odwrotnie: nie buduj całego produktu w Flow „z wyspami”, jeśli rdzeń to interakcja kliencka.</p>
+
+<hr>
+
+<h2 id="mustknow">9. Must-know</h2>
+
+<div class="map-box">
+<ol>
+  <li>Flow = <strong>UI w Javie, stan na serwerze</strong> — świadoma decyzja o sesji i skalowaniu.</li>
+  <li>Celuj w <strong>back-office / narzędzia wewnętrzne</strong>, nie w sklep z SEO.</li>
+  <li><strong>Widok cienki → Application Service → domena/infra</strong>; nigdy repo w <code>@Route</code>.</li>
+  <li>Security w serwisie (<code>@PreAuthorize</code>), nie w widoczności przycisku.</li>
+  <li>Lazy data w Gridzie; zero <code>findAll()</code> na produkcji.</li>
+  <li>Ładowanie danych po nawigacji; cleanup w <code>onDetach</code>.</li>
+  <li>CSS w theme, nie w <code>getStyle()</code> wszędzie.</li>
+  <li>Wątki tła tylko przez <code>ui.access</code>.</li>
+  <li>Od dnia 1: plan na <strong>sticky sessions</strong> albo architekturę sesji.</li>
+  <li>Gdy zespół to frontendowcy albo produkt publiczny — rozważ Hilla / React, nie „Flow na siłę”.</li>
+</ol>
+</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ul>
+  <li><strong>Logika biznesowa w <code>addClickListener</code>.</strong> Niewytypowalna, niechroniona method security, nie do użycia z joba.</li>
+  <li><strong>Wołanie repository z widoku.</strong> Omija warstwę transakcji i autoryzacji; wiąże UI z JPA.</li>
+  <li><strong><code>findAll()</code> do Grida.</strong> Pierwszy tenant z 200k wierszy kładzie sesję i heap.</li>
+  <li><strong>Ładowanie w konstruktorze widoku.</strong> Zbyt wcześnie / wielokrotnie; użyj cyklu nawigacji.</li>
+  <li><strong>Brak <code>onDetach</code> przy broadcasterze.</strong> Sesja trzyma UI → wyciek pamięci aż do restartu.</li>
+  <li><strong>Aktualizacja UI z wątku tła bez <code>ui.access</code>.</strong> Losowe wyjątki i uszkodzony stan.</li>
+  <li><strong>Security tylko przez ukrycie menu.</strong> Znajomość URL / inne wejście omija „ochronę”.</li>
+  <li><strong>Encja z lazy collection w sesji UI poza transakcją.</strong> <code>LazyInitializationException</code> przy scrollu Grida.</li>
+  <li><strong>Stylowanie wyłącznie <code>getStyle()</code>.</strong> Niemożliwy theme, konflikt z design systemem.</li>
+  <li><strong>Wdrożenie multi-node bez sticky.</strong> Użytkownik skacze między podami → „Session expired” w kółko.</li>
+  <li><strong>Flow na landing page z SEO.</strong> Zły tool; osobny site albo inny stack.</li>
+  <li><strong>Traktowanie Flow jak React (masowy stan w kliencie).</strong> Walczysz z modelem zamiast z nim pracować — albo wybierasz Hilla.</li>
+</ul>
+
+</body>
+</html>
