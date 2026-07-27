@@ -17,6 +17,12 @@ Repozytorium samodzielnych mini-tutoriali HTML (offline, `file://`, język polsk
 
 Przy tworzeniu lub edycji plików w `tutorials/` stosuj reguły z `mini-tutorial-html.mdc`.
 
+**Obowiązkowy link powrotny:** każdy plik `*-mini-tutorial.html` w podkatalogu musi mieć na samej górze `<body>` (przed H1) link:
+
+`<p class="back"><a href="../index.html">← Spis tutoriali</a></p>`
+
+oraz w CSS klasy `.back` / `.back a`. Nie pomijaj tego przy nowych ani przy edycji istniejących tutoriali.
+
 Nie twórz plików markdown ani README, chyba że użytkownik wyraźnie poprosi.
 
 ## Referencje wzorcowe

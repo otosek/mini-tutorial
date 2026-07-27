@@ -142,7 +142,7 @@
     <tr><td>Nazwa pliku</td><td>kebab-case, sufiks <code>-mini-tutorial.html</code></td></tr>
     <tr><td>Kodowanie</td><td>UTF-8, <code>lang="pl"</code></td></tr>
     <tr><td>Szerokość</td><td><code>max-width: 820px</code>, wyśrodkowany body</td></tr>
-    <tr><td>Link wstecz</td><td><code>&lt;p class="back"&gt;&lt;a href="../index.html"&gt;← Spis tutoriali&lt;/a&gt;&lt;/p&gt;</code> (w podkatalogu) lub bez <code>../</code> w root docs</td></tr>
+    <tr><td>Link wstecz</td><td><strong>OBOWIĄZKOWY</strong> — pierwszy element w <code>&lt;body&gt;</code> (przed H1): <code>&lt;p class="back"&gt;&lt;a href="../index.html"&gt;← Spis tutoriali&lt;/a&gt;&lt;/p&gt;</code> + CSS <code>.back</code> / <code>.back a</code></td></tr>
   </tbody>
 </table>
 
@@ -153,6 +153,7 @@
 <p>Każdy tutorial ma ten sam szkielet — dostosuj sekcje merytoryczne, zachowaj układ:</p>
 
 <ol>
+  <li><strong>Link wstecz (.back)</strong> — przed wszystkim innym w body; bez tego tutorial jest niekompletny</li>
   <li><strong>Nagłówek H1</strong> — temat krótko</li>
   <li><strong>Meta (.meta)</strong> — 1–2 linie: co obejmuje + „Format: HTML…” + ewent. „Bez pytań”</li>
   <li><strong>Spis treści (.toc)</strong> — linki kotwic <code>#sekcja</code></li>
@@ -298,7 +299,8 @@
 
 <ul>
   <li>☐ Plik otwiera się offline, spis treści działa (kotwice)</li>
-  <li>☐ Link „← Spis tutoriali” prowadzi do index.html</li>
+  <li>☐ <strong>Link „← Spis tutoriali”</strong> jest pierwszym elementem w <code>&lt;body&gt;</code> (przed H1) i prowadzi do <code>../index.html</code></li>
+  <li>☐ W CSS są reguły <code>.back</code> / <code>.back a</code></li>
   <li>☐ <code>max-width: 820px</code>, spójny CSS z rodziną tutorials/</li>
   <li>☐ 2–3 sekcje <code>must-know</code></li>
   <li>☐ Sekcja „Typowe błędy” (8–10 pkt)</li>
@@ -320,10 +322,12 @@ Nazwa pliku: {temat}-mini-tutorial.html
 
 Wymagania:
 - język polski, samodzielny HTML (CSS w pliku), max-width 820px
-- struktura: meta, spis treści, fundamenty, 4–6 sekcji merytorycznych,
+- OBOWIĄZKOWY link wstecz jako pierwszy element w body (przed H1):
+  &lt;p class="back"&gt;&lt;a href="../index.html"&gt;← Spis tutoriali&lt;/a&gt;&lt;/p&gt;
+  + CSS .back / .back a
+- struktura: back link, meta, spis treści, fundamenty, 4–6 sekcji merytorycznych,
   typowe błędy (8–10), {pytania: 40 / bez pytań}
 - styl jak tutorials/hibernate/hibernate-mini-tutorial.html (wielkość średnia)
-- link wstecz do ../index.html
 - zaktualizuj tutorials/index.html (licznik + karta)
 
 Nie twórz plików markdown ani README unless asked.</code></pre>

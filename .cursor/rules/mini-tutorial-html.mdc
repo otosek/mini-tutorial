@@ -13,10 +13,19 @@ alwaysApply: false
 - **Nazwa:** kebab-case, sufiks `-mini-tutorial.html`
 - **Kodowanie:** UTF-8, `lang="pl"`
 - **Szerokość:** `max-width: 820px`, wyśrodkowany body
-- **Link wstecz** (w podkatalogu): `<p class="back"><a href="../index.html">← Spis tutoriali</a></p>`
+- **Link wstecz — OBOWIĄZKOWY** (każdy tutorial w podkatalogu):
+  - Pierwszy element w `<body>`, **przed H1**
+  - HTML: `<p class="back"><a href="../index.html">← Spis tutoriali</a></p>`
+  - CSS (wymagane w `<style>`):
+    ```css
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+    ```
+  - Bez tego linku tutorial jest niekompletny — zawsze dodawaj przy tworzeniu i sprawdzaj przy edycji
 
 ## Struktura treści (kolejność sekcji)
 
+0. **Link wstecz (`.back`)** — przed wszystkim innym w body
 1. **H1** — temat krótko
 2. **Meta (`.meta`)** — 1–2 linie: co obejmuje + „Format: HTML…” + ewent. „Bez pytań”
 3. **Spis treści (`.toc`)** — linki kotwic `#sekcja`
@@ -97,7 +106,8 @@ Po każdym nowym tutorialu zaktualizuj `tutorials/index.html`:
 ## Checklist przed zapisem
 
 - [ ] Plik otwiera się offline, spis treści działa (kotwice)
-- [ ] Link „← Spis tutoriali” prowadzi do index.html
+- [ ] **Link „← Spis tutoriali”** jest pierwszym elementem w `<body>` (przed H1) i prowadzi do `../index.html`
+- [ ] W CSS są reguły `.back` / `.back a`
 - [ ] `max-width: 820px`, spójny CSS z rodziną tutorials/
 - [ ] 2–3 sekcje `must-know`
 - [ ] Sekcja „Typowe błędy” (8–10 pkt)
