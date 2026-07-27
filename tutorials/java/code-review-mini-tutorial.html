@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code review — ściąga dla reviewera (Java)</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0f766e;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.28rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; color: #115e59; }
+
+    h2.must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f0fdfa; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .map-box {
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    .tip {
+      background: #fffbeb;
+      border-left: 4px solid #d97706;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; padding-left: 1.4rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .check {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .check li {
+      position: relative;
+      padding-left: 1.6rem;
+      margin: 0.45rem 0;
+    }
+
+    .check li::before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Code review — ściąga dla reviewera (Java)</h1>
+<p class="meta">Kolejność przeglądu PR · machine-first (CI + LLM) · zgodność z zadaniem · pakiety · konwencje · testy · komentarze · tipy<br>
+Format: HTML offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Po co i w jakiej kolejności</a></li>
+    <li><a href="#machine">Najpierw maszyny</a></li>
+    <li><a href="#zadanie">Zgodność z zadaniem</a></li>
+    <li><a href="#struktura">Klasy, pakiety, granice</a></li>
+    <li><a href="#java">Konwencje i idiomy Java</a></li>
+    <li><a href="#testy">Testy</a></li>
+    <li><a href="#bezpieczenstwo">Bezpieczeństwo i dane</a></li>
+    <li><a href="#komentarze">Jak pisać komentarze</a></li>
+    <li><a href="#tips">Tipsy i kluczyki</a></li>
+    <li><a href="#bledy">Błędy reviewera</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">0. Po co review — i w jakiej kolejności</h2>
+
+<p>Code review to nie „czy kod wygląda ładnie”. To decyzja: <strong>czy ten diff może wejść na main bez ryzyka</strong> dla produktu, zespołu i utrzymania. Ty jako reviewer chronisz jakość — nie egocentrycznie „swój styl”, tylko wspólne standardy i intencję ticketu.</p>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.88rem;line-height:1.55">CI (build + testy + analiza statyczna)
+        ↓
+LLM / bot (wstępny review diffu)
+        ↓
+Ty — mały, wartościowy obszar:
+  1. Czy robi to, o co prosiło zadanie?
+  2. Czy struktura i granice mają sens?
+  3. Czy konwencje Java / projektu są OK?
+  4. Czy testy dowodzą zachowania?
+  5. Czy nie ma ryzyka (bezpieczeństwo, dane, regresja)?</pre>
+</div>
+
+<p>Im więcej złapie CI i LLM, tym mniej czasu marnujesz na formatowanie i oczywiste null-checki — zostaje myślenie o domenie, API i regresjach.</p>
+
+<hr>
+
+<h2 id="machine" class="must-know">1. Najpierw maszyny — potem człowiek</h2>
+
+<p>Nie otwieraj diffu „na świeżo”, jeśli CI jest czerwone albo bot jeszcze nie napisał. Wyjątek: awaria CI niezwiązana z PR — wtedy napisz to w komentarzu i kontynuuj tylko warstwę, którą maszyny nie pokryją.</p>
+
+<h3>Analiza statyczna (musi być zielona)</h3>
+
+<table>
+  <thead><tr><th>Warstwa</th><th>Przykłady w Java</th><th>Co wyłapuje za Ciebie</th></tr></thead>
+  <tbody>
+    <tr><td>Kompilacja + testy</td><td>Maven/Gradle, JUnit</td><td>Czy w ogóle buduje się i nie psuje istniejących testów</td></tr>
+    <tr><td>Linter / styl</td><td>Checkstyle, Spotless, EditorConfig</td><td>Importy, nazewnictwo, format — nie komentuj tego ręcznie</td></tr>
+    <tr><td>Bug-finding</td><td>SpotBugs, Error Prone, PMD</td><td>NPE, equals/hashCode, resource leaks, złe API</td></tr>
+    <tr><td>Pokrycie / jakościowe</td><td>JaCoCo, SonarQube</td><td>Nowe ścieżki bez testów, code smells, duplikaty</td></tr>
+    <tr><td>Bezpieczeństwo</td><td>OWASP Dependency-Check, Snyk, Trivy</td><td>CVE w zależnościach</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> komentowanie w PR rzeczy, które Checkstyle i tak zablokuje. To szum. Poproś autora o poprawę CI albo popraw regułę w repo — nie rób z siebie lintera.</div>
+
+<h3>LLM jako pierwszy reviewer</h3>
+
+<p>Bot (Copilot, Cursor Bugbot, CodeRabbit, własny prompt na diff) dostaje opis ticketu + diff i odpowiada na checklistę. Ty czytasz <em>jego</em> znaleziska i weryfikujesz — nie kopiujesz ślepo.</p>
+
+<ul class="check">
+  <li>Czy bot zrozumiał wymaganie (nie tylko pliki)?</li>
+  <li>Które uwagi bot są fałszywie pozytywne (ignoruj i nie powtarzaj)?</li>
+  <li>Czego bot nie widzi: kontekst domeny, ukryte kontrakty, decyzje produktowe?</li>
+  <li>Czy w diffie są miejsca oznaczone przez bota jako „ryzykowne” — te czytasz w pierwszej kolejności?</li>
+</ul>
+
+<div class="tip"><strong>Kluczyk:</strong> prompt dla LLM: „Jesteś reviewerem Java/Spring. Ticket: … Diff poniżej. Zwróć tylko: (1) niezgodność z wymaganiem, (2) regresje, (3) brakujące testy, (4) problemy bezpieczeństwa. Bez uwag o formatowaniu.”</div>
+
+<hr>
+
+<h2 id="zadanie" class="must-know">2. Zgodność z zadaniem</h2>
+
+<p>Zanim wejdziesz w klasy — otwórz ticket / opis PR / AC. Diff bez kontekstu łatwo „poprawić” w złą stronę.</p>
+
+<ul class="check">
+  <li>Czy PR realizuje <em>to</em> zadanie, a nie „przy okazji” trzy inne refaktory?</li>
+  <li>Czy acceptance criteria są pokryte (happy path + wymienione edge case’y)?</li>
+  <li>Czy scope jest mały? Olbrzymi PR = poproś o split albo reviewuj warstwami (API → domena → infra).</li>
+  <li>Czy opis PR mówi <em>dlaczego</em>, nie tylko <em>co</em>? Brak opisu = request changes na opis, nie na kod.</li>
+  <li>Czy są breaking changes API / migracje DB — i czy są udokumentowane?</li>
+  <li>Czy feature flag / rollback jest przemyślany przy ryzykownym wdrożeniu?</li>
+</ul>
+
+<pre><code>// Źle w komentarzu:
+"To powinno być inaczej zrobione."
+
+// Dobrze:
+"AC-3: przy braku autora API ma zwrócić 404.
+Tu zwracamy 200 z pustym body — czy to świadoma zmiana kontraktu?"</code></pre>
+
+<div class="trap"><strong>Pułapka:</strong> approve’owanie „ładnego” kodu, który nie spełnia AC. Estetyka nie zastępuje zgodności z wymaganiem.</div>
+
+<hr>
+
+<h2 id="struktura">3. Klasy, pakiety, granice</h2>
+
+<p>Patrzysz na to, <em>gdzie</em> żyje kod i czy zależności nie płyną pod prąd.</p>
+
+<ul class="check">
+  <li>Czy nowe klasy siedzą w właściwym pakiecie (domena / application / adapter), a nie w „util” / „helper”?</li>
+  <li>Czy jedna klasa = jedna odpowiedzialność? God-class w PR = czerwona flaga.</li>
+  <li>Czy warstwa web nie woła bezpośrednio JDBC/JPA omijając serwis (jeśli projekt tego zabrania)?</li>
+  <li>Czy nie ma cyklicznych zależności między pakietami?</li>
+  <li>Czy publiczne API (kontrolery, eventy) nie wycieka encjami JPA / szczegółami persystencji?</li>
+  <li>Czy nazwy klas i metod mówią o domenie (<code>cancelOrder</code>), a nie o technice (<code>processData</code>)?</li>
+</ul>
+
+<table>
+  <thead><tr><th>Zapach</th><th>Co sprawdzić</th></tr></thead>
+  <tbody>
+    <tr><td><code>*Util</code>, <code>*Helper</code>, <code>*Manager</code></td><td>Czy to nie ukryta domena bez nazwy?</td></tr>
+    <tr><td>Ogromny diff w jednej klasie</td><td>Czy da się wyciągnąć typ / strategię / serwis?</td></tr>
+    <tr><td>Kopiuj-wklej między serwisami</td><td>Wspólna abstrakcja vs świadoma duplikacja?</td></tr>
+    <tr><td>Nowe zależności Maven/Gradle</td><td>Czy naprawdę potrzebne? Licencja, rozmiar, utrzymanie?</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="java">4. Konwencje i idiomy Java</h2>
+
+<p>Tu nie grebisz o spacje — o idiomy zespołu i języka. Zakładasz, że Spotless już przeszedł.</p>
+
+<ul class="check">
+  <li>Nazewnictwo: klasy <code>PascalCase</code>, metody/pola <code>camelCase</code>, stałe <code>UPPER_SNAKE</code>, pakiety małe litery.</li>
+  <li><code>Optional</code> jako zwrotka — nie jako pole encji / parametr wszędzie.</li>
+  <li>Immutability tam, gdzie ma sens: <code>record</code>, final fields, unmodifiable kolekcje na granicach.</li>
+  <li>Obsługa błędów: wyjątki domenowe vs 500; nie łykać wyjątków pustym <code>catch</code>.</li>
+  <li>Zasoby: try-with-resources; brak wycieków streamów / połączeń.</li>
+  <li>Equals/hashCode/toString — spójne, zwłaszcza przy encjach (zwykle po ID biznesowym, nie po całej grafie).</li>
+  <li>Streamy: czytelność &gt; „spryt”; side-effecty w <code>forEach</code> = zapytaj.</li>
+  <li>Wątki / współbieżność: czy stan współdzielony jest bezpieczny? Virtual threads ≠ magiczna poprawa wszystkiego.</li>
+  <li>Spring: scope beanów, transakcje transakcji (<code>@Transactional</code> na public methods, self-invocation), Lazy vs N+1.</li>
+</ul>
+
+<pre><code>// Review: zapytaj o transakcję i N+1
+@Transactional(readOnly = true)
+public List&lt;OrderDto&gt; findAll() {
+  return orderRepository.findAll().stream()   // lines?
+      .map(orderMapper::toDto)                // getItems() w mapperze?
+      .toList();
+}</code></pre>
+
+<hr>
+
+<h2 id="testy" class="must-know">5. Testy — czy są i czy dowodzą</h2>
+
+<p>Brak testów przy logice biznesowej = niemal zawsze request changes (chyba że PR to czysty config / wygenerowany kod i zespół ma inną politykę).</p>
+
+<ul class="check">
+  <li>Czy dla nowej ścieżki jest test, który <em>padnie</em>, gdy usuniesz implementację? (nie „coverage theatre”)</li>
+  <li>Nazwy: <code>shouldRejectCancel_whenOrderAlreadyShipped</code> &gt; <code>test1</code>.</li>
+  <li>Arrange–Act–Assert / Given–When–Then — czytelny układ.</li>
+  <li>Czy testują zachowanie, a nie prywatne metody / wewnętrzny stan?</li>
+  <li>Czy edge case’y z ticketu mają osobne scenariusze?</li>
+  <li>Mocki: czy mockowane jest tylko zewnętrze (repo, HTTP)? Nadmiar mocków = test kruchy.</li>
+  <li>Testy integracyjne / <code>@SpringBootTest</code> — czy nie są zbędnie wolne i czy mają jasny zakres?</li>
+  <li>Czy flaky (losowe sleepy, zależność od kolejności, czas systemowy bez clocka)?</li>
+  <li>Czy assert mówi <em>co</em> sprawdzamy (<code>assertThat(status).isEqualTo(404)</code>), a nie tylko „nie rzuciło”?</li>
+</ul>
+
+<table>
+  <thead><tr><th>Słaby test</th><th>Co powiedzieć</th></tr></thead>
+  <tbody>
+    <tr><td>Tylko <code>verify(service).method()</code></td><td>„Brak asercji wyniku — co ma być prawdziwe po wywołaniu?”</td></tr>
+    <tr><td><code>Thread.sleep(500)</code></td><td>„Zamień na Awaitility / synchroniczny test / fake clock.”</td></tr>
+    <tr><td>Kopiuj-wklej 5 prawie identycznych testów</td><td>„Parameterized test albo jedna tabela przykładów.”</td></tr>
+    <tr><td>Test „przechodzi” bez asercji</td><td>„To nie jest test — to smoke bez kontraktu.”</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="bezpieczenstwo">6. Bezpieczeństwo, dane, operacje</h2>
+
+<ul class="check">
+  <li>Autoryzacja: czy endpoint sprawdza uprawnienia, nie tylko „jest zalogowany”?</li>
+  <li>IDOR: czy user A może po ID dociągnąć zasób usera B?</li>
+  <li>Input: walidacja (<code>@Valid</code>), limity rozmiaru, brak SQL/JPQL sklejanych ze stringa.</li>
+  <li>Sekrety: hasła, tokeny, connection stringi — nie w logach, nie w repo, nie w wyjątku.</li>
+  <li>PII w logach — maskowanie.</li>
+  <li>Migracje DB: czy odwracalne / bezpieczne online (locki, backfill)?</li>
+  <li>Timeouty, retry, idempotencja przy wywołaniach zewnętrznych.</li>
+  <li>Obserwowalność: czy da się zdebugować produkcję (korelacje, sensowne logi błędów)?</li>
+</ul>
+
+<hr>
+
+<h2 id="komentarze">7. Jak pisać komentarze w PR</h2>
+
+<table>
+  <thead><tr><th>Zamiast</th><th>Napisz</th></tr></thead>
+  <tbody>
+    <tr><td>„Źle.”</td><td>Co jest nie tak + dlaczego + propozycja lub pytanie.</td></tr>
+    <tr><td>„Ja bym zrobił X.”</td><td>„X zmniejsza ryzyko Y, bo… — co myślisz?” (preferencja ≠ blocker)</td></tr>
+    <tr><td>Ściana tekstu na 20 linii</td><td>Jeden problem = jeden wątek; link do docs/ADR.</td></tr>
+    <tr><td>Tylko nitpicki</td><td>Oznacz <code>nit:</code> / <code>opcjonalne:</code> vs <code>blocking:</code></td></tr>
+  </tbody>
+</table>
+
+<p><strong>Severities (ustal z zespołem):</strong></p>
+<ul>
+  <li><code>blocking</code> — musi wejść przed merge (bug, bezpieczeństwo, brak AC, brak testu krytycznego).</li>
+  <li><code>should</code> — mocna sugestia; merge możliwy po dyskusji.</li>
+  <li><code>nit</code> — styl / naming; nie blokuj samego PR za nitpicki, jeśli CI i tak egzekwuje styl.</li>
+  <li><code>question</code> — nie wiesz; autor wyjaśnia lub poprawia.</li>
+  <li><code>praise</code> — konkretna dobra decyzja (uczy zespół, co powielać).</li>
+</ul>
+
+<div class="tip"><strong>Kluczyk:</strong> kończ review podsumowaniem: „Blocking: 2 (test cancel + IDOR). Reszta nity. Po poprawkach LGTM.” Autor wie, co jest bramką.</div>
+
+<hr>
+
+<h2 id="tips">8. Tipsy i kluczyki</h2>
+
+<div class="keyword">
+  <strong>Czytaj diff jak użytkownik API</strong>
+  <p>Najpierw publiczne wejścia (kontroler, event, metoda publiczna), potem w dół. Nie zaczynaj od prywatnego helpera.</p>
+</div>
+
+<div class="keyword">
+  <strong>Diff „od końca”</strong>
+  <p>Czasem otwórz najpierw testy — mówią, jakie zachowanie autor obiecuje. Potem sprawdź, czy produkcja to spełnia.</p>
+</div>
+
+<div class="keyword">
+  <strong>Reguła 30–60 minut</strong>
+  <p>Po godzinie jakość review spada. Duży PR → sesje albo split. Lepiej dwa krótkie review niż jedno „zmęczone approve”.</p>
+</div>
+
+<div class="keyword">
+  <strong>Szukaj tego, czego nie ma</strong>
+  <p>Brak walidacji, brak rollbacku, brak testu negatywnego, brak indeksu przy nowym zapytaniu — review to też lista nieobecności.</p>
+</div>
+
+<div class="keyword">
+  <strong>Jedno pytanie &gt; pięć opinii</strong>
+  <p>„Jaki jest kontrakt przy null?” zmusza autora do myślenia. „Zrób Optional” to narzucanie stylu.</p>
+</div>
+
+<div class="keyword">
+  <strong>Sprawdź migracje i feature flags osobno</strong>
+  <p>Kod aplikacji może być OK, a deploy zabije produkcję lockiem na tabeli. Deploy path = część review.</p>
+</div>
+
+<div class="keyword">
+  <strong>Chwal konkret</strong>
+  <p>„Dobry test na race przy double-cancel” &gt; „fajny PR”. Wzmacnia dobre wzorce.</p>
+</div>
+
+<div class="keyword">
+  <strong>Nie reviewuj tego, czego nie rozumiesz w domenie</strong>
+  <p>Napisz: „Nie znam reguły X — proszę o potwierdzenie od @osoby-domenowej.” Cisza + approve = ryzyko.</p>
+</div>
+
+<pre><code>Mini-checklist przed „Approve”:
+[ ] CI zielone (lub znany false alarm)
+[ ] Bot/LLM przejrzany, false-positive odfiltrowane
+[ ] AC z ticketu spełnione
+[ ] Brak wycieku encji / sekretów
+[ ] Testy dowodzą nowych ścieżek
+[ ] Blocking komentarze rozwiązane lub uzgodnione
+[ ] Wiesz, jak to się wdroży / cofnie</code></pre>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy (Twoje — jako reviewera)</h2>
+
+<ul>
+  <li><strong>Robienie z siebie Checkstyle.</strong> Format i importy = CI. Ty = zachowanie i ryzyko.</li>
+  <li><strong>Approve przy czerwonym pipeline „bo kod wygląda OK”.</strong> Merge gate istnieje po coś.</li>
+  <li><strong>Ignorowanie opisu ticketu.</strong> Piękny kod obok AC to nadal zły PR.</li>
+  <li><strong>Blokowanie za gust.</strong> Preferencje oznaczaj jako <code>nit</code>; blocking tylko dla ryzyka / standardu zespołu.</li>
+  <li><strong>Review w głowie bez komentarzy.</strong> Jeśli coś jest niejasne i milczysz — nikt się nie nauczy.</li>
+  <li><strong>Ściana 40 komentarzy bez priorytetu.</strong> Autor nie wie, co jest bramką. Używaj severity + summary.</li>
+  <li><strong>Bike-shedding nazw przez godzinę.</strong> Nazwa ma być jasna; nie idealna według Twojego thesaurusu.</li>
+  <li><strong>Pomijanie testów, bo „autor zwykle pisze dobre”.</strong> Każdy PR osobno.</li>
+  <li><strong>Rubber-stamp (LGTM bez czytania).</strong> Twój approve = Twoja odpowiedzialność przy incydencie.</li>
+  <li><strong>Toksyczny ton.</strong> Atakuj kod i decyzję, nie osobę. „Ten catch ukrywa błąd” ≠ „nie umiesz Javy”.</li>
+  <li><strong>Powtarzanie fałszywych alarmów LLM.</strong> Weryfikuj bota; inaczej uczysz zespół ignorować review.</li>
+  <li><strong>Nieskończone ping-pongi.</strong> Po 2–3 rundach zrób sync 15 min — szybciej niż kolejny esej w GitHubie.</li>
+</ul>
+
+</body>
+</html>

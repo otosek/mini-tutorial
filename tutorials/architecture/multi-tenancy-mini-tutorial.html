@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-tenancy — tenant ID przez warstwy</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0369a1;
+      --accent-dark: #075985;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.28rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; color: var(--accent-dark); }
+
+    h2.must-know::after { content: " ★"; color: var(--star); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.87rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f0f9ff; font-weight: 600; }
+
+    .layer-tag {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+      background: #e0f2fe;
+      color: #075985;
+    }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .map-box {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    .tip {
+      background: #fffbeb;
+      border-left: 4px solid #d97706;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; padding-left: 1.4rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Multi-tenancy — tenant ID przez warstwy</h1>
+<p class="meta">SaaS w chmurze · modele izolacji · frontend, gateway, Spring, Hibernate, PostgreSQL RLS, kolejki, AWS · must-know i typowe błędy<br>
+Format: HTML offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty i słownik</a></li>
+    <li><a href="#modele">Modele izolacji</a></li>
+    <li><a href="#przeplyw">Przepływ tenant ID</a></li>
+    <li><a href="#prezentacja">Warstwa prezentacji</a></li>
+    <li><a href="#orkiestracja">Warstwa orkiestracji</a></li>
+    <li><a href="#logika">Warstwa logiki biznesowej</a></li>
+    <li><a href="#persystencja">Warstwa persystencji</a></li>
+    <li><a href="#kolejki">Kolejki i eventy</a></li>
+    <li><a href="#aws">Usługi AWS</a></li>
+    <li><a href="#operacje">Onboarding i koszty</a></li>
+    <li><a href="#mustknow">Must-know</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">0. Fundamenty i słownik</h2>
+
+<p><strong>Multi-tenancy</strong> to jedna instancja aplikacji obsługująca wielu odizolowanych klientów (tenantów). <strong>Tenant</strong> to organizacja, nie użytkownik — jeden tenant ma wielu userów. <strong>Tenant ID</strong> to identyfikator, który musi towarzyszyć każdemu żądaniu, zapytaniu SQL, wiadomości w kolejce, wpisowi w logu i kluczowi w cache.</p>
+
+<p>Cała trudność multi-tenancy sprowadza się do jednego zdania: <strong>tenant ID musi być ustalony raz, w miejscu godnym zaufania, i propagowany automatycznie</strong> — bo każde miejsce, gdzie programista musi o nim pamiętać ręcznie, jest przyszłym wyciekiem danych.</p>
+
+<table>
+  <thead><tr><th>Pojęcie</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Control plane</strong></td><td>Rejestr tenantów, onboarding, billing, konfiguracja — osobna baza/serwis, nie w danych tenanta</td></tr>
+    <tr><td><strong>Application plane</strong></td><td>Właściwa aplikacja obsługująca ruch tenantów</td></tr>
+    <tr><td><strong>Silo</strong></td><td>Zasób dedykowany jednemu tenantowi (własna baza, własny klaster)</td></tr>
+    <tr><td><strong>Pool</strong></td><td>Zasób współdzielony, rozdzielany logicznie (kolumna <code>tenant_id</code>)</td></tr>
+    <tr><td><strong>Bridge</strong></td><td>Mieszanka — np. wspólna aplikacja, ale schemat bazy per tenant</td></tr>
+    <tr><td><strong>Noisy neighbour</strong></td><td>Jeden tenant zużywa zasoby i psuje SLA pozostałym</td></tr>
+    <tr><td><strong>Tiering</strong></td><td>Plan basic = pool, enterprise = silo; ta sama aplikacja, inny poziom izolacji</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="modele">1. Modele izolacji danych</h2>
+
+<p>To decyzja architektoniczna nr 1 — wpływa na wszystko dalej: migracje, backupy, koszt, RODO, limity połączeń.</p>
+
+<table>
+  <thead><tr><th></th><th>Baza per tenant</th><th>Schemat per tenant</th><th>Wspólne tabele + <code>tenant_id</code></th></tr></thead>
+  <tbody>
+    <tr><td>Izolacja</td><td>Najmocniejsza — fizyczna</td><td>Dobra — granica schematu</td><td>Logiczna — zależy od kodu i RLS</td></tr>
+    <tr><td>Koszt / tenant</td><td>Wysoki</td><td>Średni</td><td>Najniższy</td></tr>
+    <tr><td>Skala (liczba tenantów)</td><td>Dziesiątki–setki</td><td>Setki–tysiące</td><td>Tysiące i więcej</td></tr>
+    <tr><td>Migracje schematu</td><td>N baz do zmigrowania</td><td>N schematów w pętli</td><td>Jedna migracja</td></tr>
+    <tr><td>Backup / restore jednego tenanta</td><td>Trywialny</td><td>Możliwy (dump schematu)</td><td>Trudny — trzeba filtrować</td></tr>
+    <tr><td>Usunięcie danych (RODO)</td><td><code>DROP DATABASE</code></td><td><code>DROP SCHEMA</code></td><td>Kaskada DELETE po wszystkich tabelach</td></tr>
+    <tr><td>Pula połączeń</td><td>Problem — pula per baza</td><td>Jedna pula + <code>search_path</code></td><td>Jedna pula</td></tr>
+    <tr><td>Kiedy</td><td>Enterprise, wymóg audytu, dane medyczne/finansowe</td><td>Kompromis dla B2B z setkami klientów</td><td>Self-service SaaS, tysiące małych tenantów</td></tr>
+  </tbody>
+</table>
+
+<div class="tip"><strong>Praktyka:</strong> zacznij od wspólnych tabel z <code>tenant_id</code> + RLS w PostgreSQL, ale <em>od pierwszego dnia</em> trzymaj tenant ID w kontekście aplikacji (nie w parametrach metod). Wtedy przejście na schemat per tenant dla dużego klienta to zmiana konfiguracji Hibernate, a nie przepisanie serwisów.</div>
+
+<hr>
+
+<h2 id="przeplyw">2. Przepływ tenant ID przez system</h2>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.85rem;line-height:1.6">Przeglądarka        acme.app.com  (subdomena = tylko UX/branding)
+      │             Authorization: Bearer &lt;JWT: tid=acme&gt;   ← ŹRÓDŁO PRAWDY
+      ▼
+CloudFront / ALB    wildcard cert *.app.com
+      ▼
+API Gateway         Lambda authorizer / JWT authorizer
+ lub Spring Cloud    GlobalFilter: Host|JWT → X-Tenant-Id (ruch wewnętrzny)
+ Gateway
+      ▼
+Spring Boot         OncePerRequestFilter: JWT claim → TenantContext + MDC
+      │             SecurityContext (Authentication z tenantem)
+      ▼
+Serwis              @Async / @Scheduled → TaskDecorator kopiuje kontekst
+      ▼
+Hibernate           CurrentTenantIdentifierResolver / @TenantId
+      ▼
+PostgreSQL          SET LOCAL app.tenant_id  →  RLS POLICY (siatka bezpieczeństwa)
+      │
+      ├─→ Redis      klucz: tenant:{id}:...
+      ├─→ SQS/Kafka  atrybut/nagłówek wiadomości: tenantId
+      └─→ S3         prefiks: s3://bucket/{tenantId}/...</pre>
+</div>
+
+<p>Zasada: <strong>na krawędzi ufasz tylko tokenowi</strong>. Nagłówek <code>X-Tenant-Id</code> może istnieć w ruchu wewnętrznym (service-to-service), ale musi być odrzucany, jeśli przyszedł z internetu.</p>
+
+<hr>
+
+<h2 id="prezentacja">3. Warstwa prezentacji <span class="layer-tag">frontend</span></h2>
+
+<p>Odpowiedź na pytanie „czy trzeba coś robić po stronie frontendu”: <strong>tak, ale nie w celu bezpieczeństwa</strong>. Frontend odpowiada za rozpoznanie tenanta dla UX (branding, routing, cache), nigdy za autoryzację.</p>
+
+<h3>Rozpoznanie tenanta</h3>
+
+<table>
+  <thead><tr><th>Sposób</th><th>Przykład</th><th>Uwagi</th></tr></thead>
+  <tbody>
+    <tr><td>Subdomena</td><td><code>acme.app.com</code></td><td>Najczystsze dla brandingu; wymaga wildcard DNS (Route 53) i wildcard TLS (ACM). Uwaga na CORS i cookies (<code>domain=.app.com</code> = współdzielenie między tenantami)</td></tr>
+    <tr><td>Ścieżka</td><td><code>app.com/t/acme</code></td><td>Najprostsze operacyjnie, jeden certyfikat, brzydsze URL-e</td></tr>
+    <tr><td>Domena własna klienta</td><td><code>portal.acme.com</code></td><td>Enterprise; certyfikat per klient, mapowanie domena → tenant w control plane</td></tr>
+    <tr><td>Wyłącznie z tokenu</td><td>claim <code>tid</code> po loginie</td><td>Gdy user należy do jednego tenanta i nie ma brandingu przed logowaniem</td></tr>
+  </tbody>
+</table>
+
+<h3>Co konkretnie zrobić w React / TypeScript</h3>
+
+<div class="keyword">
+  <strong>TenantProvider (React Context)</strong>
+  <p>Jedno miejsce z <code>tenantId</code>, logo, kolorami, feature flagami — pobrane z <code>/api/tenant-config</code>. Motyw najprościej przez CSS variables, nie przez warunki w komponentach.</p>
+</div>
+
+<div class="keyword">
+  <strong>TanStack Query — tenant w queryKey</strong>
+  <p>Bez tego po przełączeniu tenanta użytkownik zobaczy dane poprzedniego z cache. Dodatkowo <code>queryClient.clear()</code> przy zmianie tenanta i przy logout.</p>
+</div>
+
+<div class="keyword">
+  <strong>Interceptor HTTP (axios / fetch wrapper)</strong>
+  <p>Dokłada token i opcjonalnie <code>X-Tenant-Id</code> dla logów/telemetrii. Backend traktuje ten nagłówek jako podpowiedź, nigdy jako uprawnienie.</p>
+</div>
+
+<div class="keyword">
+  <strong>Namespacing storage</strong>
+  <p><code>localStorage</code>, <code>sessionStorage</code>, IndexedDB i Service Worker cache muszą mieć klucze z tenantem i być czyszczone przy przełączeniu — inaczej dane wyciekają między kontami na tym samym urządzeniu.</p>
+</div>
+
+<pre><code>// TanStack Query — klucz zawiera tenanta
+const { data } = useQuery({
+  queryKey: ['orders', tenantId, page],
+  queryFn: () =&gt; api.get(`/orders?page=${page}`).then(r =&gt; r.data),
+  enabled: Boolean(tenantId),
+});
+
+// Przełączenie tenanta = twardy reset cache
+function switchTenant(next: string) {
+  queryClient.clear();
+  setTenantId(next);
+}</code></pre>
+
+<div class="trap"><strong>Pułapka:</strong> pole „wybierz tenanta” wysyłane jako parametr do API bez weryfikacji po stronie serwera. To najczęstsza podatność multi-tenant (IDOR na poziomie tenanta) — backend musi sprawdzić, czy zalogowany user <em>ma prawo</em> do wskazanego tenanta, na podstawie tokenu, nie żądania.</div>
+
+<hr>
+
+<h2 id="orkiestracja">4. Warstwa orkiestracji <span class="layer-tag">edge / gateway</span></h2>
+
+<p>Tu tenant zostaje <em>ustalony</em> i znormalizowany, żeby dalsze warstwy nie musiały parsować hostów.</p>
+
+<table>
+  <thead><tr><th>Technologia</th><th>Co daje</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Spring Cloud Gateway</strong></td><td><code>GlobalFilter</code> mapujący <code>Host</code> lub claim JWT na nagłówek wewnętrzny; usuwanie <code>X-Tenant-Id</code> z ruchu zewnętrznego; routing per tenant (tiering)</td></tr>
+    <tr><td><strong>Spring Security — <code>JwtIssuerAuthenticationManagerResolver</code></strong></td><td>Kluczowe przy modelu „issuer per tenant” (osobny Cognito User Pool / realm Keycloak na tenanta) — Spring wybiera właściwy zestaw kluczy po <code>iss</code></td></tr>
+    <tr><td><strong>API Gateway (AWS)</strong></td><td>JWT authorizer lub Lambda authorizer zwracający kontekst z tenantem; usage plan i throttling per tenant</td></tr>
+    <tr><td><strong>ALB / CloudFront</strong></td><td>Wildcard TLS z ACM, przekazanie <code>Host</code>, uwierzytelnianie OIDC na ALB, WAF z regułami per tenant</td></tr>
+    <tr><td><strong>Route 53</strong></td><td>Rekord wildcard <code>*.app.com</code> → jedna dystrybucja/LB dla wszystkich tenantów</td></tr>
+    <tr><td><strong>Micrometer Tracing / OpenTelemetry</strong></td><td><code>baggage</code> propagujące tenanta między serwisami — trafia do trace'ów i logów</td></tr>
+  </tbody>
+</table>
+
+<pre><code>// Spring Cloud Gateway — normalizacja i ochrona nagłówka
+@Bean
+GlobalFilter tenantFilter() {
+  return (exchange, chain) -&gt; {
+    String host = exchange.getRequest().getURI().getHost();
+    String tenant = host.split("\\.")[0];              // acme.app.com → acme
+    var request = exchange.getRequest().mutate()
+        .headers(h -&gt; h.remove("X-Tenant-Id"))          // zawsze wyczyść wejście
+        .header("X-Tenant-Id", tenant)
+        .build();
+    return chain.filter(exchange.mutate().request(request).build());
+  };
+}</code></pre>
+
+<hr>
+
+<h2 id="logika" class="must-know">5. Warstwa logiki biznesowej <span class="layer-tag">Spring / Java</span></h2>
+
+<p>Zadanie tej warstwy: <strong>przechować tenanta w kontekście i przenieść go wszędzie tam, gdzie ucieka wątek</strong> — do async, schedulerów, konsumentów kolejek i wywołań HTTP w dół.</p>
+
+<h3>Ustawienie kontekstu</h3>
+
+<pre><code>@Component
+public class TenantFilter extends OncePerRequestFilter {
+
+  @Override
+  protected void doFilterInternal(HttpServletRequest req,
+                                  HttpServletResponse res,
+                                  FilterChain chain) throws IOException, ServletException {
+    var jwt = (Jwt) SecurityContextHolder.getContext()
+        .getAuthentication().getPrincipal();
+    String tenantId = jwt.getClaimAsString("tid");     // źródło prawdy = token
+
+    TenantContext.set(tenantId);
+    MDC.put("tenantId", tenantId);                      // logi
+    try {
+      chain.doFilter(req, res);
+    } finally {
+      TenantContext.clear();                            // BEZ TEGO wyciek na pulę wątków
+      MDC.remove("tenantId");
+    }
+  }
+}</code></pre>
+
+<table>
+  <thead><tr><th>Mechanizm</th><th>Zastosowanie</th><th>Uwaga</th></tr></thead>
+  <tbody>
+    <tr><td><code>OncePerRequestFilter</code></td><td>Ustawienie kontekstu dla Spring MVC</td><td>Lepszy niż <code>HandlerInterceptor</code> — obejmuje też dispatch async i obsługę błędów</td></tr>
+    <tr><td><code>WebFilter</code> + Reactor Context</td><td>WebFlux</td><td>W reaktywnym <code>ThreadLocal</code> nie działa — używaj <code>contextWrite</code></td></tr>
+    <tr><td><code>ThreadLocal</code></td><td>Klasyczny <code>TenantContext</code></td><td>Zawsze <code>clear()</code> w <code>finally</code>. Nie używaj <code>InheritableThreadLocal</code></td></tr>
+    <tr><td><code>ScopedValue</code> (Java 25)</td><td>Następca ThreadLocal, działa z virtual threads i structured concurrency</td><td>Niemutowalny, automatycznie zdejmowany po bloku — brak ryzyka wycieku</td></tr>
+    <tr><td><code>TaskDecorator</code> / <code>ContextPropagatingTaskDecorator</code></td><td><code>@Async</code>, <code>ThreadPoolTaskExecutor</code></td><td>Bez tego wątek roboczy nie zna tenanta — NPE lub, gorzej, dane innego tenanta</td></tr>
+    <tr><td>Micrometer <code>context-propagation</code></td><td>Spójna propagacja MDC + tracing + tenant</td><td>Rejestrujesz <code>ThreadLocalAccessor</code> raz, działa w Reactor i executorach</td></tr>
+    <tr><td><code>ClientHttpRequestInterceptor</code> / <code>RestClient</code> / Feign <code>RequestInterceptor</code></td><td>Wywołania do innych serwisów</td><td>Dokłada nagłówek/token z tenantem w dół łańcucha</td></tr>
+    <tr><td>Spring Security <code>@PreAuthorize</code></td><td>Sprawdzenie przynależności usera do tenanta</td><td>Autoryzacja per tenant + per rola, nie tylko „jest zalogowany”</td></tr>
+    <tr><td>Bucket4j / Resilience4j</td><td>Limity i bulkheady per tenant</td><td>Klucz limitu = tenantId — lekarstwo na noisy neighbour</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> <code>@Scheduled</code> i joby nie mają żądania HTTP, więc nie mają tenanta. Job musi <em>iterować po liście tenantów</em> z control plane i dla każdego jawnie ustawić kontekst. Uruchomienie zapytania bez kontekstu w modelu „wspólne tabele” zwróci albo nic, albo — bez RLS — wszystko.</div>
+
+<hr>
+
+<h2 id="persystencja" class="must-know">6. Warstwa persystencji <span class="layer-tag">Hibernate / PostgreSQL</span></h2>
+
+<h3>Hibernate / Spring Data JPA</h3>
+
+<table>
+  <thead><tr><th>Mechanizm</th><th>Model</th><th>Jak działa</th></tr></thead>
+  <tbody>
+    <tr><td><code>@TenantId</code> (Hibernate 6+)</td><td>Wspólne tabele</td><td>Adnotacja na polu encji — Hibernate sam dokłada warunek do zapytań i wypełnia kolumnę przy insercie</td></tr>
+    <tr><td><code>CurrentTenantIdentifierResolver</code></td><td>Wszystkie</td><td>Mówi Hibernate, kto jest bieżącym tenantem (czyta z <code>TenantContext</code>)</td></tr>
+    <tr><td><code>MultiTenantConnectionProvider</code></td><td>Baza / schemat per tenant</td><td>Wydaje połączenie do właściwej bazy lub wykonuje <code>SET search_path</code> przed użyciem</td></tr>
+    <tr><td><code>hibernate.multiTenancy=SCHEMA|DATABASE</code></td><td>Silo / bridge</td><td>Włącza tryb; w Spring Boot rejestrujesz beany przez <code>HibernatePropertiesCustomizer</code></td></tr>
+    <tr><td><code>@FilterDef</code> + <code>@Filter</code></td><td>Wspólne tabele</td><td>Ręczna alternatywa dla <code>@TenantId</code>; trzeba włączyć filtr na sesji — łatwo zapomnieć</td></tr>
+    <tr><td><code>AbstractRoutingDataSource</code></td><td>Baza per tenant</td><td>Wybór <code>DataSource</code> po kluczu; uwaga na mnożenie pul połączeń</td></tr>
+    <tr><td>Flyway / Liquibase</td><td>Schemat per tenant</td><td>Migracja w pętli po schematach + rejestr tenantów; <code>spring.flyway.schemas</code> dla prostych przypadków</td></tr>
+  </tbody>
+</table>
+
+<pre><code>@Entity
+public class Order {
+  @Id @GeneratedValue
+  private Long id;
+
+  @TenantId                        // Hibernate 6: filtr + wypełnianie automatyczne
+  private String tenantId;
+
+  private String number;
+}
+
+// Resolver czytający kontekst aplikacji
+@Component
+class TenantResolver implements CurrentTenantIdentifierResolver&lt;String&gt; {
+  public String resolveCurrentTenantIdentifier() {
+    return TenantContext.get();          // nigdy null w ścieżce żądania
+  }
+  public boolean validateExistingCurrentSessions() { return true; }
+}</code></pre>
+
+<h3>PostgreSQL — Row Level Security jako siatka bezpieczeństwa</h3>
+
+<p>Filtrowanie w aplikacji zawiedzie w dniu, w którym ktoś napisze <code>findAll()</code> albo native query bez warunku. RLS przenosi izolację do bazy — nawet zapomniane zapytanie zwróci tylko dane bieżącego tenanta.</p>
+
+<pre><code>-- 1. Włącz RLS (FORCE działa też na właściciela tabeli!)
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders FORCE ROW LEVEL SECURITY;
+
+-- 2. Polityka: czytanie i zapis tylko w obrębie tenanta
+CREATE POLICY tenant_isolation ON orders
+  USING      (tenant_id = current_setting('app.tenant_id')::uuid)
+  WITH CHECK (tenant_id = current_setting('app.tenant_id')::uuid);
+
+-- 3. Aplikacja ustawia zmienną NA TRANSAKCJĘ (SET LOCAL, nie SET!)
+BEGIN;
+  SELECT set_config('app.tenant_id', '3f1c...-acme', true);  -- true = local
+  SELECT * FROM orders;      -- widzi tylko swojego tenanta
+COMMIT;</code></pre>
+
+<div class="trap"><strong>Trzy pułapki RLS naraz:</strong> (1) <code>SET</code> bez <code>LOCAL</code> zostaje na połączeniu i po zwrocie do puli HikariCP obsłuży innego tenanta; (2) bez <code>FORCE ROW LEVEL SECURITY</code> właściciel tabeli — a często aplikacja łączy się właśnie jako właściciel — całkowicie pomija polityki; (3) rola z atrybutem <code>BYPASSRLS</code> (albo superuser) ignoruje RLS, więc migracje uruchamiaj inną rolą niż runtime.</div>
+
+<h3>Indeksy, klucze i partycjonowanie</h3>
+
+<ul>
+  <li><strong><code>tenant_id</code> jako pierwsza kolumna indeksu złożonego</strong> — <code>(tenant_id, created_at)</code>. Indeks tylko po <code>created_at</code> zmusi bazę do czytania wierszy wszystkich tenantów.</li>
+  <li><strong>Każdy unique musi zawierać tenanta</strong> — <code>UNIQUE (tenant_id, email)</code>, nie <code>UNIQUE (email)</code>. Inaczej rejestracja u jednego klienta zablokuje ten sam e-mail u innego.</li>
+  <li><strong>Klucze obce w obrębie tenanta</strong> — rozważ FK złożone <code>(tenant_id, order_id)</code>, żeby baza nie pozwoliła połączyć rekordów dwóch tenantów.</li>
+  <li><strong>Partycjonowanie</strong> (<code>PARTITION BY LIST/HASH (tenant_id)</code>) przy bardzo dużych tabelach — szybsze usuwanie tenanta i lepsze plany, ale rośnie złożoność.</li>
+  <li><strong>Statystyki</strong> — jeden gigantyczny tenant obok tysiąca małych psuje selektywność; czasem trzeba <code>ANALYZE</code> i osobne plany lub silo dla giganta.</li>
+</ul>
+
+<h3>Cache</h3>
+
+<pre><code>// Spring Cache — tenant w kluczu, zawsze
+@Cacheable(cacheNames = "productList",
+           key = "T(com.app.TenantContext).get() + ':' + #categoryId")
+public List&lt;Product&gt; findByCategory(Long categoryId) { ... }</code></pre>
+
+<p>W Redis użyj <code>CacheKeyPrefix</code> lub osobnej bazy/klucza z prefiksem <code>tenant:{id}:</code>. Cache drugiego poziomu Hibernate jest tenant-aware tylko w trybach DATABASE/SCHEMA — przy wspólnych tabelach klucz musi zawierać tenanta jawnie.</p>
+
+<hr>
+
+<h2 id="kolejki">7. Kolejki i eventy <span class="layer-tag">SQS / Kafka</span></h2>
+
+<p>Wiadomość opuszcza kontekst HTTP, więc tenant musi jechać <em>w niej</em> — w metadanych, nie tylko w treści biznesowej.</p>
+
+<table>
+  <thead><tr><th>Technologia</th><th>Gdzie tenant</th><th>Wsparcie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>SQS</strong></td><td><code>MessageAttributes.tenantId</code></td><td>Spring Cloud AWS <code>@SqsListener</code> + interceptor ustawiający kontekst przed handlerem</td></tr>
+    <tr><td><strong>SQS FIFO</strong></td><td><code>MessageGroupId = tenantId</code></td><td>Kolejność zachowana per tenant, równoległość między tenantami</td></tr>
+    <tr><td><strong>Kafka / MSK</strong></td><td>Nagłówek rekordu + klucz partycji</td><td><code>RecordInterceptor</code>, <code>ProducerInterceptor</code>; klucz = tenantId daje ordering per tenant</td></tr>
+    <tr><td><strong>Spring Cloud Stream</strong></td><td><code>Message</code> headers</td><td><code>ChannelInterceptor</code> / <code>HeaderMapper</code> — propagacja bez dotykania logiki</td></tr>
+    <tr><td><strong>EventBridge</strong></td><td>Pole <code>detail</code> + reguły</td><td>Routing per tenant regułami; osobna szyna dla tenantów enterprise</td></tr>
+    <tr><td><strong>Outbox pattern</strong></td><td>Tabela outbox z <code>tenant_id</code></td><td>Zdarzenie zapisane w tej samej transakcji co dane — brak rozjazdu</td></tr>
+  </tbody>
+</table>
+
+<pre><code>@SqsListener("orders-queue")
+public void handle(OrderEvent event,
+                   @Header("tenantId") String tenantId) {
+  TenantContext.set(tenantId);
+  MDC.put("tenantId", tenantId);
+  try {
+    orderService.process(event);      // reszta kodu nie wie o multi-tenancy
+  } finally {
+    TenantContext.clear();
+    MDC.remove("tenantId");
+  }
+}</code></pre>
+
+<p><strong>Kolejka wspólna czy per tenant?</strong> Wspólna jest domyślna — prostsza i tańsza. Osobna kolejka (lub osobna grupa konsumentów) ma sens, gdy jeden tenant potrafi zapchać przetwarzanie na godziny albo ma inne SLA. Kompromis: wspólna kolejka + limit równoległości per tenant i osobna kolejka dla planu enterprise.</p>
+
+<div class="trap"><strong>Pułapka:</strong> DLQ bez tenanta w metadanych. Po incydencie nie wiesz, których klientów dotyczyła awaria i komu trzeba odtworzyć dane.</div>
+
+<hr>
+
+<h2 id="aws">8. Usługi AWS ze wsparciem dla multi-tenancy</h2>
+
+<div class="keyword">
+  <strong>Cognito — tożsamość i claim z tenantem</strong>
+  <p>Dwa modele: wspólny User Pool z atrybutem <code>custom:tenantId</code> (skalowalny, tanie onboardingi) albo pool per tenant (mocniejsza izolacja, ale limit pooli na konto i trudniejsze zarządzanie). Trigger <em>Pre Token Generation</em> wstrzykuje claim <code>tid</code> do tokenu — dzięki temu backend nie musi pytać bazy o przypisanie użytkownika.</p>
+</div>
+
+<div class="keyword">
+  <strong>IAM + STS session tags — izolacja na poziomie chmury</strong>
+  <p>Wzorzec „token vending machine”: aplikacja robi <code>AssumeRole</code> z tagiem sesji <code>tenantId</code>, a polityka używa <code>${aws:PrincipalTag/tenantId}</code>. Wtedy nawet błąd w kodzie nie pozwoli sięgnąć po dane innego tenanta w S3 czy DynamoDB — izolacja jest wymuszona przez AWS, nie przez <code>if</code>.</p>
+</div>
+
+<div class="keyword">
+  <strong>S3 — prefiks per tenant</strong>
+  <p><code>s3://bucket/{tenantId}/...</code> plus warunek IAM na prefiks. Bucket per tenant tylko dla nielicznych dużych klientów — limity kont i zarządzanie polityk rosną szybciej niż korzyść.</p>
+</div>
+
+<div class="keyword">
+  <strong>DynamoDB — <code>dynamodb:LeadingKeys</code></strong>
+  <p><code>tenantId</code> jako partition key (lub jej prefiks) + warunek IAM <code>LeadingKeys</code> z tagiem sesji — twarda izolacja bez osobnych tabel. On-demand rozwiązuje problem nierównego ruchu między tenantami.</p>
+</div>
+
+<div class="keyword">
+  <strong>RDS / Aurora PostgreSQL</strong>
+  <p>Schemat per tenant lub wspólne tabele z RLS. <strong>RDS Proxy</strong> jest praktycznie obowiązkowy przy schemacie per tenant — inaczej pule połączeń mnożą się przez liczbę tenantów. Aurora Serverless v2 amortyzuje nierówne obciążenie.</p>
+</div>
+
+<div class="keyword">
+  <strong>API Gateway — throttling i plany</strong>
+  <p>Usage plan i klucz API per tenant dają limity bez kodu. Lambda authorizer może zwrócić kontekst z tenantem, który trafi dalej jako nagłówek.</p>
+</div>
+
+<div class="keyword">
+  <strong>CloudWatch, X-Ray, EMF</strong>
+  <p><code>tenantId</code> jako pole strukturalnego logu i adnotacja w trace — pozwala zdebugować zgłoszenie jednego klienta. Jako <em>wymiar metryki</em> używaj ostrożnie: wysoka kardynalność to realny koszt; zwykle wystarczy wymiar dla planu (tier), a szczegóły w logach.</p>
+</div>
+
+<div class="keyword">
+  <strong>KMS i Secrets Manager</strong>
+  <p>Klucz CMK per tenant, gdy klient wymaga własnego klucza (BYOK) — spełnia audyty i umożliwia „kryptograficzne usunięcie” danych przez zniszczenie klucza.</p>
+</div>
+
+<p>Warto znać materiały <strong>AWS SaaS Factory</strong> i <strong>SaaS Builder Toolkit</strong> — opisują dokładnie ten podział na control plane i application plane oraz gotowe wzorce izolacji.</p>
+
+<hr>
+
+<h2 id="operacje">9. Onboarding, offboarding, koszty</h2>
+
+<ul>
+  <li><strong>Rejestr tenantów</strong> w control plane: id, nazwa, plan, model izolacji, status, mapowanie domen. To on jest źródłem listy dla migracji i jobów.</li>
+  <li><strong>Provisioning</strong> jako proces (Step Functions albo serwis): utwórz schemat/bazę, uruchom migracje, założ konto admina, wyślij zaproszenie, zarejestruj domenę.</li>
+  <li><strong>Offboarding</strong> zaprojektuj razem z onboardingiem — RODO wymaga usunięcia danych, a przy wspólnych tabelach to kaskada po dziesiątkach tabel plus backupy i logi.</li>
+  <li><strong>Metering kosztów</strong>: tagi AWS nie działają wewnątrz współdzielonego zasobu. Koszt per tenant trzeba mierzyć w aplikacji (liczba żądań, GB w S3, czas CPU) i łączyć z rachunkiem.</li>
+  <li><strong>Testy izolacji</strong>: test integracyjny, który loguje się jako tenant A i próbuje pobrać zasób tenanta B, oczekując 403/404. Ten jeden test wyłapuje większość regresji.</li>
+</ul>
+
+<hr>
+
+<h2 id="mustknow" class="must-know">10. Must-know — najistotniejsze</h2>
+
+<div class="map-box">
+<ol>
+  <li><strong>Tenant ID pochodzi z tokenu</strong>, nigdy z parametru czy nagłówka od klienta.</li>
+  <li><strong>Kontekst, nie parametr</strong> — <code>TenantContext</code> / <code>ScopedValue</code>, a nie <code>tenantId</code> w każdej sygnaturze metody.</li>
+  <li><strong>Obrona wielowarstwowa</strong> — filtr Hibernate <em>i</em> RLS w PostgreSQL. Aplikacja da wydajność, baza da gwarancję.</li>
+  <li><strong><code>SET LOCAL</code> w transakcji</strong> — jedyny bezpieczny sposób ustawienia tenanta przy puli połączeń.</li>
+  <li><strong><code>FORCE ROW LEVEL SECURITY</code></strong> plus osobna rola dla migracji, inaczej polityki są ozdobą.</li>
+  <li><strong><code>tenant_id</code> pierwszy w indeksach i obecny w każdym <code>UNIQUE</code>.</strong></li>
+  <li><strong>Zawsze <code>clear()</code> w <code>finally</code></strong> — pula wątków przenosi kontekst na kolejne żądanie.</li>
+  <li><strong>Propagacja do async, schedulerów i konsumentów kolejek</strong> — <code>TaskDecorator</code>, nagłówki wiadomości.</li>
+  <li><strong>Tenant w każdym kluczu cache</strong> — Redis, Spring Cache, TanStack Query.</li>
+  <li><strong>Limity per tenant</strong> od początku — inaczej jeden klient położy wszystkich.</li>
+  <li><strong>Model izolacji to decyzja per tier</strong>, nie na zawsze dla całego systemu.</li>
+  <li><strong>Test, który próbuje wykraść dane innego tenanta</strong> — obowiązkowy element pipeline'u.</li>
+</ol>
+</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ul>
+  <li><strong>Zaufanie nagłówkowi <code>X-Tenant-Id</code> z internetu.</strong> Podmiana wartości = dostęp do danych obcej firmy. Gateway musi ten nagłówek usuwać na wejściu.</li>
+  <li><strong>Brak <code>clear()</code> w <code>finally</code>.</strong> Tomcat i pule wątków recyklingują wątki — następne żądanie dziedziczy tenanta poprzedniego.</li>
+  <li><strong><code>SET app.tenant_id</code> zamiast <code>SET LOCAL</code>.</strong> Zmienna zostaje na połączeniu w HikariCP i wycieka do innego tenanta.</li>
+  <li><strong>RLS bez <code>FORCE</code>, aplikacja jako właściciel tabeli.</strong> Polityki istnieją, ale nie działają — najgorszy możliwy wariant, bo daje fałszywe poczucie bezpieczeństwa.</li>
+  <li><strong><code>UNIQUE (email)</code> bez tenanta.</strong> Jeden klient blokuje rejestrację u drugiego; naprawa po wdrożeniu wymaga migracji danych.</li>
+  <li><strong>Indeksy bez <code>tenant_id</code> na początku.</strong> Zapytania małego tenanta skanują dane wszystkich — wydajność spada z liczbą klientów.</li>
+  <li><strong>Klucze cache bez tenanta.</strong> Redis albo <code>queryKey</code> w TanStack Query pokazuje dane obcej organizacji — wyciek widoczny dla użytkownika.</li>
+  <li><strong><code>@Async</code>, <code>@Scheduled</code> i konsument kolejki bez propagacji kontekstu.</strong> Albo <code>NullPointerException</code> na produkcji, albo operacja wykonana na danych złego tenanta.</li>
+  <li><strong>Pula połączeń per tenant.</strong> 500 tenantów × 10 połączeń wyczerpuje limit PostgreSQL; potrzebny wspólny pool z <code>search_path</code> albo RDS Proxy.</li>
+  <li><strong>Migracje tylko na domyślnym schemacie.</strong> Nowe schematy tenantów zostają w starej wersji i aplikacja sypie błędami dla części klientów.</li>
+  <li><strong><code>tenantId</code> jako wymiar metryki dla tysięcy tenantów.</strong> Rachunek CloudWatch rośnie liniowo z liczbą klientów — wymiar per tier, szczegóły w logach.</li>
+  <li><strong>Brak limitów per tenant.</strong> Jeden import CSV od dużego klienta zapycha kolejkę i psuje SLA wszystkim (noisy neighbour).</li>
+  <li><strong>Poleganie wyłącznie na filtrowaniu w kodzie.</strong> Jedno <code>findAll()</code>, native query albo raport napisany „na szybko” i masz incydent bezpieczeństwa.</li>
+  <li><strong>Brak zaprojektowanego usuwania tenanta.</strong> Przy wspólnych tabelach żądanie RODO staje się projektem na tygodnie.</li>
+  <li><strong>Testy tylko z jednym tenantem.</strong> Izolacja nigdy nie jest sprawdzana, więc regresja wychodzi u klienta, nie w CI.</li>
+</ul>
+
+</body>
+</html>
