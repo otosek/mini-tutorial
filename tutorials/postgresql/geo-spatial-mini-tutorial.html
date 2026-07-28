@@ -166,13 +166,14 @@
 <p class="back"><a href="../index.html">← Spis tutoriali</a></p>
 
 <h1>Geo / PostGIS — punkty, linie, obszary</h1>
-<p class="meta">PostgreSQL + PostGIS · Hibernate Spatial · JTS / Java · SRID, geometry vs geography, zapytania „w pobliżu”, geofencing<br>
+<p class="meta">PostgreSQL + PostGIS · Hibernate Spatial · JTS / Java · układy PL (1992, CS2000), GPS→płasko, zapytania „w pobliżu”<br>
 Format: HTML offline · 40 pytań rekrutacyjnych</p>
 
 <nav class="toc">
   <strong>Spis treści</strong>
   <ol>
     <li><a href="#fundamenty">Fundamenty GIS</a></li>
+    <li><a href="#polska">Polskie układy współrzędnych</a></li>
     <li><a href="#postgis">PostGIS — typy i tabele</a></li>
     <li><a href="#zapytania">Zapytania przestrzenne</a></li>
     <li><a href="#indeksy">Indeksy przestrzenne</a></li>
@@ -211,7 +212,136 @@ GEOMETRYCOLLECTION — mieszanka typów</pre>
 
 <div class="trap"><strong>Pułapka:</strong> zamiana kolejności lon/lat. W PostGIS i GeoJSON zawsze <code>(longitude, latitude)</code> — czyli <code>(X, Y)</code>. Warszawa ≈ <code>POINT(21.01 52.23)</code>, nie odwrotnie. Błąd daje lokalizację w oceanie.</div>
 
-<p><strong>Kiedy geometry, kiedy geography?</strong> Dla punktów GPS i zapytań „w promieniu 500 m” — <code>geography</code> lub <code>geometry</code> + transformacja do metrycznego SRID (np. 3857, 2180 dla Polski). Dla analizy kształtów, overlay map administracyjnych w jednym układzie — często <code>geometry</code> w lokalnym SRID (EPSG:2180 — PUWG 1992).</p>
+<p><strong>Kiedy geometry, kiedy geography?</strong> Dla punktów GPS i zapytań „w promieniu 500 m” — <code>geography</code> lub <code>geometry</code> + transformacja do metrycznego SRID (np. EPSG:2180 lub strefa CS2000 — patrz sekcja o układach polskich). Dla analizy kształtów i danych z map geodezyjnych — <code>geometry</code> w lokalnym SRID.</p>
+
+<hr>
+
+<h2 id="polska" class="must-know">0b. Polskie układy współrzędnych</h2>
+
+<p>W Polsce obowiązuje <strong>Państwowy System Odniesień Przestrzennych (PSP)</strong> — rozporządzenie RM (GUGiK). Dla developera web/mobile najważniejsze są dwa poziomy: <strong>układ geodezyjny (GPS)</strong> oraz <strong>układ płaski na mapie (metry)</strong>. Telefon zwraca WGS84; urzędowa mapa, geodezja i EWIDencja gruntów pracują w metrycznych układach kartograficznych.</p>
+
+<h3>GPS (sfera) → mapa płaska (metry)</h3>
+
+<p>Ziemia to elipsoida (przybliżenie kuli spłaszczonej). GPS podaje pozycję na tej powierzchni jako <strong>szerokość i długość geograficzną</strong> (stopnie). Mapa na ekranie lub w CAD to <strong>płaszczyzna w metrach</strong> — potrzebna jest <strong>projekcja kartograficzna</strong>: matematyczne „rozcięcie” i spłaszczenie fragmentu elipsoidy.</p>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.85rem;line-height:1.6">Elipsoida (ETRS89 / WGS84)          Projekcja (Gauss-Krügera / TM)
+     lat/lon [°]          ST_Transform          X, Y [m] na mapie
+  ┌─────────────────┐    ──────────────►    ┌─────────────────┐
+  │  ● punkt GPS    │                       │  ● ten sam punkt │
+  │  52.23°N        │   południk osiowy,    │  np. y≈500000   │
+  │  21.01°E        │   współcz. skali,     │  x≈6300000      │
+  └─────────────────┘   false easting       └─────────────────┘</pre>
+</div>
+
+<p>Polska stosuje odwzorowanie <strong>Gaussa-Krügera</strong> (wariant <strong>Transverse Mercator</strong>): walec styczny do wybranego południka osiowego. Im dalej od tego południka (wschód–zachód kraju), tym większe zniekształcenia — dlatego przy dużych skalach kraj dzieli się na <strong>4 strefy</strong> z różnymi południkami osiowymi.</p>
+
+<h3>Układy obowiązujące w Polsce</h3>
+
+<table>
+  <thead><tr><th>Układ</th><th>EPSG</th><th>Zastosowanie</th><th>Strefy</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>WGS 84</strong> (GPS)</td>
+      <td><code>4326</code></td>
+      <td>Telefony, nawigacja, API map, GeoJSON</td>
+      <td>Globalny — stopnie lon/lat</td>
+    </tr>
+    <tr>
+      <td><strong>ETRS89 / ETRF2000-PL</strong></td>
+      <td><code>4258</code> / <code>9702</code></td>
+      <td>Geodezyjny układ odniesienia w Europie i PL (kampania EUREF)</td>
+      <td>Stopnie — baza dla układów płaskich</td>
+    </tr>
+    <tr>
+      <td><strong>Układ „1992”</strong> (PL-1992, CS92)</td>
+      <td><code>2180</code></td>
+      <td>Mapy 1:10&nbsp;000 i mniejsze skale, dane ogólnokrajowe</td>
+      <td><strong>Jedna strefa</strong> na całą Polskę</td>
+    </tr>
+    <tr>
+      <td><strong>Układ „2000”</strong> (CS2000)</td>
+      <td><code>2176</code>–<code>2179</code></td>
+      <td>Geodezja, kataster, mapy 1:5000 i większe skale, projekty budowlane</td>
+      <td><strong>4 strefy</strong> (5–8)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>ETRS89 vs WGS84:</strong> W praktyce aplikacyjnej (dostawy, sklepy, „near me”) traktujesz je jako zgodne — różnica to centymetry. Urzędowe dane z GUGiK / WFS geoportalu mogą być w ETRF2000-PL i układzie 2000.</p>
+
+<h3>Układ 1992 — jedna strefa (EPSG:2180)</h3>
+
+<p>Cała Polska w jednej projekcji Transverse Mercator. Parametry (rozporządzenie, załącznik „1992”):</p>
+
+<ul>
+  <li>Południk osiowy: <strong>19°E</strong></li>
+  <li>Współczynnik skali na osi: <strong>0,9993</strong></li>
+  <li>False easting: <strong>500&nbsp;000 m</strong>, false northing: <strong>−5&nbsp;300&nbsp;000 m</strong></li>
+  <li>Jednostki: <strong>metry</strong>; w notacji polskiej: <strong>X = northing (północ)</strong>, <strong>Y = easting (wschód)</strong></li>
+</ul>
+
+<p>Nadaje się do aplikacji krajowych bez wyboru strefy — prostszy model danych. Dla precyzyjnej geodezji lokalnej wolą układ 2000.</p>
+
+<h3>Układ 2000 — cztery strefy (EPSG:2176–2179)</h3>
+
+<p>Kraj podzielony na <strong>4 pasy południkowe</strong> (strefy 5–8 w nomenklaturze geodezyjnej). Każda strefa ma własny południk osiowy i <strong>false easting</strong> (prefiks Y), żeby współrzędne nie nakładały się między strefami:</p>
+
+<table>
+  <thead><tr><th>Strefa</th><th>EPSG</th><th>Południk osiowy</th><th>False easting (Y)</th><th>Obszar (orientacyjnie)</th></tr></thead>
+  <tbody>
+    <tr><td>5</td><td><code>2176</code></td><td>15°E</td><td>5&nbsp;500&nbsp;000 m</td><td>Zachód PL — na zachód od 16°30′E</td></tr>
+    <tr><td>6</td><td><code>2177</code></td><td>18°E</td><td>6&nbsp;500&nbsp;000 m</td><td>16°30′E – 19°30′E</td></tr>
+    <tr><td>7</td><td><code>2178</code></td><td>21°E</td><td>7&nbsp;500&nbsp;000 m</td><td>19°30′E – 22°30′E (m.in. Warszawa, Kraków)</td></tr>
+    <tr><td>8</td><td><code>2179</code></td><td>24°E</td><td>8&nbsp;500&nbsp;000 m</td><td>Wschód PL — na wschód od 22°30′E</td></tr>
+  </tbody>
+</table>
+
+<p>Wspólne parametry stref 2000: współczynnik skali <strong>0,999923</strong>, elipsoida <strong>GRS 1980</strong>, false northing <strong>0</strong>.</p>
+
+<div class="trap"><strong>Pułapka:</strong> punkt blisko granicy stref (np. 19°29′E vs 19°31′E) musi być zapisany we <em>właściwej</em> strefie. Zły EPSG daje pozycję setki kilometrów od rzeczywistości. Przy importie z geodezji zawsze sprawdź metadane warstwy.</div>
+
+<h3>Wybór strefy po długości geograficznej</h3>
+
+<pre><code>-- Uproszczony wybór EPSG strefy CS2000 po lon (Java / SQL)
+-- lon &lt; 16.5  → 2176
+-- lon &lt; 19.5  → 2177
+-- lon &lt; 22.5  → 2178
+-- w pozostałych → 2179
+
+-- PostGIS: GPS Warszawy → układ 1992 (metry)
+SELECT ST_AsText(
+  ST_Transform(ST_SetSRID(ST_MakePoint(21.0122, 52.2297), 4326), 2180)
+) AS punkt_pl_1992;
+
+-- ten sam punkt → strefa 7 (układ 2000, Warszawa ~21°E)
+SELECT ST_AsText(
+  ST_Transform(ST_SetSRID(ST_MakePoint(21.0122, 52.2297), 4326), 2178)
+) AS punkt_cs2000_strefa7;
+
+-- odległość w metrach: transformuj oba punkty do tego samego SRID
+SELECT ST_Distance(
+  ST_Transform(a.geom, 2178),
+  ST_Transform(b.geom, 2178)
+) FROM ...;</code></pre>
+
+<h3>Co wybrać w aplikacji?</h3>
+
+<table>
+  <thead><tr><th>Scenariusz</th><th>Rekomendacja</th></tr></thead>
+  <tbody>
+    <tr><td>API mobilne, GPS użytkownika, „w pobliżu”</td><td>Przechowuj <code>geography(4326)</code> lub <code>geometry(4326)</code> + <code>ST_DWithin</code> na geography</td></tr>
+    <tr><td>Integracja z WFS / mapą zasadniczą GUGiK</td><td>Dane często w CS2000 — trzymaj SRID źródła (2176–2179), transformuj do 4326 tylko na wyjściu do mapy</td></tr>
+    <tr><td>Analiza powierzchni, buforów w metrach (cała PL)</td><td><code>ST_Transform(..., 2180)</code> — jedna strefa, metry</td></tr>
+    <tr><td>Projekt geodezyjny, precyzja &lt; 1 m na dużym obszarze</td><td>CS2000, właściwa strefa 2176–2179</td></tr>
+    <tr><td>Wyświetlanie kafelków OSM/Google</td><td>Frontend: 3857; backend może zostać w 4326</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>ST_Transform — serce konwersji</strong>
+  <p>GPS → płasko: <code>ST_Transform(geom, 2180)</code>. Płasko → GPS: <code>ST_Transform(geom, 4326)</code>. PostGIS używa biblioteki PROJ z definicjami EPSG. <code>ST_SetSRID</code> tylko „przykleja etykietę” — nie przelicza współrzędnych.</p>
+</div>
 
 <hr>
 
@@ -550,6 +680,7 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <li><strong>Mieszanie geometry i geography</strong> w jednym wyrażeniu bez jawnego cast</li>
   <li><strong>Hibernate bez dialektu PostGIS</strong> — kolumna zapisana jako bytea lub błąd mapowania</li>
   <li><strong>Coordinate w JTS</strong> — <code>x = lon</code>, <code>y = lat</code>; mylenie z „latitude first” z CSV</li>
+  <li><strong>Zły SRID polski</strong> — zła strefa CS2000 (2176–2179) lub mieszanie układu 1992 (2180) z 2000 bez <code>ST_Transform</code></li>
 </ol>
 
 <hr>
@@ -595,8 +726,8 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <p>Bez niego zapytania przestrzenne robią sequential scan. GiST przyspiesza <code>ST_DWithin</code>, <code>ST_Intersects</code>, operator <code>&amp;&amp;</code>.</p>
 </div>
 <div class="qa-item">
-  <strong>10. Co to jest WGS84?</strong>
-  <p>Globalny układ GPS (EPSG:4326) — longitude/latitude w stopniach. Domyślny dla map i GeoJSON.</p>
+  <strong>10. Co to jest WGS84 i jak ma się do ETRS89 w Polsce?</strong>
+  <p>WGS84 (EPSG:4326) — globalny układ GPS w stopniach. ETRS89/ETRF2000-PL — europejski/polski układ geodezyjny (baza pod układy 1992 i 2000). W aplikacjach webowych praktycznie traktujesz je jako zgodne (różnica ~cm).</p>
 </div>
 <div class="qa-item">
   <strong>11. Czym jest Hibernate Spatial?</strong>
@@ -630,8 +761,8 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <p><code>ST_DWithin</code> jest zoptymalizowane pod indeks GiST. Samo <code>ST_Distance</code> w WHERE często wymusza pełny scan.</p>
 </div>
 <div class="qa-item">
-  <strong>18. Kiedy użyć geometry zamiast geography?</strong>
-  <p>Analiza kształtów, overlay polygonów, powierzchni w lokalnym układzie (EPSG:2180 dla Polski). Dla globalnego „near me” w metrach — geography.</p>
+  <strong>18. Kiedy użyć geometry zamiast geography w Polsce?</strong>
+  <p>Geography — globalne „near me” w metrach z GPS. Geometry w EPSG:2180 (układ 1992) lub 2176–2179 (CS2000) — dane z map geodezyjnych, powierzchnie i bufor w metrach na dużych obszarach PL.</p>
 </div>
 <div class="qa-item">
   <strong>19. Co robi <code>ST_Transform</code> vs <code>ST_SetSRID</code>?</strong>
@@ -670,8 +801,8 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <p>Mała skala, brak polygonów, proste „odległość między dwoma punktami” bez rozszerzenia PG. Nie zastąpi geofencingu ani indeksów.</p>
 </div>
 <div class="qa-item">
-  <strong>28. Co to jest EPSG:2180?</strong>
-  <p>PUWG 1992 — polski układ w metrach (projekcja strefowa). Lepszy do obliczeń powierzchni i odległości w Polsce niż 4326 w geometry.</p>
+  <strong>28. Czym różni się układ 1992 (EPSG:2180) od układu 2000 (2176–2179)?</strong>
+  <p>1992 — jedna strefa na całą Polskę, południk 19°E, mapy 1:10&nbsp;000 i mniejsze. 2000 — 4 strefy (południki 15/18/21/24°E), geodezja i mapy 1:5000+, mniejsze zniekształcenia lokalnie.</p>
 </div>
 <div class="qa-item">
   <strong>29. Jak zapisać polygon narysowany na mapie (GeoJSON) w PG?</strong>
@@ -717,8 +848,8 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <p>Nie — to ~1000 stopni (~111 000 km przy równiku). Dla metrów użyj geography lub transformacji do metrycznego SRID.</p>
 </div>
 <div class="qa-item">
-  <strong>39. Czy dwa punkty z tym samym lon/lat ale różnym SRID są „w tym samym miejscu”?</strong>
-  <p>PostGIS traktuje je jako różne bez jawnej transformacji — SRID musi być zgodny w operacjach lub użyj <code>ST_Transform</code>.</p>
+  <strong>39. W jakiej strefie CS2000 leży Warszawa (~21°E)?</strong>
+  <p>Strefa 7 — EPSG:2178 (południk osiowy 21°E, false easting 7&nbsp;500&nbsp;000 m). Granice stref: &lt;16°30′ → 2176, &lt;19°30′ → 2177, &lt;22°30′ → 2178, dalej → 2179.</p>
 </div>
 <div class="qa-item">
   <strong>40. Czy <code>ST_Simplify</code> zawsze zachowuje topologię?</strong>
