@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geo / PostGIS — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0d9488;
+      --accent-dark: #0f766e;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; color: var(--accent-dark); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #ccfbf1; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .lib-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #ccfbf1;
+      color: #0f766e;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+
+    .map-box {
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Geo / PostGIS — punkty, linie, obszary</h1>
+<p class="meta">PostgreSQL + PostGIS · Hibernate Spatial · JTS / Java · układy PL, pomiary (odległość, długość, powierzchnia)<br>
+Format: HTML offline · 40 pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty GIS</a></li>
+    <li><a href="#polska">Polskie układy współrzędnych</a></li>
+    <li><a href="#postgis">PostGIS — typy i tabele</a></li>
+    <li><a href="#zapytania">Zapytania przestrzenne</a></li>
+    <li><a href="#pomiary">Pomiary — odległość, długość, powierzchnia</a></li>
+    <li><a href="#indeksy">Indeksy przestrzenne</a></li>
+    <li><a href="#hibernate">Hibernate Spatial</a></li>
+    <li><a href="#java">Warstwa Java</a></li>
+    <li><a href="#wzorce">Wzorce aplikacyjne</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">0. Fundamenty GIS</h2>
+
+<p><strong>Dane geoprzestrzenne</strong> to geometrie na Ziemi (lub innej powierzchni) z przypisanym układem współrzędnych. W stacku Java + Hibernate + PostgreSQL standardem jest <strong>PostGIS</strong> (rozszerzenie PG) + <strong>Hibernate Spatial</strong> + biblioteka <strong>JTS</strong> (Java Topology Suite) do obiektów geometrycznych w JVM.</p>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.85rem;line-height:1.55">POINT        — lokalizacja (sklep, GPS użytkownika)
+LINESTRING   — trasa, droga, rzeka, kabel
+POLYGON      — obszar (dzielnica, strefa dostawy, granica kraju)
+MULTIPOLYGON — wiele obszarów (archipelag, kilka stref)
+GEOMETRYCOLLECTION — mieszanka typów</pre>
+</div>
+
+<table>
+  <thead><tr><th>Pojęcie</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>SRID</strong></td><td>Spatial Reference ID — numer układu współrzędnych. <code>4326</code> = WGS84 (GPS, lon/lat w stopniach)</td></tr>
+    <tr><td><strong>WGS84 (EPSG:4326)</strong></td><td>Domyślny dla GPS, map Google/OSM, GeoJSON. Jednostki: stopnie</td></tr>
+    <tr><td><strong>Web Mercator (EPSG:3857)</strong></td><td>Kafelki map (Slippy maps). Jednostki: metry — do wizualizacji, nie do precyzyjnych obliczeń na dużych odległościach</td></tr>
+    <tr><td><strong>geometry</strong></td><td>Typ PostGIS — płaska geometria w układzie SRID. Szybsze operacje, ale odległość w stopniach (4326) jest myląca</td></tr>
+    <tr><td><strong>geography</strong></td><td>Typ PostGIS — sferyczna powierzchnia Ziemi. Odległości w metrach (dokładniejsze „w pobliżu” na całym globie)</td></tr>
+    <tr><td><strong>EWKT / WKT</strong></td><td>Format tekstowy: <code>SRID=4326;POINT(21.01 52.23)</code> — lon przed lat (X przed Y)</td></tr>
+    <tr><td><strong>GeoJSON</strong></td><td>JSON z geometrią — API REST, frontend map. Kolejność współrzędnych: <code>[lon, lat]</code></td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> zamiana kolejności lon/lat. W PostGIS i GeoJSON zawsze <code>(longitude, latitude)</code> — czyli <code>(X, Y)</code>. Warszawa ≈ <code>POINT(21.01 52.23)</code>, nie odwrotnie. Błąd daje lokalizację w oceanie.</div>
+
+<p><strong>Kiedy geometry, kiedy geography?</strong> Dla punktów GPS i zapytań „w promieniu 500 m” — <code>geography</code> lub <code>geometry</code> + transformacja do metrycznego SRID (np. EPSG:2180 lub strefa CS2000 — patrz sekcja o układach polskich). Dla analizy kształtów i danych z map geodezyjnych — <code>geometry</code> w lokalnym SRID.</p>
+
+<hr>
+
+<h2 id="polska" class="must-know">0b. Polskie układy współrzędnych</h2>
+
+<p>W Polsce obowiązuje <strong>Państwowy System Odniesień Przestrzennych (PSP)</strong> — rozporządzenie RM (GUGiK). Dla developera web/mobile najważniejsze są dwa poziomy: <strong>układ geodezyjny (GPS)</strong> oraz <strong>układ płaski na mapie (metry)</strong>. Telefon zwraca WGS84; urzędowa mapa, geodezja i EWIDencja gruntów pracują w metrycznych układach kartograficznych.</p>
+
+<h3>GPS (sfera) → mapa płaska (metry)</h3>
+
+<p>Ziemia to elipsoida (przybliżenie kuli spłaszczonej). GPS podaje pozycję na tej powierzchni jako <strong>szerokość i długość geograficzną</strong> (stopnie). Mapa na ekranie lub w CAD to <strong>płaszczyzna w metrach</strong> — potrzebna jest <strong>projekcja kartograficzna</strong>: matematyczne „rozcięcie” i spłaszczenie fragmentu elipsoidy.</p>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.85rem;line-height:1.6">Elipsoida (ETRS89 / WGS84)          Projekcja (Gauss-Krügera / TM)
+     lat/lon [°]          ST_Transform          X, Y [m] na mapie
+  ┌─────────────────┐    ──────────────►    ┌─────────────────┐
+  │  ● punkt GPS    │                       │  ● ten sam punkt │
+  │  52.23°N        │   południk osiowy,    │  np. y≈500000   │
+  │  21.01°E        │   współcz. skali,     │  x≈6300000      │
+  └─────────────────┘   false easting       └─────────────────┘</pre>
+</div>
+
+<p>Polska stosuje odwzorowanie <strong>Gaussa-Krügera</strong> (wariant <strong>Transverse Mercator</strong>): walec styczny do wybranego południka osiowego. Im dalej od tego południka (wschód–zachód kraju), tym większe zniekształcenia — dlatego przy dużych skalach kraj dzieli się na <strong>4 strefy</strong> z różnymi południkami osiowymi.</p>
+
+<h3>Układy obowiązujące w Polsce</h3>
+
+<table>
+  <thead><tr><th>Układ</th><th>EPSG</th><th>Zastosowanie</th><th>Strefy</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>WGS 84</strong> (GPS)</td>
+      <td><code>4326</code></td>
+      <td>Telefony, nawigacja, API map, GeoJSON</td>
+      <td>Globalny — stopnie lon/lat</td>
+    </tr>
+    <tr>
+      <td><strong>ETRS89 / ETRF2000-PL</strong></td>
+      <td><code>4258</code> / <code>9702</code></td>
+      <td>Geodezyjny układ odniesienia w Europie i PL (kampania EUREF)</td>
+      <td>Stopnie — baza dla układów płaskich</td>
+    </tr>
+    <tr>
+      <td><strong>Układ „1992”</strong> (PL-1992, CS92)</td>
+      <td><code>2180</code></td>
+      <td>Mapy 1:10&nbsp;000 i mniejsze skale, dane ogólnokrajowe</td>
+      <td><strong>Jedna strefa</strong> na całą Polskę</td>
+    </tr>
+    <tr>
+      <td><strong>Układ „2000”</strong> (CS2000)</td>
+      <td><code>2176</code>–<code>2179</code></td>
+      <td>Geodezja, kataster, mapy 1:5000 i większe skale, projekty budowlane</td>
+      <td><strong>4 strefy</strong> (5–8)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>ETRS89 vs WGS84:</strong> W praktyce aplikacyjnej (dostawy, sklepy, „near me”) traktujesz je jako zgodne — różnica to centymetry. Urzędowe dane z GUGiK / WFS geoportalu mogą być w ETRF2000-PL i układzie 2000.</p>
+
+<h3>Układ 1992 — jedna strefa (EPSG:2180)</h3>
+
+<p>Cała Polska w jednej projekcji Transverse Mercator. Parametry (rozporządzenie, załącznik „1992”):</p>
+
+<ul>
+  <li>Południk osiowy: <strong>19°E</strong></li>
+  <li>Współczynnik skali na osi: <strong>0,9993</strong></li>
+  <li>False easting: <strong>500&nbsp;000 m</strong>, false northing: <strong>−5&nbsp;300&nbsp;000 m</strong></li>
+  <li>Jednostki: <strong>metry</strong>; w notacji polskiej: <strong>X = northing (północ)</strong>, <strong>Y = easting (wschód)</strong></li>
+</ul>
+
+<p>Nadaje się do aplikacji krajowych bez wyboru strefy — prostszy model danych. Dla precyzyjnej geodezji lokalnej wolą układ 2000.</p>
+
+<h3>Układ 2000 — cztery strefy (EPSG:2176–2179)</h3>
+
+<p>Kraj podzielony na <strong>4 pasy południkowe</strong> (strefy 5–8 w nomenklaturze geodezyjnej). Każda strefa ma własny południk osiowy i <strong>false easting</strong> (prefiks Y), żeby współrzędne nie nakładały się między strefami:</p>
+
+<table>
+  <thead><tr><th>Strefa</th><th>EPSG</th><th>Południk osiowy</th><th>False easting (Y)</th><th>Obszar (orientacyjnie)</th></tr></thead>
+  <tbody>
+    <tr><td>5</td><td><code>2176</code></td><td>15°E</td><td>5&nbsp;500&nbsp;000 m</td><td>Zachód PL — na zachód od 16°30′E</td></tr>
+    <tr><td>6</td><td><code>2177</code></td><td>18°E</td><td>6&nbsp;500&nbsp;000 m</td><td>16°30′E – 19°30′E</td></tr>
+    <tr><td>7</td><td><code>2178</code></td><td>21°E</td><td>7&nbsp;500&nbsp;000 m</td><td>19°30′E – 22°30′E (m.in. Warszawa, Kraków)</td></tr>
+    <tr><td>8</td><td><code>2179</code></td><td>24°E</td><td>8&nbsp;500&nbsp;000 m</td><td>Wschód PL — na wschód od 22°30′E</td></tr>
+  </tbody>
+</table>
+
+<p>Wspólne parametry stref 2000: współczynnik skali <strong>0,999923</strong>, elipsoida <strong>GRS 1980</strong>, false northing <strong>0</strong>.</p>
+
+<div class="trap"><strong>Pułapka:</strong> punkt blisko granicy stref (np. 19°29′E vs 19°31′E) musi być zapisany we <em>właściwej</em> strefie. Zły EPSG daje pozycję setki kilometrów od rzeczywistości. Przy importie z geodezji zawsze sprawdź metadane warstwy.</div>
+
+<h3>Wybór strefy po długości geograficznej</h3>
+
+<pre><code>-- Uproszczony wybór EPSG strefy CS2000 po lon (Java / SQL)
+-- lon &lt; 16.5  → 2176
+-- lon &lt; 19.5  → 2177
+-- lon &lt; 22.5  → 2178
+-- w pozostałych → 2179
+
+-- PostGIS: GPS Warszawy → układ 1992 (metry)
+SELECT ST_AsText(
+  ST_Transform(ST_SetSRID(ST_MakePoint(21.0122, 52.2297), 4326), 2180)
+) AS punkt_pl_1992;
+
+-- ten sam punkt → strefa 7 (układ 2000, Warszawa ~21°E)
+SELECT ST_AsText(
+  ST_Transform(ST_SetSRID(ST_MakePoint(21.0122, 52.2297), 4326), 2178)
+) AS punkt_cs2000_strefa7;
+
+-- odległość w metrach: transformuj oba punkty do tego samego SRID
+SELECT ST_Distance(
+  ST_Transform(a.geom, 2178),
+  ST_Transform(b.geom, 2178)
+) FROM ...;</code></pre>
+
+<h3>Co wybrać w aplikacji?</h3>
+
+<table>
+  <thead><tr><th>Scenariusz</th><th>Rekomendacja</th></tr></thead>
+  <tbody>
+    <tr><td>API mobilne, GPS użytkownika, „w pobliżu”</td><td>Przechowuj <code>geography(4326)</code> lub <code>geometry(4326)</code> + <code>ST_DWithin</code> na geography</td></tr>
+    <tr><td>Integracja z WFS / mapą zasadniczą GUGiK</td><td>Dane często w CS2000 — trzymaj SRID źródła (2176–2179), transformuj do 4326 tylko na wyjściu do mapy</td></tr>
+    <tr><td>Analiza powierzchni, buforów w metrach (cała PL)</td><td><code>ST_Transform(..., 2180)</code> — jedna strefa, metry</td></tr>
+    <tr><td>Projekt geodezyjny, precyzja &lt; 1 m na dużym obszarze</td><td>CS2000, właściwa strefa 2176–2179</td></tr>
+    <tr><td>Wyświetlanie kafelków OSM/Google</td><td>Frontend: 3857; backend może zostać w 4326</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>ST_Transform — serce konwersji</strong>
+  <p>GPS → płasko: <code>ST_Transform(geom, 2180)</code>. Płasko → GPS: <code>ST_Transform(geom, 4326)</code>. PostGIS używa biblioteki PROJ z definicjami EPSG. <code>ST_SetSRID</code> tylko „przykleja etykietę” — nie przelicza współrzędnych.</p>
+</div>
+
+<hr>
+
+<h2 id="postgis" class="must-know">1. PostGIS — typy i tabele</h2>
+
+<pre><code>CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE TABLE stores (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        text NOT NULL,
+    location    geography(Point, 4326) NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE delivery_zones (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        text NOT NULL,
+    area        geometry(Polygon, 4326) NOT NULL
+);
+
+CREATE TABLE routes (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        text NOT NULL,
+    path        geometry(LineString, 4326) NOT NULL
+);</code></pre>
+
+<h3>Wstawianie danych</h3>
+
+<pre><code>-- z lon/lat (WGS84)
+INSERT INTO stores (name, location)
+VALUES ('Sklep Centrum',
+        ST_SetSRID(ST_MakePoint(21.0122, 52.2297), 4326)::geography);
+
+-- polygon — zamknięty pierścień (pierwszy = ostatni punkt)
+INSERT INTO delivery_zones (name, area)
+VALUES ('Centrum',
+    ST_GeomFromText(
+        'POLYGON((21.00 52.22, 21.05 52.22, 21.05 52.25, 21.00 52.25, 21.00 52.22))',
+        4326));
+
+-- linia (trasa)
+INSERT INTO routes (name, path)
+VALUES ('Trasa A',
+    ST_GeomFromText('LINESTRING(21.01 52.23, 21.02 52.24, 21.03 52.22)', 4326));</code></pre>
+
+<h3>Przydatne funkcje konstrukcyjne</h3>
+
+<table>
+  <thead><tr><th>Funkcja</th><th>Opis</th></tr></thead>
+  <tbody>
+    <tr><td><code>ST_MakePoint(lon, lat)</code></td><td>Punkt z dwóch liczb</td></tr>
+    <tr><td><code>ST_GeomFromGeoJSON(text)</code></td><td>Import z GeoJSON</td></tr>
+    <tr><td><code>ST_GeomFromText(wkt, srid)</code></td><td>WKT → geometria</td></tr>
+    <tr><td><code>ST_SetSRID(geom, srid)</code></td><td>Przypisanie SRID (nie transformacja!)</td></tr>
+    <tr><td><code>ST_Transform(geom, target_srid)</code></td><td>Przeliczenie między układami</td></tr>
+    <tr><td><code>ST_AsGeoJSON(geom)</code></td><td>Eksport do API</td></tr>
+    <tr><td><code>ST_X(geom)</code> / <code>ST_Y(geom)</code></td><td>Lon / lat punktu</td></tr>
+    <tr><td><code>ST_Buffer(geom, radius)</code></td><td>„Obszar wokół” — okrąg, korytarz wokół linii</td></tr>
+    <tr><td><code>ST_Union(geom[])</code></td><td>Scalenie wielu geometrii</td></tr>
+    <tr><td><code>ST_Simplify(geom, tolerance)</code></td><td>Uproszczenie (mniej wierzchołków)</td></tr>
+    <tr><td><code>ST_Length(geom)</code></td><td>Długość linii (metry na <code>geography</code>)</td></tr>
+    <tr><td><code>ST_Area(geom)</code></td><td>Powierzchnia polygonu (m² na <code>geography</code>)</td></tr>
+    <tr><td><code>ST_Perimeter(geom)</code></td><td>Obwód polygonu</td></tr>
+    <tr><td><code>ST_ClosestPoint(A, B)</code></td><td>Najbliższy punkt na B względem A</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="zapytania" class="must-know">2. Zapytania przestrzenne</h2>
+
+<h3>Odległość i „w pobliżu”</h3>
+
+<pre><code>-- sklepy w promieniu 1 km od punktu użytkownika (geography → metry)
+SELECT id, name,
+       ST_Distance(location, ST_MakePoint(21.01, 52.23)::geography) AS dist_m
+FROM stores
+WHERE ST_DWithin(
+    location,
+    ST_SetSRID(ST_MakePoint(21.01, 52.23), 4326)::geography,
+    1000   -- metry
+)
+ORDER BY dist_m;</code></pre>
+
+<p><code>ST_DWithin</code> jest kluczowe — używa indeksu GiST (w przeciwieństwie do <code>ST_Distance(...) &lt; X</code> bez operatora). <code>ST_Distance</code> na <code>geography</code> zwraca metry; na <code>geometry(4326)</code> — stopnie (bezużyteczne do „500 m”).</p>
+
+<h3>Punkt w obszarze (geofencing)</h3>
+
+<pre><code>-- czy punkt użytkownika leży w strefie dostawy?
+SELECT dz.name
+FROM delivery_zones dz
+WHERE ST_Contains(
+    dz.area,
+    ST_SetSRID(ST_MakePoint(21.012, 52.230), 4326)
+);
+
+-- alternatywa: ST_Within(point, polygon) — odwrotna perspektywa</code></pre>
+
+<h3>Przecięcia i nakładanie</h3>
+
+<pre><code>-- które trasy przecinają strefę?
+SELECT r.name
+FROM routes r
+JOIN delivery_zones dz ON ST_Intersects(r.path, dz.area)
+WHERE dz.name = 'Centrum';
+
+-- obszar wspólny dwóch polygonów
+SELECT ST_Area(ST_Intersection(a.area, b.area)) AS overlap_sq_deg
+FROM delivery_zones a, delivery_zones b
+WHERE a.name = 'Centrum' AND b.name = 'Żoliborz';</code></pre>
+
+<h3>Operatory przestrzenne</h3>
+
+<table>
+  <thead><tr><th>Operator / funkcja</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><code>ST_Contains(A, B)</code></td><td>A zawiera B (polygon zawiera punkt)</td></tr>
+    <tr><td><code>ST_Within(A, B)</code></td><td>A leży w B</td></tr>
+    <tr><td><code>ST_Intersects(A, B)</code></td><td>Mają wspólny punkt/linię/obszar</td></tr>
+    <tr><td><code>ST_Touches(A, B)</code></td><td>Dotykają się, bez nakładania wnętrza</td></tr>
+    <tr><td><code>ST_DWithin(A, B, d)</code></td><td>Odległość ≤ d (indeksowalne)</td></tr>
+    <tr><td><code>ST_Distance(A, B)</code></td><td>Odległość (metry na geography)</td></tr>
+    <tr><td><code>A &amp;&amp; B</code></td><td>Bounding box się przecina — szybki prefiltr (używa indeksu)</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="pomiary" class="must-know">2b. Pomiary — odległość, długość, powierzchnia</h2>
+
+<p>PostGIS (i JTS po stronie Java) liczy <strong>metryczne właściwości</strong> geometrii. Kluczowa zasada: <strong>jednostki wynikają z typu i SRID</strong> — <code>geography</code> → metry; <code>geometry</code> w EPSG:2180/2178 → metry; <code>geometry(4326)</code> → stopnie / stopnie² (do obliczeń metrycznych transformuj najpierw).</p>
+
+<h3>Odległość — <code>ST_Distance</code></h3>
+
+<p>Działa między <strong>dowolną parą</strong> geometrii — najkrótsza odległość w sensie euklidesowym (na płaszczyźnie) lub geodezyjnym (na <code>geography</code>):</p>
+
+<table>
+  <thead><tr><th>Para</th><th>Co mierzy</th><th>Przykład użycia</th></tr></thead>
+  <tbody>
+    <tr><td>Punkt ↔ punkt</td><td>Odległość między dwoma lokalizacjami</td><td>Dystans sklep–klient</td></tr>
+    <tr><td>Punkt ↔ linia</td><td>Odległość punktu od najbliższego odcinka linii</td><td>Jak daleko adres jest od trasy dostawy</td></tr>
+    <tr><td>Punkt ↔ polygon</td><td><code>0</code> jeśli punkt wewnątrz; inaczej odległość do brzegu</td><td>„Ile metrów poza strefą dostawy?”</td></tr>
+    <tr><td>Linia ↔ polygon</td><td>Odległość między najbliższymi punktami kształtów</td><td>Czy trasa „prawie” wchodzi w strefę</td></tr>
+    <tr><td>Polygon ↔ polygon</td><td>0 jeśli się nakładają; inaczej minimalna szczelina</td><td>Odległość między dwoma działkami</td></tr>
+  </tbody>
+</table>
+
+<pre><code>-- punkt ↔ punkt (metry, geography)
+SELECT ST_Distance(
+    ST_MakePoint(21.01, 52.23)::geography,
+    ST_MakePoint(21.05, 52.25)::geography
+) AS dist_m;
+
+-- punkt ↔ linia (trasa dostawy) — ile metrów od drogi?
+SELECT r.name,
+       ST_Distance(
+           ST_SetSRID(ST_MakePoint(21.012, 52.230), 4326)::geography,
+           r.path::geography
+       ) AS odleglosc_od_trasy_m
+FROM routes r
+ORDER BY odleglosc_od_trasy_m
+LIMIT 1;
+
+-- punkt ↔ polygon — 0 w środku strefy, &gt;0 poza
+SELECT dz.name,
+       ST_Distance(
+           ST_SetSRID(ST_MakePoint(21.012, 52.230), 4326)::geography,
+           dz.area::geography
+       ) AS poza_strefa_m
+FROM delivery_zones dz;
+
+-- najbliższy punkt na linii (do wizualizacji / snap-to-road)
+SELECT ST_AsText(ST_ClosestPoint(r.path, ST_MakePoint(21.012, 52.230))) AS snap
+FROM routes r WHERE r.name = 'Trasa A';</code></pre>
+
+<h3>Długość linii — <code>ST_Length</code></h3>
+
+<pre><code>-- długość trasy w metrach
+SELECT name,
+       ST_Length(path::geography) AS dlugosc_m
+FROM routes;
+
+-- suma długości wszystkich tras w strefie (po przecięciu)
+SELECT SUM(ST_Length(ST_Intersection(r.path, dz.area)::geography)) AS km_w_strefie
+FROM routes r
+JOIN delivery_zones dz ON dz.name = 'Centrum';</code></pre>
+
+<p><code>ST_Length</code> na <code>LineString</code> / <code>MultiLineString</code>. Na polygonie zwraca obwód zewnętrzny — wygodniej użyć <code>ST_Perimeter</code>.</p>
+
+<h3>Obwód — <code>ST_Perimeter</code></h3>
+
+<pre><code>SELECT name,
+       ST_Perimeter(area::geography) AS obwod_m
+FROM delivery_zones;</code></pre>
+
+<h3>Powierzchnia — <code>ST_Area</code></h3>
+
+<pre><code>-- powierzchnia strefy w m² (geography lub geometry w metrycznym SRID)
+SELECT name,
+       ST_Area(area::geography) AS powierzchnia_m2,
+       ST_Area(area::geography) / 10000.0 AS hektary
+FROM delivery_zones;
+
+-- powierzchnia w układzie 1992 (metry²) — bez cast na geography
+SELECT ST_Area(ST_Transform(area, 2180)) AS m2_pl_1992
+FROM delivery_zones WHERE name = 'Centrum';</code></pre>
+
+<h3>Podsumowanie funkcji pomiarowych</h3>
+
+<table>
+  <thead><tr><th>Funkcja PostGIS</th><th>Typ geometrii</th><th>Wynik</th><th>Jednostki (typowo)</th></tr></thead>
+  <tbody>
+    <tr><td><code>ST_Distance(A, B)</code></td><td>dowolna ↔ dowolna</td><td>Odległość</td><td>m (<code>geography</code>) lub jednostki SRID</td></tr>
+    <tr><td><code>ST_Length(geom)</code></td><td>LineString</td><td>Długość linii</td><td>m (<code>geography</code>)</td></tr>
+    <tr><td><code>ST_Perimeter(geom)</code></td><td>Polygon</td><td>Obwód</td><td>m (<code>geography</code>)</td></tr>
+    <tr><td><code>ST_Area(geom)</code></td><td>Polygon</td><td>Powierzchnia</td><td>m² (<code>geography</code> lub metryczny SRID)</td></tr>
+    <tr><td><code>ST_ClosestPoint(A, B)</code></td><td>dowolna ↔ dowolna</td><td>Punkt na B najbliżej A</td><td>—</td></tr>
+    <tr><td><code>ST_MaxDistance(A, B)</code></td><td>dowolna ↔ dowolna</td><td>Maksymalna odległość</td><td>rzadziej używane</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> <code>ST_Area(geom_4326)</code> zwraca stopnie² — wartość bezużyteczna. Do hektarów i m²: <code>::geography</code> albo <code>ST_Transform(geom, 2180)</code> przed pomiarem.</div>
+
+<h3>JTS w Java — te same pojęcia</h3>
+
+<pre><code>Point sklep = ...;
+Point klient = ...;
+LineString trasa = ...;
+Polygon strefa = ...;
+
+double odlegloscPunktow = sklep.distance(klient);   // w jednostkach SRID geometrii!
+double dlugoscTrasy     = trasa.getLength();
+double obwodStrefy      = strefa.getLength();         // długość pierścienia zewnętrznego
+double powierzchnia     = strefa.getArea();
+
+// dla metrów z GPS: licz w PostGIS (geography) albo transformuj SRID przed JTS</code></pre>
+
+<p>JTS liczy w jednostkach układu współrzędnych geometrii — przy <code>4326</code> to stopnie, nie metry. Do pomiarów produkcyjnych preferuj <strong>PostGIS w SQL</strong> (dokładniejsze na elipsoidzie przez <code>geography</code>) lub transformację do EPSG:2180/2178 przed wywołaniem JTS.</p>
+
+<h3>Hibernate — pomiary w repozytorium</h3>
+
+<pre><code>public interface RouteRepository extends JpaRepository&lt;Route, UUID&gt; {
+
+    @Query(value = """
+        SELECT r.name, ST_Length(r.path::geography) AS length_m
+        FROM routes r WHERE r.id = :id
+        """, nativeQuery = true)
+    Object[] getRouteLengthMeters(@Param("id") UUID id);
+
+    @Query(value = """
+        SELECT ST_Area(dz.area::geography) / 10000.0
+        FROM delivery_zones dz WHERE dz.id = :id
+        """, nativeQuery = true)
+    double getZoneAreaHectares(@Param("id") UUID id);
+
+    @Query(value = """
+        SELECT ST_Distance(
+            ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+            r.path::geography
+        )
+        FROM routes r WHERE r.id = :routeId
+        """, nativeQuery = true)
+    double distanceFromPointToRoute(
+        @Param("lon") double lon, @Param("lat") double lat,
+        @Param("routeId") UUID routeId);
+}</code></pre>
+
+<p>Hibernate Spatial nie dodaje <code>ST_Length</code> do JPQL — pomiary to prawie zawsze <strong>native SQL</strong> albo obliczenia JTS w serwisie na już załadowanej geometrii. W HQL (Hibernate 6.2+) jest <code>distance()</code> dla relacji spatial, ale pełny zestaw funkcji PostGIS zostaje w SQL.</p>
+
+<hr>
+
+<h2 id="indeksy">3. Indeksy przestrzenne</h2>
+
+<p>Bez indeksu GiST/SP-GiST zapytania „w pobliżu” robią sequential scan — przy milionach punktów to katastrofa.</p>
+
+<pre><code>CREATE INDEX idx_stores_location ON stores USING GIST (location);
+CREATE INDEX idx_zones_area ON delivery_zones USING GIST (area);
+CREATE INDEX idx_routes_path ON routes USING GIST (path);</code></pre>
+
+<div class="keyword">
+  <strong>GiST</strong>
+  <p>Generalized Search Tree — domyślny dla geometrii. Obsługuje <code>&amp;&amp;</code>, <code>ST_Intersects</code>, <code>ST_DWithin</code> (z odpowiednim operatorem).</p>
+</div>
+
+<div class="keyword">
+  <strong>SP-GiST</strong>
+  <p>Alternatywa — czasem lepsza dla punktów; testuj EXPLAIN na własnych danych.</p>
+</div>
+
+<pre><code>EXPLAIN (ANALYZE, BUFFERS)
+SELECT id FROM stores
+WHERE location &amp;&amp; ST_Expand(ST_MakePoint(21.01, 52.23)::geography, 1000)
+  AND ST_DWithin(location, ST_MakePoint(21.01, 52.23)::geography, 1000);
+-- oczekuj: Index Scan using idx_stores_location</code></pre>
+
+<p><strong>Pułapka:</strong> indeks na wyrażeniu <code>ST_Transform(location::geometry, 2180)</code> — jeśli filtrujesz w innym SRID niż kolumna, indeks musi być na tym samym wyrażeniu co WHERE.</p>
+
+<hr>
+
+<h2 id="hibernate" class="must-know">3. Hibernate Spatial</h2>
+
+<p><span class="lib-tag">hibernate-spatial</span> mapuje typy PostGIS na obiekty JTS w encjach JPA. Wymaga dialektu PostGIS i zależności w Maven/Gradle.</p>
+
+<pre><code>&lt;!-- pom.xml --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.hibernate.orm&lt;/groupId&gt;
+    &lt;artifactId&gt;hibernate-spatial&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.locationtech.jts&lt;/groupId&gt;
+    &lt;artifactId&gt;jts-core&lt;/artifactId&gt;
+    &lt;version&gt;1.19.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+
+<pre><code>// application.properties
+spring.jpa.properties.hibernate.dialect=org.hibernate.spatial.dialect.postgis.PostgisPG10Dialect
+// lub nowszy: PostgisDialect (Hibernate 6+)</code></pre>
+
+<h3>Encja z punktem i polygonem</h3>
+
+<pre><code>@Entity
+@Table(name = "stores")
+public class Store {
+
+    @Id
+    private UUID id;
+
+    private String name;
+
+    @Column(columnDefinition = "geography(Point,4326)")
+    private Point location;   // org.locationtech.jts.geom.Point
+
+    // getter/setter
+}
+
+@Entity
+@Table(name = "delivery_zones")
+public class DeliveryZone {
+
+    @Id
+    private UUID id;
+
+    private String name;
+
+    @Column(columnDefinition = "geometry(Polygon,4326)")
+    private Polygon area;
+}</code></pre>
+
+<p>Hibernate Spatial automatycznie konwertuje <code>Point</code>, <code>LineString</code>, <code>Polygon</code>, <code>MultiPolygon</code> z JTS ↔ PostGIS. Tworzenie w kodzie:</p>
+
+<pre><code>GeometryFactory gf = new GeometryFactory(new PrecisionModel(), 4326);
+Point warsaw = gf.createPoint(new Coordinate(21.0122, 52.2297));
+// Coordinate(x=lon, y=lat)
+
+store.setLocation(warsaw);</code></pre>
+
+<h3>Repository — native query vs JPQL</h3>
+
+<p>Standardowy JPQL nie zna <code>ST_DWithin</code>. Typowe podejścia:</p>
+
+<pre><code>public interface StoreRepository extends JpaRepository&lt;Store, UUID&gt; {
+
+    @Query(value = """
+        SELECT * FROM stores s
+        WHERE ST_DWithin(
+            s.location,
+            ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+            :radiusMeters
+        )
+        ORDER BY ST_Distance(s.location,
+            ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography)
+        LIMIT :limit
+        """, nativeQuery = true)
+    List&lt;Store&gt; findNearby(
+        @Param("lon") double lon,
+        @Param("lat") double lat,
+        @Param("radiusMeters") double radius,
+        @Param("limit") int limit);
+}</code></pre>
+
+<p>Hibernate 6.2+ ma eksperymentalne wsparcie spatial w HQL (<code>within</code>, <code>distance</code>) — sprawdź wersję; w produkcji nadal często native SQL lub <code>SpatialPredicate</code> z Criteria API.</p>
+
+<hr>
+
+<h2 id="java">4. Warstwa Java</h2>
+
+<h3>JTS — Java Topology Suite</h3>
+
+<p><span class="lib-tag">jts-core</span> to kanoniczna biblioteka geometrii w JVM. Hibernate Spatial używa jej typów; możesz też budować geometrie poza encją (walidacja, merge stref).</p>
+
+<pre><code>GeometryFactory gf = new GeometryFactory(new PrecisionModel(), 4326);
+
+// polygon ze współrzędnych
+Coordinate[] ring = {
+    new Coordinate(21.00, 52.22),
+    new Coordinate(21.05, 52.22),
+    new Coordinate(21.05, 52.25),
+    new Coordinate(21.00, 52.25),
+    new Coordinate(21.00, 52.22)  // zamknięcie
+};
+Polygon zone = gf.createPolygon(ring);
+
+// walidacja
+if (!zone.isValid()) {
+    zone = (Polygon) zone.buffer(0);  // często naprawia self-intersection
+}
+
+// pomiary (jednostki = jednostki SRID geometrii — przy 4326 to stopnie!)
+double powierzchniaM2 = zone.getArea();       // używaj tylko po transformacji SRID
+double odleglosc      = zone.distance(trasa); // punkt/linia/polygon — metoda distance()</code></pre>
+
+<h3>GeoJSON w API (Spring)</h3>
+
+<pre><code>// DTO dla frontendu map
+public record GeoJsonPoint(double lon, double lat) {}
+
+public record StoreDto(UUID id, String name, GeoJsonPoint location) {
+    static StoreDto from(Store s) {
+        Point p = s.getLocation();
+        return new StoreDto(s.getId(), s.getName(),
+            new GeoJsonPoint(p.getX(), p.getY()));
+    }
+}
+
+// lub biblioteka: jackson-datatype-jts, geolatte-geojson</code></pre>
+
+<h3>Przepływ typowy w Spring Boot</h3>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.85rem;line-height:1.55">REST (lon, lat, radius) → serwis → StoreRepository.findNearby()
+                                      ↓
+                              PostGIS ST_DWithin + GiST
+                                      ↓
+                              List&lt;Store&gt; → DTO z GeoJSON → mapa (Leaflet/Mapbox)</pre>
+</div>
+
+<p>Dla zapisu strefy z mapy (rysowany polygon): frontend wysyła GeoJSON → <code>ST_GeomFromGeoJSON</code> w SQL lub parser JTS → encja <code>DeliveryZone</code>.</p>
+
+<hr>
+
+<h2 id="wzorce">5. Wzorce aplikacyjne</h2>
+
+<table>
+  <thead><tr><th>Przypadek</th><th>PostGIS</th><th>Uwagi</th></tr></thead>
+  <tbody>
+    <tr><td><strong>„Sklepy w pobliżu”</strong></td><td><code>geography</code> + <code>ST_DWithin</code> + GiST</td><td>Sortuj <code>ST_Distance</code>, limit w SQL</td></tr>
+    <tr><td><strong>Geofencing (dostawa)</strong></td><td><code>ST_Contains(zone, point)</code></td><td>Wiele stref — indeks na polygon; pierwszy match lub priorytet</td></tr>
+    <tr><td><strong>Trasa vs strefa</strong></td><td><code>ST_Intersects(route, zone)</code></td><td>LineString + Polygon</td></tr>
+    <tr><td><strong>Obszar użytkownika (rysowany)</strong></td><td><code>geometry(Polygon)</code></td><td>Waliduj <code>ST_IsValid</code> przed zapisem</td></tr>
+    <tr><td><strong>Clustering na mapie</strong></td><td><code>ST_SnapToGrid</code> lub agregacja w tile</td><td>Albo PostGIS, albo frontend (supercluster)</td></tr>
+    <tr><td><strong>Adres → współrzędne</strong></td><td>—</td><td>Geocoding zewnętrzny (Nominatim, Google) → zapis Point w PG</td></tr>
+    <tr><td><strong>Śledzenie GPS (ślad)</strong></td><td><code>LineString</code> + <code>ST_Length</code></td><td>Przebieg w km: <code>ST_Length(path::geography)/1000</code></td></tr>
+    <tr><td><strong>Powierzchnia działki / strefy</strong></td><td><code>ST_Area(geom::geography)</code></td><td>Wynik w m²; /10000 → ha</td></tr>
+    <tr><td><strong>Odległość od trasy</strong></td><td><code>ST_Distance(point, line::geography)</code></td><td>Adres vs najbliższa droga dostawy</td></tr>
+  </tbody>
+</table>
+
+<h3>geometry vs geography — decyzja</h3>
+
+<ul>
+  <li><strong>geography</strong> — promień w metrach, odległości globalne, prostsze API dla „near me”</li>
+  <li><strong>geometry</strong> — analiza kształtów, powierzchni, overlay; przy metrach użyj lokalnego SRID (PL: 2180) lub <code>ST_Transform</code></li>
+  <li>Nie mieszaj typów w jednym wyrażeniu bez rzutowania: <code>geom::geography</code></li>
+</ul>
+
+<h3>Alternatywy (kiedy nie PostGIS)</h3>
+
+<div class="keyword">
+  <strong>lat/lon jako kolumny + formuła Haversine</strong>
+  <p>Proste, bez rozszerzenia — OK dla małej skali i braku polygonów. Brak indeksu przestrzennego, brak ST_Contains.</p>
+</div>
+
+<div class="keyword">
+  <strong>Elasticsearch geo_point / geo_shape</strong>
+  <p>Search + geo — gdy dane już w ES; PG pozostaje source of truth.</p>
+</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>Lon/lat zamienione</strong> — najczęstszy błąd; punkt ląduje w Afryce zamiast w Polsce</li>
+  <li><strong>ST_Distance na geometry(4326)</strong> w metrach — wynik w stopniach; użyj <code>geography</code> lub transformacji</li>
+  <li><strong>Brak SRID</strong> — <code>ST_MakePoint</code> bez <code>ST_SetSRID</code> → SRID 0, zapytania spatial failują lub dają złe wyniki</li>
+  <li><strong>Niezamknięty polygon</strong> — pierwszy wierzchołek ≠ ostatni; <code>ST_IsValid</code> = false</li>
+  <li><strong>Self-intersecting polygon</strong> — „krawędź się przecina”; napraw <code>ST_MakeValid</code> / <code>buffer(0)</code></li>
+  <li><strong>ST_Distance w WHERE zamiast ST_DWithin</strong> — pełny scan; <code>ST_DWithin</code> korzysta z GiST</li>
+  <li><strong>Brak indeksu GiST</strong> na kolumnie geo — wolne „near me” przy dużej tabeli</li>
+  <li><strong>Mieszanie geometry i geography</strong> w jednym wyrażeniu bez jawnego cast</li>
+  <li><strong>Hibernate bez dialektu PostGIS</strong> — kolumna zapisana jako bytea lub błąd mapowania</li>
+  <li><strong>Coordinate w JTS</strong> — <code>x = lon</code>, <code>y = lat</code>; mylenie z „latitude first” z CSV</li>
+  <li><strong>Zły SRID polski</strong> — zła strefa CS2000 (2176–2179) lub mieszanie układu 1992 (2180) z 2000 bez <code>ST_Transform</code></li>
+  <li><strong>ST_Area / ST_Length na geometry(4326)</strong> — wynik w stopniach² lub stopniach; użyj <code>geography</code> lub metrycznego SRID</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to jest PostGIS?</strong>
+  <p>Rozszerzenie PostgreSQL dodające typy i funkcje geoprzestrzenne — punkty, linie, polygony, indeksy GiST, zapytania „w pobliżu”.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Jaka jest kolejność współrzędnych w PostGIS i GeoJSON?</strong>
+  <p><code>(longitude, latitude)</code> — czyli <code>(X, Y)</code>. Warszawa: <code>POINT(21.01 52.23)</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Co to jest SRID?</strong>
+  <p>Spatial Reference ID — numer układu współrzędnych. <code>4326</code> = WGS84 (GPS, stopnie).</p>
+</div>
+<div class="qa-item">
+  <strong>4. Czym różni się <code>geometry</code> od <code>geography</code> w PostGIS?</strong>
+  <p><code>geometry</code> — płaska geometria w układzie SRID (szybsze operacje). <code>geography</code> — sfera Ziemi, odległości w metrach.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Jakie typy geometrii obsługuje PostGIS?</strong>
+  <p>Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Jak wstawić punkt z lon/lat do tabeli?</strong>
+  <p><code>ST_SetSRID(ST_MakePoint(lon, lat), 4326)</code> — opcjonalnie rzutowanie na <code>::geography</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Co robi <code>ST_DWithin</code>?</strong>
+  <p>Zwraca true, gdy dwie geometrie są w odległości ≤ podanego progu. Kluczowe do zapytań „w promieniu X m” — indeksowalne.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Co robi <code>ST_Contains</code>?</strong>
+  <p>Sprawdza, czy geometria A zawiera B — np. polygon strefy dostawy zawiera punkt adresu.</p>
+</div>
+<div class="qa-item">
+  <strong>9. Po co indeks GiST na kolumnie geo?</strong>
+  <p>Bez niego zapytania przestrzenne robią sequential scan. GiST przyspiesza <code>ST_DWithin</code>, <code>ST_Intersects</code>, operator <code>&amp;&amp;</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Co to jest WGS84 i jak ma się do ETRS89 w Polsce?</strong>
+  <p>WGS84 (EPSG:4326) — globalny układ GPS w stopniach. ETRS89/ETRF2000-PL — europejski/polski układ geodezyjny (baza pod układy 1992 i 2000). W aplikacjach webowych praktycznie traktujesz je jako zgodne (różnica ~cm).</p>
+</div>
+<div class="qa-item">
+  <strong>11. Czym jest Hibernate Spatial?</strong>
+  <p>Moduł Hibernate mapujący typy PostGIS na obiekty JTS (<code>Point</code>, <code>Polygon</code> itd.) w encjach JPA.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Co to jest JTS?</strong>
+  <p>Java Topology Suite — biblioteka geometrii w JVM (<code>org.locationtech.jts.geom</code>). Używana przez Hibernate Spatial.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Jak w encji JPA zmapować punkt GPS?</strong>
+  <p>Pole typu <code>Point</code> (JTS) z <code>@Column(columnDefinition = "geography(Point,4326)")</code> + dialekt PostGIS.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Co to jest geofencing?</strong>
+  <p>Sprawdzenie, czy punkt (użytkownik, adres) leży w zdefiniowanym obszarze — <code>ST_Contains(zone, point)</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>15. Jak wyeksportować geometrię do GeoJSON z PostGIS?</strong>
+  <p><code>ST_AsGeoJSON(geom)</code> — zwraca JSON gotowy do API / mapy frontendowej.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Dlaczego <code>ST_Distance(geom, geom)</code> na geometry(4326) nie daje metrów?</strong>
+  <p>SRID 4326 ma jednostki w stopniach. Użyj <code>geography</code>, <code>ST_Transform</code> do metrycznego SRID (np. 2180, 3857) lub <code>ST_DistanceSphere</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>17. <code>ST_DWithin</code> vs <code>ST_Distance(...) &lt; X</code> w WHERE?</strong>
+  <p><code>ST_DWithin</code> jest zoptymalizowane pod indeks GiST. Samo <code>ST_Distance</code> w WHERE często wymusza pełny scan.</p>
+</div>
+<div class="qa-item">
+  <strong>18. Kiedy użyć geometry zamiast geography w Polsce?</strong>
+  <p>Geography — globalne „near me” w metrach z GPS. Geometry w EPSG:2180 (układ 1992) lub 2176–2179 (CS2000) — dane z map geodezyjnych, powierzchnie i bufor w metrach na dużych obszarach PL.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Co robi <code>ST_Transform</code> vs <code>ST_SetSRID</code>?</strong>
+  <p><code>ST_SetSRID</code> tylko przypisuje numer SRID (bez przeliczenia współrzędnych). <code>ST_Transform</code> rzeczywiście przelicza między układami.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Jak zrobić zapytanie „najbliższe N sklepów” w PostGIS?</strong>
+  <p><code>ST_DWithin</code> + <code>ORDER BY ST_Distance(...)</code> + <code>LIMIT N</code>. Indeks GiST na kolumnie lokalizacji obowiązkowy przy skali.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Dlaczego polygon musi być „zamknięty”?</strong>
+  <p>Pierwszy wierzchołek musi równać się ostatniemu — inaczej <code>ST_IsValid</code> = false i operacje przestrzenne dają błędne wyniki.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Co to jest self-intersecting polygon?</strong>
+  <p>Polygon, którego krawędzie się przecinają (kształt „kielicha”). Naprawa: <code>ST_MakeValid</code> lub <code>buffer(0)</code> w JTS/PostGIS.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Jak w Hibernate wykonać zapytanie spatial (ST_DWithin)?</strong>
+  <p>Standardowy JPQL nie zna funkcji PostGIS — native query z <code>@Query(nativeQuery = true)</code> lub Criteria API ze spatial predicates (Hibernate 6.2+).</p>
+</div>
+<div class="qa-item">
+  <strong>24. Jaki dialekt Hibernate dla PostGIS?</strong>
+  <p><code>org.hibernate.spatial.dialect.postgis.PostgisDialect</code> (Hibernate 6) lub starszy <code>PostgisPG10Dialect</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>25. Co robi operator <code>&amp;&amp;</code> w PostGIS?</strong>
+  <p>Bounding-box overlap — szybki prefiltr przestrzenny korzystający z indeksu GiST przed dokładniejszymi testami.</p>
+</div>
+<div class="qa-item">
+  <strong>26. <code>ST_Intersects</code> vs <code>ST_Contains</code>?</strong>
+  <p><code>ST_Intersects</code> — dowolne nakładanie (punkt, linia, część obszaru). <code>ST_Contains</code> — A w całości zawiera B (włącznie z brzegiem).</p>
+</div>
+<div class="qa-item">
+  <strong>27. Kiedy Haversine w Java zamiast PostGIS?</strong>
+  <p>Mała skala, brak polygonów, proste „odległość między dwoma punktami” bez rozszerzenia PG. Nie zastąpi geofencingu ani indeksów.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Czym różni się układ 1992 (EPSG:2180) od układu 2000 (2176–2179)?</strong>
+  <p>1992 — jedna strefa na całą Polskę, południk 19°E, mapy 1:10&nbsp;000 i mniejsze. 2000 — 4 strefy (południki 15/18/21/24°E), geodezja i mapy 1:5000+, mniejsze zniekształcenia lokalnie.</p>
+</div>
+<div class="qa-item">
+  <strong>29. Jak zapisać polygon narysowany na mapie (GeoJSON) w PG?</strong>
+  <p><code>ST_GeomFromGeoJSON(text)</code> w SQL lub parser JTS po stronie Java → encja z polem <code>Polygon</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Co robi <code>ST_Length</code> i <code>ST_Area</code>?</strong>
+  <p><code>ST_Length</code> — długość linii (lub obwód polygonu). <code>ST_Area</code> — powierzchnia polygonu. Na <code>geography</code> wynik w metrach / m²; na <code>geometry(4326)</code> — w stopniach (błąd przy interpretacji jako metry).</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy <code>ST_MakePoint(52.23, 21.01)</code> to Warszawa?</strong>
+  <p>Nie — to zamienione lon/lat. Poprawnie: <code>ST_MakePoint(21.01, 52.23)</code> (X=lon, Y=lat).</p>
+</div>
+<div class="qa-item">
+  <strong>32. Czy <code>ST_SetSRID(geom, 4326)</code> przelicza współrzędne z 2180?</strong>
+  <p>Nie — tylko zmienia metadane SRID. Do przeliczenia użyj <code>ST_Transform(geom, 4326)</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Czy GiST na <code>geometry</code> działa dla zapytania na <code>geography</code>?</strong>
+  <p>Indeks jest na typie kolumny. Cast <code>::geography</code> w WHERE może uniemożliwić użycie indeksu — trzymaj spójny typ kolumny i zapytania.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Czy w JTS <code>Coordinate(lat, lon)</code> jest poprawne?</strong>
+  <p>Nie — konstruktor to <code>Coordinate(x, y)</code> = <code>(lon, lat)</code>. Zamiana psuje lokalizację tak samo jak w SQL.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Czy Web Mercator (3857) nadaje się do obliczania odległości w metrach?</strong>
+  <p>Na małych obszarach przybliżenie OK; na dużych odległościach i wysokich szerokościach geograficznych błąd rośnie. Lepiej geography lub lokalny SRID.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Czy <code>ST_Contains(polygon, point)</code> zwraca true dla punktu na brzegu?</strong>
+  <p>Tak — w OGC model <code>Contains</code> obejmuje brzeg. Dla „tylko wnętrze” użyj <code>ST_Covers</code> / topologicznych wariantów zależnie od wymagań.</p>
+</div>
+<div class="qa-item">
+  <strong>37. Czy Hibernate Spatial działa bez <code>CREATE EXTENSION postgis</code>?</strong>
+  <p>Nie — baza musi mieć zainstalowane rozszerzenie PostGIS; inaczej typy geometry/geography nie istnieją.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Czy <code>ST_DWithin</code> z progiem 1000 na geometry(4326) to 1000 metrów?</strong>
+  <p>Nie — to ~1000 stopni (~111 000 km przy równiku). Dla metrów użyj geography lub transformacji do metrycznego SRID.</p>
+</div>
+<div class="qa-item">
+  <strong>39. W jakiej strefie CS2000 leży Warszawa (~21°E)?</strong>
+  <p>Strefa 7 — EPSG:2178 (południk osiowy 21°E, false easting 7&nbsp;500&nbsp;000 m). Granice stref: &lt;16°30′ → 2176, &lt;19°30′ → 2177, &lt;22°30′ → 2178, dalej → 2179.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Jaka jest odległość punktu od polygonu, gdy punkt jest w środku?</strong>
+  <p><code>ST_Distance</code> zwraca <strong>0</strong> — odległość liczona do najbliższego punktu drugiej geometrii; wnętrze polygonu ma odległość 0 od każdego punktu w środku.</p>
+</div>
+
+</body>
+</html>
