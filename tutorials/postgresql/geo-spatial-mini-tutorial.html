@@ -111,6 +111,17 @@
       margin-right: 0.35rem;
     }
 
+    .es-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #ecfeff;
+      color: #005571;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+
     .map-box {
       background: #f0fdfa;
       border: 1px solid #99f6e4;
@@ -165,8 +176,8 @@
 
 <p class="back"><a href="../index.html">← Spis tutoriali</a></p>
 
-<h1>Geo / PostGIS — punkty, linie, obszary</h1>
-<p class="meta">PostgreSQL + PostGIS · Hibernate Spatial · JTS / Java · układy PL, pomiary (odległość, długość, powierzchnia)<br>
+<h1>Geo — PostGIS, Hibernate, Elasticsearch</h1>
+<p class="meta">PostgreSQL + PostGIS · Hibernate Spatial · JTS · Elasticsearch geo · układy PL, pomiary, stack Java<br>
 Format: HTML offline · 40 pytań rekrutacyjnych</p>
 
 <nav class="toc">
@@ -180,6 +191,8 @@ Format: HTML offline · 40 pytań rekrutacyjnych</p>
     <li><a href="#indeksy">Indeksy przestrzenne</a></li>
     <li><a href="#hibernate">Hibernate Spatial</a></li>
     <li><a href="#java">Warstwa Java</a></li>
+    <li><a href="#stack">Stack: PG + Hibernate + Elasticsearch</a></li>
+    <li><a href="#elasticsearch">Elasticsearch — geo</a></li>
     <li><a href="#wzorce">Wzorce aplikacyjne</a></li>
     <li><a href="#bledy">Typowe błędy</a></li>
     <li><a href="#pytania">Pytania rekrutacyjne</a></li>
@@ -188,7 +201,7 @@ Format: HTML offline · 40 pytań rekrutacyjnych</p>
 
 <h2 id="fundamenty">0. Fundamenty GIS</h2>
 
-<p><strong>Dane geoprzestrzenne</strong> to geometrie na Ziemi (lub innej powierzchni) z przypisanym układem współrzędnych. W stacku Java + Hibernate + PostgreSQL standardem jest <strong>PostGIS</strong> (rozszerzenie PG) + <strong>Hibernate Spatial</strong> + biblioteka <strong>JTS</strong> (Java Topology Suite) do obiektów geometrycznych w JVM.</p>
+<p><strong>Dane geoprzestrzenne</strong> to geometrie na Ziemi z przypisanym układem współrzędnych. Typowy stack korporacyjny: <strong>PostgreSQL + PostGIS</strong> (źródło prawdy, precyzyjna geometria) → <strong>Hibernate Spatial</strong> (encje JPA, JTS) → opcjonalnie <strong>Elasticsearch</strong> (szybkie wyszukiwanie „w pobliżu” + full-text na tej samej liście wyników).</p>
 
 <div class="map-box">
 <pre style="margin:0;background:transparent;color:inherit;font-size:0.85rem;line-height:1.55">POINT        — lokalizacja (sklep, GPS użytkownika)
@@ -783,20 +796,256 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
 
 <hr>
 
+<h2 id="stack" class="must-know">4b. Stack: PostgreSQL + Hibernate + Elasticsearch</h2>
+
+<p>W produkcji rzadko wybierasz „albo PostGIS, albo ES” — częściej <strong>oba</strong>, z jasnym podziałem ról. Hibernate zapisuje do Postgresa; Elasticsearch dostaje kopię do wyszukiwania.</p>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.82rem;line-height:1.55">┌─────────────┐     REST / API      ┌──────────────────────────────────────┐
+│   Klient    │ ──────────────────► │  Spring Boot (Java)                  │
+│  mapa, GPS  │                     │  Serwis → StoreService               │
+└─────────────┘                     └───────────┬──────────────────────────┘
+                                                │
+                    ┌───────────────────────────┼───────────────────────────┐
+                    ▼                           ▼                           ▼
+         ┌──────────────────┐        ┌──────────────────┐        ┌──────────────────┐
+         │ Hibernate / JPA  │        │ Elasticsearch    │        │ JTS (opcjonalnie)│
+         │ encja Store      │        │ Java API Client  │        │ walidacja geometrii│
+         │ Point, Polygon   │        │ indeks stores    │        └──────────────────┘
+         └────────┬─────────┘        └────────▲─────────┘
+                  │                           │
+                  ▼                           │ sync (event / CDC / po @Transactional)
+         ┌──────────────────┐                 │
+         │ PostgreSQL       │ ────────────────┘
+         │ + PostGIS        │   location: geo_point, name: text, tags: keyword
+         │ ST_DWithin, GiST │   geo_shape dla stref (opcjonalnie)
+         │ source of truth  │
+         └──────────────────┘</pre>
+</div>
+
+<h3>Podział odpowiedzialności</h3>
+
+<table>
+  <thead><tr><th>Warstwa</th><th>Rola w geo</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>PostgreSQL + PostGIS</strong></td>
+      <td>Trwały zapis, transakcje ACID, złożona geometria (linie, polygony), <code>ST_Area</code>, <code>ST_Intersects</code>, układy PL (2180, CS2000)</td>
+      <td>Zawsze — źródło prawdy</td>
+    </tr>
+    <tr>
+      <td><strong>Hibernate Spatial</strong></td>
+      <td>Mapowanie <code>Point</code>/<code>Polygon</code> (JTS) ↔ kolumny PostGIS; native SQL dla <code>ST_DWithin</code></td>
+      <td>Warstwa persystencji w Spring</td>
+    </tr>
+    <tr>
+      <td><strong>Elasticsearch</strong></td>
+      <td><code>geo_point</code> + full-text + filtry; <code>geo_distance</code>, sort po odległości; <code>geo_shape</code> dla stref</td>
+      <td>Wyszukiwanie sklepów „w pobliżu” z tekstem, autocomplete, duży ruch read, facety</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Przepływ zapisu (write path)</h3>
+
+<pre><code>@Transactional
+public Store createStore(CreateStoreCommand cmd) {
+    Store store = new Store();
+    store.setName(cmd.name());
+    store.setLocation(gf.createPoint(new Coordinate(cmd.lon(), cmd.lat())));
+    storeRepository.save(store);          // 1. Hibernate → PostGIS
+
+    storeSearchIndexer.index(store);      // 2. po commit: ES (event / listener)
+    return store;
+}
+
+// lepiej: @TransactionalEventListener(phase = AFTER_COMMIT)
+// albo outbox → worker indeksujący ES (odporność na awarię ES)</code></pre>
+
+<h3>Przepływ odczytu (read path) — dwa warianty</h3>
+
+<table>
+  <thead><tr><th>Wariant</th><th>Ścieżka</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Tylko PostGIS</strong></td>
+      <td>API → Hibernate native query <code>ST_DWithin</code> → PG</td>
+      <td>Mała skala, proste „near me”, brak full-text</td>
+    </tr>
+    <tr>
+      <td><strong>ES + PG</strong></td>
+      <td>API → ES <code>geo_distance</code> (+ <code>match</code> na nazwie) → lista ID → PG/Hibernate <code>findAllById</code> dla pełnych danych</td>
+      <td>Wyszukiwanie „pizza w promieniu 2 km”, ranking, duży QPS</td>
+    </tr>
+    <tr>
+      <td><strong>ES geo_shape</strong></td>
+      <td>Strefy w indeksie ES; zapytanie <code>geo_shape</code> / <code>indexed_shape</code></td>
+      <td>Geofencing przy search; polygony tylko do filtrowania, bez ciężkiej analizy w PG</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> nie traktuj ES jak bazy transakcyjnej — brak ACID, opóźnienie indeksacji (~1 s refresh), ryzyko rozjazdu z PG. Zapis zawsze przez Hibernate do Postgresa; ES aktualizuj eventem po commicie.</div>
+
+<hr>
+
+<h2 id="elasticsearch">4c. Elasticsearch — typy geo i zapytania</h2>
+
+<p><span class="es-tag">geo_point</span> <span class="es-tag">geo_shape</span> Pola geograficzne w mappingu indeksu. Klient: <code>co.elastic.clients:elasticsearch-java</code> (szczegóły setupu → tutorial Elasticsearch).</p>
+
+<h3>Mapping indeksu sklepów</h3>
+
+<pre><code>PUT /stores
+{
+  "mappings": {
+    "properties": {
+      "id":       { "type": "keyword" },
+      "name":     { "type": "text", "fields": { "raw": { "type": "keyword" } } },
+      "tags":     { "type": "keyword" },
+      "location": { "type": "geo_point" },
+      "zone":     { "type": "geo_shape" }
+    }
+  }
+}</code></pre>
+
+<table>
+  <thead><tr><th>Typ ES</th><th>Odpowiednik PostGIS</th><th>Zastosowanie</th></tr></thead>
+  <tbody>
+    <tr><td><code>geo_point</code></td><td><code>Point</code> / <code>geography(Point)</code></td><td>Sklep, użytkownik, POI — <code>geo_distance</code></td></tr>
+    <tr><td><code>geo_shape</code></td><td><code>Polygon</code>, <code>LineString</code></td><td>Strefy dostawy, obszary — <code>geo_shape</code> query (intersects, within)</td></tr>
+  </tbody>
+</table>
+
+<h3>Format współrzędnych w ES</h3>
+
+<pre><code>// dokument w ES — geo_point (obiekt: lat, lon — UWAGA: inna kolejność niż GeoJSON!)
+{
+  "id": "uuid-...",
+  "name": "Sklep Centrum",
+  "location": { "lat": 52.2297, "lon": 21.0122 },
+  "tags": ["żywność", "24h"]
+}
+
+// alternatywy geo_point: "52.2297, 21.0122" (lat,lon) lub geohash
+// geo_shape — GeoJSON (tu lon przed lat w coordinates)
+{
+  "zone": {
+    "type": "Polygon",
+    "coordinates": [[[21.00, 52.22], [21.05, 52.22], [21.05, 52.25], [21.00, 52.25], [21.00, 52.22]]]
+  }
+}</code></pre>
+
+<div class="trap"><strong>Pułapka:</strong> w <code>geo_point</code> obiekt ma pola <code>lat</code> / <code>lon</code> (szerokość, długość). W <code>geo_shape</code> GeoJSON używa <code>[lon, lat]</code>. PostGIS i JTS: <code>(lon, lat)</code>. Trzy formaty — jeden błąd i punkt jest w Zambii.</div>
+
+<h3>Zapytania — „w pobliżu” i geofencing</h3>
+
+<pre><code>// sklepy w promieniu 1 km + filtr full-text
+GET /stores/_search
+{
+  "query": {
+    "bool": {
+      "must": { "match": { "name": "centrum" } },
+      "filter": {
+        "geo_distance": {
+          "distance": "1km",
+          "location": { "lat": 52.23, "lon": 21.01 }
+        }
+      }
+    }
+  },
+  "sort": [
+    {
+      "_geo_distance": {
+        "location": { "lat": 52.23, "lon": 21.01 },
+        "order": "asc",
+        "unit": "m"
+      }
+    }
+  ]
+}
+
+// punkt w strefie dostawy (geo_shape)
+GET /stores/_search
+{
+  "query": {
+    "bool": {
+      "filter": {
+        "geo_shape": {
+          "zone": {
+            "shape": { "type": "point", "coordinates": [21.012, 52.230] },
+            "relation": "contains"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+
+<h3>Java — indeksacja po zapisie w Hibernate</h3>
+
+<pre><code>// konwersja encji JPA → dokument ES
+public void index(Store store) {
+    Point p = store.getLocation();
+    Map&lt;String, Object&gt; doc = Map.of(
+        "id", store.getId().toString(),
+        "name", store.getName(),
+        "location", Map.of("lat", p.getY(), "lon", p.getX())  // JTS: x=lon, y=lat
+    );
+    esClient.index(i -&gt; i
+        .index("stores")
+        .id(store.getId().toString())
+        .document(doc));
+}
+
+// wyszukiwanie — Elasticsearch Java API Client
+SearchResponse&lt;StoreDoc&gt; response = esClient.search(s -&gt; s
+    .index("stores")
+    .query(q -&gt; q.bool(b -&gt; b
+        .must(m -&gt; m.match(mt -&gt; mt.field("name").query("pizza")))
+        .filter(f -&gt; f.geoDistance(gd -&gt; gd
+            .field("location")
+            .location(gl -&gt; gl.latlon(ll -&gt; ll.lat(52.23).lon(21.01)))
+            .distance("2km")))))
+    .sort(so -&gt; so.geoDistance(gds -&gt; gds
+        .field("location")
+        .location(gl -&gt; gl.latlon(ll -&gt; ll.lat(52.23).lon(21.01)))
+        .order(SortOrder.Asc)
+        .unit(DistanceUnit.Meters))),
+    StoreDoc.class);
+
+// ID z ES → pełne encje z PG (geometria, relacje)
+List&lt;UUID&gt; ids = response.hits().hits().stream()
+    .map(h -&gt; UUID.fromString(h.source().id()))
+    .toList();
+return storeRepository.findAllById(ids);</code></pre>
+
+<h3>PostGIS vs Elasticsearch — kiedy co?</h3>
+
+<table>
+  <thead><tr><th>Kryterium</th><th>PostGIS</th><th>Elasticsearch</th></tr></thead>
+  <tbody>
+    <tr><td>Transakcje, spójność</td><td>ACID, FK, Hibernate</td><td>Eventual consistency</td></tr>
+    <tr><td>Full-text + geo w jednym query</td><td>Możliwe, ale słabsze</td><td>Natywne — główny use case</td></tr>
+    <tr><td>Złożona geometria (linie, overlay)</td><td><code>ST_Intersects</code>, <code>ST_Union</code></td><td><code>geo_shape</code> — prostsze relacje</td></tr>
+    <tr><td>Precyzyjne pomiary (ha, geodezja PL)</td><td><code>ST_Area</code>, SRID 2180/2178</td><td>Przybliżenie; nie do urzędowych obliczeń</td></tr>
+    <tr><td>Skala odczytu „near me”</td><td>GiST — OK do milionów</td><td>Shardy — bardzo wysoki QPS search</td></tr>
+    <tr><td>Sync</td><td>—</td><td>Wymaga pipeline z PG (event, Debezium, cron)</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
 <h2 id="wzorce">5. Wzorce aplikacyjne</h2>
 
 <table>
-  <thead><tr><th>Przypadek</th><th>PostGIS</th><th>Uwagi</th></tr></thead>
+  <thead><tr><th>Przypadek</th><th>PostGIS</th><th>Elasticsearch</th><th>Uwagi</th></tr></thead>
   <tbody>
-    <tr><td><strong>„Sklepy w pobliżu”</strong></td><td><code>geography</code> + <code>ST_DWithin</code> + GiST</td><td>Sortuj <code>ST_Distance</code>, limit w SQL</td></tr>
-    <tr><td><strong>Geofencing (dostawa)</strong></td><td><code>ST_Contains(zone, point)</code></td><td>Wiele stref — indeks na polygon; pierwszy match lub priorytet</td></tr>
-    <tr><td><strong>Trasa vs strefa</strong></td><td><code>ST_Intersects(route, zone)</code></td><td>LineString + Polygon</td></tr>
-    <tr><td><strong>Obszar użytkownika (rysowany)</strong></td><td><code>geometry(Polygon)</code></td><td>Waliduj <code>ST_IsValid</code> przed zapisem</td></tr>
-    <tr><td><strong>Clustering na mapie</strong></td><td><code>ST_SnapToGrid</code> lub agregacja w tile</td><td>Albo PostGIS, albo frontend (supercluster)</td></tr>
-    <tr><td><strong>Adres → współrzędne</strong></td><td>—</td><td>Geocoding zewnętrzny (Nominatim, Google) → zapis Point w PG</td></tr>
-    <tr><td><strong>Śledzenie GPS (ślad)</strong></td><td><code>LineString</code> + <code>ST_Length</code></td><td>Przebieg w km: <code>ST_Length(path::geography)/1000</code></td></tr>
-    <tr><td><strong>Powierzchnia działki / strefy</strong></td><td><code>ST_Area(geom::geography)</code></td><td>Wynik w m²; /10000 → ha</td></tr>
-    <tr><td><strong>Odległość od trasy</strong></td><td><code>ST_Distance(point, line::geography)</code></td><td>Adres vs najbliższa droga dostawy</td></tr>
+    <tr><td><strong>„Sklepy w pobliżu”</strong></td><td><code>ST_DWithin</code> + GiST</td><td><code>geo_distance</code> + sort</td><td>ES gdy + full-text; PG gdy sama geo</td></tr>
+    <tr><td><strong>Wyszukiwanie „pizza 2 km”</strong></td><td>—</td><td><code>match</code> + <code>geo_distance</code></td><td>Typowy pattern ES → ID → PG</td></tr>
+    <tr><td><strong>Geofencing (dostawa)</strong></td><td><code>ST_Contains</code></td><td><code>geo_shape</code> relation <code>contains</code></td><td>PG — precyzja; ES — szybki filtr w search</td></tr>
+    <tr><td><strong>Trasa vs strefa</strong></td><td><code>ST_Intersects</code></td><td><code>geo_shape</code> intersects</td><td>Złożone linie — preferuj PostGIS</td></tr>
+    <tr><td><strong>Powierzchnia / długość</strong></td><td><code>ST_Area</code>, <code>ST_Length</code></td><td>—</td><td>Pomiary tylko w PG</td></tr>
+    <tr><td><strong>Sync po zapisie</strong></td><td>Hibernate <code>save</code></td><td>index po <code>AFTER_COMMIT</code></td><td>Outbox jeśli ES krytyczny</td></tr>
   </tbody>
 </table>
 
@@ -807,18 +1056,6 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <li><strong>geometry</strong> — analiza kształtów, powierzchni, overlay; przy metrach użyj lokalnego SRID (PL: 2180) lub <code>ST_Transform</code></li>
   <li>Nie mieszaj typów w jednym wyrażeniu bez rzutowania: <code>geom::geography</code></li>
 </ul>
-
-<h3>Alternatywy (kiedy nie PostGIS)</h3>
-
-<div class="keyword">
-  <strong>lat/lon jako kolumny + formuła Haversine</strong>
-  <p>Proste, bez rozszerzenia — OK dla małej skali i braku polygonów. Brak indeksu przestrzennego, brak ST_Contains.</p>
-</div>
-
-<div class="keyword">
-  <strong>Elasticsearch geo_point / geo_shape</strong>
-  <p>Search + geo — gdy dane już w ES; PG pozostaje source of truth.</p>
-</div>
 
 <hr>
 
@@ -836,6 +1073,9 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <li><strong>Coordinate w JTS</strong> — <code>x = lon</code>, <code>y = lat</code>; mylenie z „latitude first” z CSV</li>
   <li><strong>Zły SRID polski</strong> — zła strefa CS2000 (2176–2179) lub mieszanie układu 1992 (2180) z 2000 bez <code>ST_Transform</code></li>
   <li><strong>ST_Area / ST_Length na geometry(4326)</strong> — wynik w stopniach² lub stopniach; użyj <code>geography</code> lub metrycznego SRID</li>
+  <li><strong>Zapis tylko do ES</strong> — brak transakcji; przy awarii ES tracisz dane — zawsze Hibernate → PostGIS pierwszy</li>
+  <li><strong>geo_point w ES z kolejnością lon/lat</strong> — w obiekcie ES jest <code>lat</code>, <code>lon</code>; GeoJSON w <code>geo_shape</code> to <code>[lon, lat]</code></li>
+  <li><strong>Brak sync po update w PG</strong> — ES pokazuje starą lokalizację; reindex po każdej zmianie <code>location</code></li>
 </ol>
 
 <hr>
@@ -952,8 +1192,8 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <p><code>ST_Intersects</code> — dowolne nakładanie (punkt, linia, część obszaru). <code>ST_Contains</code> — A w całości zawiera B (włącznie z brzegiem).</p>
 </div>
 <div class="qa-item">
-  <strong>27. Kiedy Haversine w Java zamiast PostGIS?</strong>
-  <p>Mała skala, brak polygonów, proste „odległość między dwoma punktami” bez rozszerzenia PG. Nie zastąpi geofencingu ani indeksów.</p>
+  <strong>27. Kiedy Elasticsearch zamiast samego PostGIS dla geo?</strong>
+  <p>Gdy potrzebujesz full-text + geo w jednym zapytaniu, wysokiego QPS search, facetingu — ES jako indeks odczytu; PostGIS zostaje source of truth. Same pomiary i złożona geometria → PostGIS.</p>
 </div>
 <div class="qa-item">
   <strong>28. Czym różni się układ 1992 (EPSG:2180) od układu 2000 (2176–2179)?</strong>
@@ -988,11 +1228,11 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
 </div>
 <div class="qa-item">
   <strong>35. Czy Web Mercator (3857) nadaje się do obliczania odległości w metrach?</strong>
-  <p>Na małych obszarach przybliżenie OK; na dużych odległościach i wysokich szerokościach geograficznych błąd rośnie. Lepiej geography lub lokalny SRID.</p>
+  <p>Na małych obszarach przybliżenie OK; na dużych odległościach błąd rośnie. Lepiej geography, lokalny SRID lub ES <code>geo_distance</code> (sferyczne).</p>
 </div>
 <div class="qa-item">
-  <strong>36. Czy <code>ST_Contains(polygon, point)</code> zwraca true dla punktu na brzegu?</strong>
-  <p>Tak — w OGC model <code>Contains</code> obejmuje brzeg. Dla „tylko wnętrze” użyj <code>ST_Covers</code> / topologicznych wariantów zależnie od wymagań.</p>
+  <strong>36. Jak połączyć Hibernate z Elasticsearch przy geo?</strong>
+  <p>Zapis: <code>@Transactional</code> → <code>repository.save()</code> (PostGIS). Po commicie: listener/outbox → indeks ES z <code>geo_point</code> (lat/lon z JTS: <code>y</code>/<code>x</code>). Odczyt search: ES zwraca ID → <code>findAllById</code> w Hibernate.</p>
 </div>
 <div class="qa-item">
   <strong>37. Czy Hibernate Spatial działa bez <code>CREATE EXTENSION postgis</code>?</strong>
