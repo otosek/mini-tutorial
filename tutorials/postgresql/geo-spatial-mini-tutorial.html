@@ -132,6 +132,32 @@
     .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
     .back a { color: var(--accent); }
 
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
   </style>
 </head>
@@ -141,7 +167,7 @@
 
 <h1>Geo / PostGIS — punkty, linie, obszary</h1>
 <p class="meta">PostgreSQL + PostGIS · Hibernate Spatial · JTS / Java · SRID, geometry vs geography, zapytania „w pobliżu”, geofencing<br>
-Format: HTML offline · Bez pytań rekrutacyjnych</p>
+Format: HTML offline · 40 pytań rekrutacyjnych</p>
 
 <nav class="toc">
   <strong>Spis treści</strong>
@@ -154,6 +180,7 @@ Format: HTML offline · Bez pytań rekrutacyjnych</p>
     <li><a href="#java">Warstwa Java</a></li>
     <li><a href="#wzorce">Wzorce aplikacyjne</a></li>
     <li><a href="#bledy">Typowe błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
   </ol>
 </nav>
 
@@ -524,6 +551,179 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <li><strong>Hibernate bez dialektu PostGIS</strong> — kolumna zapisana jako bytea lub błąd mapowania</li>
   <li><strong>Coordinate w JTS</strong> — <code>x = lon</code>, <code>y = lat</code>; mylenie z „latitude first” z CSV</li>
 </ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Co to jest PostGIS?</strong>
+  <p>Rozszerzenie PostgreSQL dodające typy i funkcje geoprzestrzenne — punkty, linie, polygony, indeksy GiST, zapytania „w pobliżu”.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Jaka jest kolejność współrzędnych w PostGIS i GeoJSON?</strong>
+  <p><code>(longitude, latitude)</code> — czyli <code>(X, Y)</code>. Warszawa: <code>POINT(21.01 52.23)</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Co to jest SRID?</strong>
+  <p>Spatial Reference ID — numer układu współrzędnych. <code>4326</code> = WGS84 (GPS, stopnie).</p>
+</div>
+<div class="qa-item">
+  <strong>4. Czym różni się <code>geometry</code> od <code>geography</code> w PostGIS?</strong>
+  <p><code>geometry</code> — płaska geometria w układzie SRID (szybsze operacje). <code>geography</code> — sfera Ziemi, odległości w metrach.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Jakie typy geometrii obsługuje PostGIS?</strong>
+  <p>Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Jak wstawić punkt z lon/lat do tabeli?</strong>
+  <p><code>ST_SetSRID(ST_MakePoint(lon, lat), 4326)</code> — opcjonalnie rzutowanie na <code>::geography</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Co robi <code>ST_DWithin</code>?</strong>
+  <p>Zwraca true, gdy dwie geometrie są w odległości ≤ podanego progu. Kluczowe do zapytań „w promieniu X m” — indeksowalne.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Co robi <code>ST_Contains</code>?</strong>
+  <p>Sprawdza, czy geometria A zawiera B — np. polygon strefy dostawy zawiera punkt adresu.</p>
+</div>
+<div class="qa-item">
+  <strong>9. Po co indeks GiST na kolumnie geo?</strong>
+  <p>Bez niego zapytania przestrzenne robią sequential scan. GiST przyspiesza <code>ST_DWithin</code>, <code>ST_Intersects</code>, operator <code>&amp;&amp;</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Co to jest WGS84?</strong>
+  <p>Globalny układ GPS (EPSG:4326) — longitude/latitude w stopniach. Domyślny dla map i GeoJSON.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Czym jest Hibernate Spatial?</strong>
+  <p>Moduł Hibernate mapujący typy PostGIS na obiekty JTS (<code>Point</code>, <code>Polygon</code> itd.) w encjach JPA.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Co to jest JTS?</strong>
+  <p>Java Topology Suite — biblioteka geometrii w JVM (<code>org.locationtech.jts.geom</code>). Używana przez Hibernate Spatial.</p>
+</div>
+<div class="qa-item">
+  <strong>13. Jak w encji JPA zmapować punkt GPS?</strong>
+  <p>Pole typu <code>Point</code> (JTS) z <code>@Column(columnDefinition = "geography(Point,4326)")</code> + dialekt PostGIS.</p>
+</div>
+<div class="qa-item">
+  <strong>14. Co to jest geofencing?</strong>
+  <p>Sprawdzenie, czy punkt (użytkownik, adres) leży w zdefiniowanym obszarze — <code>ST_Contains(zone, point)</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>15. Jak wyeksportować geometrię do GeoJSON z PostGIS?</strong>
+  <p><code>ST_AsGeoJSON(geom)</code> — zwraca JSON gotowy do API / mapy frontendowej.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Dlaczego <code>ST_Distance(geom, geom)</code> na geometry(4326) nie daje metrów?</strong>
+  <p>SRID 4326 ma jednostki w stopniach. Użyj <code>geography</code>, <code>ST_Transform</code> do metrycznego SRID (np. 2180, 3857) lub <code>ST_DistanceSphere</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>17. <code>ST_DWithin</code> vs <code>ST_Distance(...) &lt; X</code> w WHERE?</strong>
+  <p><code>ST_DWithin</code> jest zoptymalizowane pod indeks GiST. Samo <code>ST_Distance</code> w WHERE często wymusza pełny scan.</p>
+</div>
+<div class="qa-item">
+  <strong>18. Kiedy użyć geometry zamiast geography?</strong>
+  <p>Analiza kształtów, overlay polygonów, powierzchni w lokalnym układzie (EPSG:2180 dla Polski). Dla globalnego „near me” w metrach — geography.</p>
+</div>
+<div class="qa-item">
+  <strong>19. Co robi <code>ST_Transform</code> vs <code>ST_SetSRID</code>?</strong>
+  <p><code>ST_SetSRID</code> tylko przypisuje numer SRID (bez przeliczenia współrzędnych). <code>ST_Transform</code> rzeczywiście przelicza między układami.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Jak zrobić zapytanie „najbliższe N sklepów” w PostGIS?</strong>
+  <p><code>ST_DWithin</code> + <code>ORDER BY ST_Distance(...)</code> + <code>LIMIT N</code>. Indeks GiST na kolumnie lokalizacji obowiązkowy przy skali.</p>
+</div>
+<div class="qa-item">
+  <strong>21. Dlaczego polygon musi być „zamknięty”?</strong>
+  <p>Pierwszy wierzchołek musi równać się ostatniemu — inaczej <code>ST_IsValid</code> = false i operacje przestrzenne dają błędne wyniki.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Co to jest self-intersecting polygon?</strong>
+  <p>Polygon, którego krawędzie się przecinają (kształt „kielicha”). Naprawa: <code>ST_MakeValid</code> lub <code>buffer(0)</code> w JTS/PostGIS.</p>
+</div>
+<div class="qa-item">
+  <strong>23. Jak w Hibernate wykonać zapytanie spatial (ST_DWithin)?</strong>
+  <p>Standardowy JPQL nie zna funkcji PostGIS — native query z <code>@Query(nativeQuery = true)</code> lub Criteria API ze spatial predicates (Hibernate 6.2+).</p>
+</div>
+<div class="qa-item">
+  <strong>24. Jaki dialekt Hibernate dla PostGIS?</strong>
+  <p><code>org.hibernate.spatial.dialect.postgis.PostgisDialect</code> (Hibernate 6) lub starszy <code>PostgisPG10Dialect</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>25. Co robi operator <code>&amp;&amp;</code> w PostGIS?</strong>
+  <p>Bounding-box overlap — szybki prefiltr przestrzenny korzystający z indeksu GiST przed dokładniejszymi testami.</p>
+</div>
+<div class="qa-item">
+  <strong>26. <code>ST_Intersects</code> vs <code>ST_Contains</code>?</strong>
+  <p><code>ST_Intersects</code> — dowolne nakładanie (punkt, linia, część obszaru). <code>ST_Contains</code> — A w całości zawiera B (włącznie z brzegiem).</p>
+</div>
+<div class="qa-item">
+  <strong>27. Kiedy Haversine w Java zamiast PostGIS?</strong>
+  <p>Mała skala, brak polygonów, proste „odległość między dwoma punktami” bez rozszerzenia PG. Nie zastąpi geofencingu ani indeksów.</p>
+</div>
+<div class="qa-item">
+  <strong>28. Co to jest EPSG:2180?</strong>
+  <p>PUWG 1992 — polski układ w metrach (projekcja strefowa). Lepszy do obliczeń powierzchni i odległości w Polsce niż 4326 w geometry.</p>
+</div>
+<div class="qa-item">
+  <strong>29. Jak zapisać polygon narysowany na mapie (GeoJSON) w PG?</strong>
+  <p><code>ST_GeomFromGeoJSON(text)</code> w SQL lub parser JTS po stronie Java → encja z polem <code>Polygon</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>30. Co robi <code>ST_Buffer</code>?</strong>
+  <p>Tworzy obszar wokół geometrii — okrąg wokół punktu, „korytarz” wokół linii. Promień w jednostkach SRID (metry po transformacji).</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy <code>ST_MakePoint(52.23, 21.01)</code> to Warszawa?</strong>
+  <p>Nie — to zamienione lon/lat. Poprawnie: <code>ST_MakePoint(21.01, 52.23)</code> (X=lon, Y=lat).</p>
+</div>
+<div class="qa-item">
+  <strong>32. Czy <code>ST_SetSRID(geom, 4326)</code> przelicza współrzędne z 2180?</strong>
+  <p>Nie — tylko zmienia metadane SRID. Do przeliczenia użyj <code>ST_Transform(geom, 4326)</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Czy GiST na <code>geometry</code> działa dla zapytania na <code>geography</code>?</strong>
+  <p>Indeks jest na typie kolumny. Cast <code>::geography</code> w WHERE może uniemożliwić użycie indeksu — trzymaj spójny typ kolumny i zapytania.</p>
+</div>
+<div class="qa-item">
+  <strong>34. Czy w JTS <code>Coordinate(lat, lon)</code> jest poprawne?</strong>
+  <p>Nie — konstruktor to <code>Coordinate(x, y)</code> = <code>(lon, lat)</code>. Zamiana psuje lokalizację tak samo jak w SQL.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Czy Web Mercator (3857) nadaje się do obliczania odległości w metrach?</strong>
+  <p>Na małych obszarach przybliżenie OK; na dużych odległościach i wysokich szerokościach geograficznych błąd rośnie. Lepiej geography lub lokalny SRID.</p>
+</div>
+<div class="qa-item">
+  <strong>36. Czy <code>ST_Contains(polygon, point)</code> zwraca true dla punktu na brzegu?</strong>
+  <p>Tak — w OGC model <code>Contains</code> obejmuje brzeg. Dla „tylko wnętrze” użyj <code>ST_Covers</code> / topologicznych wariantów zależnie od wymagań.</p>
+</div>
+<div class="qa-item">
+  <strong>37. Czy Hibernate Spatial działa bez <code>CREATE EXTENSION postgis</code>?</strong>
+  <p>Nie — baza musi mieć zainstalowane rozszerzenie PostGIS; inaczej typy geometry/geography nie istnieją.</p>
+</div>
+<div class="qa-item">
+  <strong>38. Czy <code>ST_DWithin</code> z progiem 1000 na geometry(4326) to 1000 metrów?</strong>
+  <p>Nie — to ~1000 stopni (~111 000 km przy równiku). Dla metrów użyj geography lub transformacji do metrycznego SRID.</p>
+</div>
+<div class="qa-item">
+  <strong>39. Czy dwa punkty z tym samym lon/lat ale różnym SRID są „w tym samym miejscu”?</strong>
+  <p>PostGIS traktuje je jako różne bez jawnej transformacji — SRID musi być zgodny w operacjach lub użyj <code>ST_Transform</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>40. Czy <code>ST_Simplify</code> zawsze zachowuje topologię?</strong>
+  <p>Nie — agresywne uproszczenie może tworzyć self-intersection lub zmieniać relacje contains/intersects. Waliduj <code>ST_IsValid</code> po simplify.</p>
+</div>
 
 </body>
 </html>
