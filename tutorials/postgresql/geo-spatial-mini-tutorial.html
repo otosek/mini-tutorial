@@ -166,7 +166,7 @@
 <p class="back"><a href="../index.html">← Spis tutoriali</a></p>
 
 <h1>Geo / PostGIS — punkty, linie, obszary</h1>
-<p class="meta">PostgreSQL + PostGIS · Hibernate Spatial · JTS / Java · układy PL (1992, CS2000), GPS→płasko, zapytania „w pobliżu”<br>
+<p class="meta">PostgreSQL + PostGIS · Hibernate Spatial · JTS / Java · układy PL, pomiary (odległość, długość, powierzchnia)<br>
 Format: HTML offline · 40 pytań rekrutacyjnych</p>
 
 <nav class="toc">
@@ -176,6 +176,7 @@ Format: HTML offline · 40 pytań rekrutacyjnych</p>
     <li><a href="#polska">Polskie układy współrzędnych</a></li>
     <li><a href="#postgis">PostGIS — typy i tabele</a></li>
     <li><a href="#zapytania">Zapytania przestrzenne</a></li>
+    <li><a href="#pomiary">Pomiary — odległość, długość, powierzchnia</a></li>
     <li><a href="#indeksy">Indeksy przestrzenne</a></li>
     <li><a href="#hibernate">Hibernate Spatial</a></li>
     <li><a href="#java">Warstwa Java</a></li>
@@ -402,6 +403,10 @@ VALUES ('Trasa A',
     <tr><td><code>ST_Buffer(geom, radius)</code></td><td>„Obszar wokół” — okrąg, korytarz wokół linii</td></tr>
     <tr><td><code>ST_Union(geom[])</code></td><td>Scalenie wielu geometrii</td></tr>
     <tr><td><code>ST_Simplify(geom, tolerance)</code></td><td>Uproszczenie (mniej wierzchołków)</td></tr>
+    <tr><td><code>ST_Length(geom)</code></td><td>Długość linii (metry na <code>geography</code>)</td></tr>
+    <tr><td><code>ST_Area(geom)</code></td><td>Powierzchnia polygonu (m² na <code>geography</code>)</td></tr>
+    <tr><td><code>ST_Perimeter(geom)</code></td><td>Obwód polygonu</td></tr>
+    <tr><td><code>ST_ClosestPoint(A, B)</code></td><td>Najbliższy punkt na B względem A</td></tr>
   </tbody>
 </table>
 
@@ -463,6 +468,149 @@ WHERE a.name = 'Centrum' AND b.name = 'Żoliborz';</code></pre>
     <tr><td><code>A &amp;&amp; B</code></td><td>Bounding box się przecina — szybki prefiltr (używa indeksu)</td></tr>
   </tbody>
 </table>
+
+<hr>
+
+<h2 id="pomiary" class="must-know">2b. Pomiary — odległość, długość, powierzchnia</h2>
+
+<p>PostGIS (i JTS po stronie Java) liczy <strong>metryczne właściwości</strong> geometrii. Kluczowa zasada: <strong>jednostki wynikają z typu i SRID</strong> — <code>geography</code> → metry; <code>geometry</code> w EPSG:2180/2178 → metry; <code>geometry(4326)</code> → stopnie / stopnie² (do obliczeń metrycznych transformuj najpierw).</p>
+
+<h3>Odległość — <code>ST_Distance</code></h3>
+
+<p>Działa między <strong>dowolną parą</strong> geometrii — najkrótsza odległość w sensie euklidesowym (na płaszczyźnie) lub geodezyjnym (na <code>geography</code>):</p>
+
+<table>
+  <thead><tr><th>Para</th><th>Co mierzy</th><th>Przykład użycia</th></tr></thead>
+  <tbody>
+    <tr><td>Punkt ↔ punkt</td><td>Odległość między dwoma lokalizacjami</td><td>Dystans sklep–klient</td></tr>
+    <tr><td>Punkt ↔ linia</td><td>Odległość punktu od najbliższego odcinka linii</td><td>Jak daleko adres jest od trasy dostawy</td></tr>
+    <tr><td>Punkt ↔ polygon</td><td><code>0</code> jeśli punkt wewnątrz; inaczej odległość do brzegu</td><td>„Ile metrów poza strefą dostawy?”</td></tr>
+    <tr><td>Linia ↔ polygon</td><td>Odległość między najbliższymi punktami kształtów</td><td>Czy trasa „prawie” wchodzi w strefę</td></tr>
+    <tr><td>Polygon ↔ polygon</td><td>0 jeśli się nakładają; inaczej minimalna szczelina</td><td>Odległość między dwoma działkami</td></tr>
+  </tbody>
+</table>
+
+<pre><code>-- punkt ↔ punkt (metry, geography)
+SELECT ST_Distance(
+    ST_MakePoint(21.01, 52.23)::geography,
+    ST_MakePoint(21.05, 52.25)::geography
+) AS dist_m;
+
+-- punkt ↔ linia (trasa dostawy) — ile metrów od drogi?
+SELECT r.name,
+       ST_Distance(
+           ST_SetSRID(ST_MakePoint(21.012, 52.230), 4326)::geography,
+           r.path::geography
+       ) AS odleglosc_od_trasy_m
+FROM routes r
+ORDER BY odleglosc_od_trasy_m
+LIMIT 1;
+
+-- punkt ↔ polygon — 0 w środku strefy, &gt;0 poza
+SELECT dz.name,
+       ST_Distance(
+           ST_SetSRID(ST_MakePoint(21.012, 52.230), 4326)::geography,
+           dz.area::geography
+       ) AS poza_strefa_m
+FROM delivery_zones dz;
+
+-- najbliższy punkt na linii (do wizualizacji / snap-to-road)
+SELECT ST_AsText(ST_ClosestPoint(r.path, ST_MakePoint(21.012, 52.230))) AS snap
+FROM routes r WHERE r.name = 'Trasa A';</code></pre>
+
+<h3>Długość linii — <code>ST_Length</code></h3>
+
+<pre><code>-- długość trasy w metrach
+SELECT name,
+       ST_Length(path::geography) AS dlugosc_m
+FROM routes;
+
+-- suma długości wszystkich tras w strefie (po przecięciu)
+SELECT SUM(ST_Length(ST_Intersection(r.path, dz.area)::geography)) AS km_w_strefie
+FROM routes r
+JOIN delivery_zones dz ON dz.name = 'Centrum';</code></pre>
+
+<p><code>ST_Length</code> na <code>LineString</code> / <code>MultiLineString</code>. Na polygonie zwraca obwód zewnętrzny — wygodniej użyć <code>ST_Perimeter</code>.</p>
+
+<h3>Obwód — <code>ST_Perimeter</code></h3>
+
+<pre><code>SELECT name,
+       ST_Perimeter(area::geography) AS obwod_m
+FROM delivery_zones;</code></pre>
+
+<h3>Powierzchnia — <code>ST_Area</code></h3>
+
+<pre><code>-- powierzchnia strefy w m² (geography lub geometry w metrycznym SRID)
+SELECT name,
+       ST_Area(area::geography) AS powierzchnia_m2,
+       ST_Area(area::geography) / 10000.0 AS hektary
+FROM delivery_zones;
+
+-- powierzchnia w układzie 1992 (metry²) — bez cast na geography
+SELECT ST_Area(ST_Transform(area, 2180)) AS m2_pl_1992
+FROM delivery_zones WHERE name = 'Centrum';</code></pre>
+
+<h3>Podsumowanie funkcji pomiarowych</h3>
+
+<table>
+  <thead><tr><th>Funkcja PostGIS</th><th>Typ geometrii</th><th>Wynik</th><th>Jednostki (typowo)</th></tr></thead>
+  <tbody>
+    <tr><td><code>ST_Distance(A, B)</code></td><td>dowolna ↔ dowolna</td><td>Odległość</td><td>m (<code>geography</code>) lub jednostki SRID</td></tr>
+    <tr><td><code>ST_Length(geom)</code></td><td>LineString</td><td>Długość linii</td><td>m (<code>geography</code>)</td></tr>
+    <tr><td><code>ST_Perimeter(geom)</code></td><td>Polygon</td><td>Obwód</td><td>m (<code>geography</code>)</td></tr>
+    <tr><td><code>ST_Area(geom)</code></td><td>Polygon</td><td>Powierzchnia</td><td>m² (<code>geography</code> lub metryczny SRID)</td></tr>
+    <tr><td><code>ST_ClosestPoint(A, B)</code></td><td>dowolna ↔ dowolna</td><td>Punkt na B najbliżej A</td><td>—</td></tr>
+    <tr><td><code>ST_MaxDistance(A, B)</code></td><td>dowolna ↔ dowolna</td><td>Maksymalna odległość</td><td>rzadziej używane</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> <code>ST_Area(geom_4326)</code> zwraca stopnie² — wartość bezużyteczna. Do hektarów i m²: <code>::geography</code> albo <code>ST_Transform(geom, 2180)</code> przed pomiarem.</div>
+
+<h3>JTS w Java — te same pojęcia</h3>
+
+<pre><code>Point sklep = ...;
+Point klient = ...;
+LineString trasa = ...;
+Polygon strefa = ...;
+
+double odlegloscPunktow = sklep.distance(klient);   // w jednostkach SRID geometrii!
+double dlugoscTrasy     = trasa.getLength();
+double obwodStrefy      = strefa.getLength();         // długość pierścienia zewnętrznego
+double powierzchnia     = strefa.getArea();
+
+// dla metrów z GPS: licz w PostGIS (geography) albo transformuj SRID przed JTS</code></pre>
+
+<p>JTS liczy w jednostkach układu współrzędnych geometrii — przy <code>4326</code> to stopnie, nie metry. Do pomiarów produkcyjnych preferuj <strong>PostGIS w SQL</strong> (dokładniejsze na elipsoidzie przez <code>geography</code>) lub transformację do EPSG:2180/2178 przed wywołaniem JTS.</p>
+
+<h3>Hibernate — pomiary w repozytorium</h3>
+
+<pre><code>public interface RouteRepository extends JpaRepository&lt;Route, UUID&gt; {
+
+    @Query(value = """
+        SELECT r.name, ST_Length(r.path::geography) AS length_m
+        FROM routes r WHERE r.id = :id
+        """, nativeQuery = true)
+    Object[] getRouteLengthMeters(@Param("id") UUID id);
+
+    @Query(value = """
+        SELECT ST_Area(dz.area::geography) / 10000.0
+        FROM delivery_zones dz WHERE dz.id = :id
+        """, nativeQuery = true)
+    double getZoneAreaHectares(@Param("id") UUID id);
+
+    @Query(value = """
+        SELECT ST_Distance(
+            ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+            r.path::geography
+        )
+        FROM routes r WHERE r.id = :routeId
+        """, nativeQuery = true)
+    double distanceFromPointToRoute(
+        @Param("lon") double lon, @Param("lat") double lat,
+        @Param("routeId") UUID routeId);
+}</code></pre>
+
+<p>Hibernate Spatial nie dodaje <code>ST_Length</code> do JPQL — pomiary to prawie zawsze <strong>native SQL</strong> albo obliczenia JTS w serwisie na już załadowanej geometrii. W HQL (Hibernate 6.2+) jest <code>distance()</code> dla relacji spatial, ale pełny zestaw funkcji PostGIS zostaje w SQL.</p>
 
 <hr>
 
@@ -600,7 +748,11 @@ Polygon zone = gf.createPolygon(ring);
 // walidacja
 if (!zone.isValid()) {
     zone = (Polygon) zone.buffer(0);  // często naprawia self-intersection
-}</code></pre>
+}
+
+// pomiary (jednostki = jednostki SRID geometrii — przy 4326 to stopnie!)
+double powierzchniaM2 = zone.getArea();       // używaj tylko po transformacji SRID
+double odleglosc      = zone.distance(trasa); // punkt/linia/polygon — metoda distance()</code></pre>
 
 <h3>GeoJSON w API (Spring)</h3>
 
@@ -642,7 +794,9 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
     <tr><td><strong>Obszar użytkownika (rysowany)</strong></td><td><code>geometry(Polygon)</code></td><td>Waliduj <code>ST_IsValid</code> przed zapisem</td></tr>
     <tr><td><strong>Clustering na mapie</strong></td><td><code>ST_SnapToGrid</code> lub agregacja w tile</td><td>Albo PostGIS, albo frontend (supercluster)</td></tr>
     <tr><td><strong>Adres → współrzędne</strong></td><td>—</td><td>Geocoding zewnętrzny (Nominatim, Google) → zapis Point w PG</td></tr>
-    <tr><td><strong>Śledzenie GPS (ślad)</strong></td><td><code>LineString</code> lub seria <code>Point</code></td><td>Dużo punktów → <code>ST_Simplify</code>, partycjonowanie po czasie</td></tr>
+    <tr><td><strong>Śledzenie GPS (ślad)</strong></td><td><code>LineString</code> + <code>ST_Length</code></td><td>Przebieg w km: <code>ST_Length(path::geography)/1000</code></td></tr>
+    <tr><td><strong>Powierzchnia działki / strefy</strong></td><td><code>ST_Area(geom::geography)</code></td><td>Wynik w m²; /10000 → ha</td></tr>
+    <tr><td><strong>Odległość od trasy</strong></td><td><code>ST_Distance(point, line::geography)</code></td><td>Adres vs najbliższa droga dostawy</td></tr>
   </tbody>
 </table>
 
@@ -681,6 +835,7 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <li><strong>Hibernate bez dialektu PostGIS</strong> — kolumna zapisana jako bytea lub błąd mapowania</li>
   <li><strong>Coordinate w JTS</strong> — <code>x = lon</code>, <code>y = lat</code>; mylenie z „latitude first” z CSV</li>
   <li><strong>Zły SRID polski</strong> — zła strefa CS2000 (2176–2179) lub mieszanie układu 1992 (2180) z 2000 bez <code>ST_Transform</code></li>
+  <li><strong>ST_Area / ST_Length na geometry(4326)</strong> — wynik w stopniach² lub stopniach; użyj <code>geography</code> lub metrycznego SRID</li>
 </ol>
 
 <hr>
@@ -809,8 +964,8 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <p><code>ST_GeomFromGeoJSON(text)</code> w SQL lub parser JTS po stronie Java → encja z polem <code>Polygon</code>.</p>
 </div>
 <div class="qa-item">
-  <strong>30. Co robi <code>ST_Buffer</code>?</strong>
-  <p>Tworzy obszar wokół geometrii — okrąg wokół punktu, „korytarz” wokół linii. Promień w jednostkach SRID (metry po transformacji).</p>
+  <strong>30. Co robi <code>ST_Length</code> i <code>ST_Area</code>?</strong>
+  <p><code>ST_Length</code> — długość linii (lub obwód polygonu). <code>ST_Area</code> — powierzchnia polygonu. Na <code>geography</code> wynik w metrach / m²; na <code>geometry(4326)</code> — w stopniach (błąd przy interpretacji jako metry).</p>
 </div>
 
 <h3><span class="level-tag level-tricky">Pułapki / tricky</span></h3>
@@ -852,8 +1007,8 @@ public record StoreDto(UUID id, String name, GeoJsonPoint location) {
   <p>Strefa 7 — EPSG:2178 (południk osiowy 21°E, false easting 7&nbsp;500&nbsp;000 m). Granice stref: &lt;16°30′ → 2176, &lt;19°30′ → 2177, &lt;22°30′ → 2178, dalej → 2179.</p>
 </div>
 <div class="qa-item">
-  <strong>40. Czy <code>ST_Simplify</code> zawsze zachowuje topologię?</strong>
-  <p>Nie — agresywne uproszczenie może tworzyć self-intersection lub zmieniać relacje contains/intersects. Waliduj <code>ST_IsValid</code> po simplify.</p>
+  <strong>40. Jaka jest odległość punktu od polygonu, gdy punkt jest w środku?</strong>
+  <p><code>ST_Distance</code> zwraca <strong>0</strong> — odległość liczona do najbliższego punktu drugiej geometrii; wnętrze polygonu ma odległość 0 od każdego punktu w środku.</p>
 </div>
 
 </body>
