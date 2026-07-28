@@ -480,6 +480,51 @@ CROSS JOIN LATERAL (
   <p>Kolumna wyliczana z innych — indeksowalna, spójna z JSON extract.</p>
 </div>
 
+<h3>Replikacja — read replica i standby</h3>
+
+<div class="keyword">
+  <strong>Streaming replication (fizyczna)</strong>
+  <p>Primary strumieniuje WAL do standby — binarna kopia klastra. Hot standby obsługuje SELECT → <strong>read replica</strong> do odciążenia raportów i analityki. Domyślnie async; synchroniczny standby (<code>synchronous_commit = remote_apply</code> + <code>synchronous_standby_names</code>) to replika bezpieczeństwa — COMMIT czeka, aż WAL trafi na replicę (zero data loss, wolniejszy zapis).</p>
+</div>
+
+<div class="keyword">
+  <strong>Logical replication</strong>
+  <p>Per tabela: <code>CREATE PUBLICATION</code> na primary + <code>CREATE SUBSCRIPTION</code> na subskrybencie — działa między wersjami PG, selektywnie. Nie kopiuje DDL ani sekwencji.</p>
+</div>
+
+<p>Środowisko testowe — primary + jeden standby:</p>
+
+<pre><code># PRIMARY — postgresql.conf
+wal_level = replica
+max_wal_senders = 3
+
+# PRIMARY — pg_hba.conf (dopuść replikację z podsieci standby)
+host replication replicator 172.18.0.0/16 scram-sha-256
+
+-- PRIMARY — SQL
+CREATE ROLE replicator REPLICATION LOGIN PASSWORD 'haslo';
+
+# STANDBY — klonowanie z primary, potem zwykły start serwisu
+pg_basebackup -h primary -U replicator -D /var/lib/postgresql/data -R -P
+# -R dopisuje primary_conninfo do postgresql.auto.conf i tworzy standby.signal
+# po starcie standby łączy się do primary i odbiera WAL na bieżąco</code></pre>
+
+<h3>Połączenie z aplikacji, gdy jest replika</h3>
+
+<p>Replika przyjmuje tylko SELECT — INSERT/UPDATE muszą trafić na primary. JDBC sam wybiera właściwy host po typie sesji (w Springu: osobne poole read/write albo routing DataSource):</p>
+
+<pre><code># zapis — driver wybierze primary
+jdbc:postgresql://primary:5432,replica:5432/appdb?targetSessionAttrs=read-write
+
+# odczyt (raporty) — preferuj standby, balansuj między hostami
+jdbc:postgresql://replica:5432,primary:5432/appdb?targetSessionAttrs=prefer-standby&amp;loadBalanceHosts=true</code></pre>
+
+<pre><code>-- diagnostyka
+SELECT pg_is_in_recovery();                              -- true = standby, false = primary
+SELECT client_addr, state, replay_lag FROM pg_stat_replication;  -- na primary</code></pre>
+
+<p><strong>Pułapka:</strong> replication lag — SELECT na replicy zaraz po własnym INSERT może jeszcze nie widzieć wiersza (read-your-writes). Odczyty krytyczne po zapisie trzymaj na primary.</p>
+
 <hr>
 
 <h2 id="bledy">Typowe błędy</h2>
