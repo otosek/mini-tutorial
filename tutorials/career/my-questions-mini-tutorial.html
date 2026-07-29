@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Questions — rozmowa kwalifikacyjna</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #7c3aed;
+      --signal: #166534;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; color: var(--accent); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    .cheatsheet {
+      background: #f5f3ff;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 1rem 0 2rem;
+      font-size: 0.9rem;
+    }
+
+    .cheatsheet h2 { margin-top: 0; font-size: 1.1rem; }
+    .cheatsheet ul { margin: 0.4rem 0 0; }
+    .cheatsheet li { margin: 0.25rem 0; }
+
+    .q-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.75rem 0;
+    }
+
+    .q-card strong { display: block; color: var(--accent); margin-bottom: 0.35rem; font-size: 0.95rem; }
+    .q-card .tag { font-size: 0.82rem; color: var(--muted); font-style: italic; margin-bottom: 0.4rem; }
+    .q-card .answer { font-size: 0.92rem; margin: 0.5rem 0 0; }
+    .q-card .signal { font-size: 0.88rem; color: var(--signal); margin: 0.5rem 0 0; }
+
+    .follow-up {
+      margin-top: 0.85rem;
+      padding-top: 0.75rem;
+      border-top: 1px dashed var(--border);
+    }
+
+    .follow-up strong {
+      display: block;
+      font-size: 0.88rem;
+      color: var(--text);
+      margin-bottom: 0.35rem;
+    }
+
+    .follow-up .answer { margin-top: 0.25rem; }
+
+    .star-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 0.6rem 0 0.15rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .empty-state {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-style: italic;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>My Questions</h1>
+<p class="meta">Osobista ściąga na rozmowę kwalifikacyjną — gotowe sformułowania, żeby mówić płynnie i nie urwać się.<br>
+Format: HTML offline · 9 pytań</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#jak-uzywac">Jak używać</a></li>
+    <li><a href="#pytania">Pytania</a></li>
+  </ol>
+</nav>
+
+<section class="cheatsheet" id="jak-uzywac">
+  <h2 class="must-know">Jak używać</h2>
+  <ul>
+    <li><strong>Przed rozmową:</strong> przeczytaj na głos 2–3 wybrane wpisy — uczysz się rytmu zdań, nie na pamięć słowo w słowo.</li>
+    <li><strong>W trakcie:</strong> 2 s pauzy po pytaniu → pierwsze zdanie z gotowej odpowiedzi → reszta naturalnie.</li>
+    <li><strong>Struktura wpisu:</strong> pytanie · kontekst (kiedy pada) · gotowa odpowiedź · opcjonalna wskazówka.</li>
+    <li><strong>Edycja:</strong> każde pytanie dopisujemy osobno — dopasowujemy brzmienie do Twojego stylu mówienia.</li>
+  </ul>
+</section>
+
+<hr>
+
+<h2 id="pytania" class="must-know">Pytania</h2>
+
+<div class="q-card" id="q1">
+  <strong>1. Opowiedz o sobie.</strong>
+  <p class="tag">Początek rozmowy · HR, hiring manager, tech lead</p>
+  <p class="answer">Od początku edukacji i kariery skupiam się na inżynierii oprogramowania, przechodząc od ról technicznych po liderskie. Najlepiej odnajduję się w firmach produktowych, gdzie zespół ma realny wpływ na kształt systemu i odpowiada za cały jego cykl — od projektu po utrzymanie. Specjalizuję się w backendzie i architekturze, ale rozwijam też kompetencje DevOps oraz frontend, co pozwala mi myśleć o projektach holistycznie. Stąd moje zainteresowanie Waszą ofertą.</p>
+  <p class="signal">→ Max ~90 s. Nie od CV chronologicznie — od tego, kim jesteś dziś i czego szukasz.</p>
+</div>
+
+<div class="q-card" id="q2">
+  <strong>2. Z jakiego projektu jesteś najbardziej dumny?</strong>
+  <p class="tag">Pytanie behawioralne · HR, hiring manager, tech lead · struktura STAR</p>
+
+  <p class="star-hint">Sytuacja</p>
+  <p class="answer">Najbardziej dumny jestem z projektu dla branży monitoringu spalin. Firma opierała się na tradycyjnym oprogramowaniu SCADA i przez to nie mogła startować w wielu przetargach — technologicznie i formalnie były poza jej zasięgiem. Na dodatek na początku spotkał nas spory opór wewnętrzny i sceptycyzm wielu osób, które nie wierzyły w sens budowy własnego rozwiązania.</p>
+
+  <p class="star-hint">Zadanie</p>
+  <p class="answer">Celem było stworzenie autorskiego systemu, który realnie zastąpi SCADA i otworzy firmie drogę do nowych kontraktów.</p>
+
+  <p class="star-hint">Działanie</p>
+  <p class="answer">W zespole byliśmy w trójkę — bez osobnego analityka czy architekta. Łączyłem więc programowanie z prowadzeniem całego projektu: po mojej stronie była idea produktu, analiza wymagań, architektura oraz dowiezienie rozwiązania od koncepcji po wdrożenie i utrzymanie. Dwóch pozostałych developerów wspierałem w implementacji.</p>
+
+  <p class="star-hint">Rezultat</p>
+  <p class="answer">System skutecznie zastąpił SCADA. Firma zyskała możliwość startowania w przetargach wcześniej niedostępnych, a rozwiązanie z powodzeniem działa do dziś — to długofalowy sukces biznesowy, który przebił początkowy sceptycyzm.</p>
+
+  <div class="follow-up">
+    <strong>Follow-up: Opowiedz więcej o swojej roli.</strong>
+    <p class="answer">Nie byłem tylko „osobą od zarządzania” — pisałem kod i jednocześnie odpowiadałem za kierunek techniczny całego produktu. W praktyce oznaczało to, że sam definiowałem wymagania z biznesem, projektowałem architekturę i pilnowałem, żeby zespół trójki ludzi dowiózł coś, co wcześniej wymagało całego łańcucha ról.</p>
+  </div>
+</div>
+
+<div class="q-card" id="q3">
+  <strong>3. Opowiedz o ostatniej rzeczy, która nie wyszła — o Twojej ostatniej porażce.</strong>
+  <p class="tag">Pytanie behawioralne · HR, hiring manager, tech lead · struktura STAR</p>
+
+  <p class="star-hint">Sytuacja</p>
+  <p class="answer">Wdrażaliśmy pierwszą wersję nowego systemu, zakładając wysokie wymagania wydajnościowe dla wyszukiwarki.</p>
+
+  <p class="star-hint">Zadanie</p>
+  <p class="answer">Zaprojektowanie i implementacja wydajnego modułu wyszukiwania.</p>
+
+  <p class="star-hint">Działanie</p>
+  <p class="answer">Zdecydowaliśmy się na przedwczesną optymalizację. Zaimplementowaliśmy architekturę CQRS i połączyliśmy bazę danych z silnikiem indeksującym Apache Solr.</p>
+
+  <p class="star-hint">Rezultat</p>
+  <p class="answer">Rozwiązanie okazało się zbyt skomplikowane i niepotrzebne na tamtym etapie — funkcja nie była używana przez użytkowników i ostatecznie ją uprościliśmy.</p>
+
+  <p class="star-hint">Wniosek</p>
+  <p class="answer">Nauczyliśmy się unikać przedwczesnej optymalizacji zgodnie z zasadą YAGNI. Architekturę komplikujemy teraz wyłącznie w odpowiedzi na realne, zmierzone potrzeby biznesowe.</p>
+</div>
+
+<div class="q-card" id="q4">
+  <strong>4. Jaka jest Twoja najmocniejsza strona?</strong>
+  <p class="tag">Pytanie behawioralne · HR, hiring manager, tech lead</p>
+  <p class="answer">Moją najmocniejszą stroną jest holistyczne podejście do projektów — zawsze dążę do pełnego zrozumienia całego procesu oraz jego technicznych niuansów. Idzie za tym wysoka odpowiedzialność za podejmowane przeze mnie decyzje architektoniczne i biznesowe. Jednocześnie nie mam nawyku bezkrytycznego bronienia własnych pomysłów jako jedynych słusznych. Potrafię realnie słuchać innych członków zespołu i partnerów biznesowych, szukając najlepszych rozwiązań dla projektu, a nie jedynie czekając na swoją kolej do zabrania głosu.</p>
+</div>
+
+<div class="q-card" id="q5">
+  <strong>5. Jaka jest Twoja najsłabsza strona?</strong>
+  <p class="tag">Pytanie behawioralne · HR, hiring manager, tech lead</p>
+  <p class="answer">Z racji tego, że moją mocną stroną jest holistyczne podejście i chęć pełnego zrozumienia całego projektu, na samym początku wdrożenia do bardzo dużych systemów bywa to dla mnie wyzwaniem. Gdy ilość nowych informacji i zależności jest ogromna, początkowo odczuwam chwilową frustrację lub stres wynikający z faktu, że nie rozumiem jeszcze każdego detalu i powiązania. Poradziłem sobie z tym, akceptując fakt, że nie da się wiedzieć wszystkiego od pierwszego dnia. Wypracowałem metodę mapowania wiedzy — zamiast próbować przyswoić całość naraz, tworzę ustrukturyzowany plan poznawania systemu krok po kroku i skupiam się na mniejszych modułach, co pozwala mi szybko i bezstresowo opanować nawet najbardziej skomplikowaną architekturę.</p>
+</div>
+
+<div class="q-card" id="q6">
+  <strong>6. Gdzie widzisz siebie za kilka lat?</strong>
+  <p class="tag">Pytanie o plany kariery · HR, hiring manager</p>
+  <p class="answer">Za kilka lat widzę siebie dalej w obszarze inżynierii oprogramowania, jako programistę i architekta tworzącego nowoczesne systemy. Moim głównym celem jest rozwój w tematach deweloperskich i architektonicznych, ze szczególnym uwzględnieniem integracji modeli LLM oraz technologii AI. Uważam, że sztuczna inteligencja staje się nieodłącznym partnerem na każdym z tych stanowisk, dlatego chcę płynnie łączyć tradycyjne programowanie z nowymi narzędziami, aby projektować i wdrażać efektywniejsze rozwiązania.</p>
+</div>
+
+<div class="q-card" id="q7">
+  <strong>7. Dlaczego zaaplikowałeś do naszej firmy?</strong>
+  <p class="tag">Motywacja · HR, hiring manager</p>
+  <p class="answer">Aplikuję do Państwa firmy, ponieważ kluczowym kryterium jest dla mnie profil działalności oparty na własnym produkcie. Najlepiej odnajduję się w organizacjach, które mają pełny wpływ na cały cykl życia oprogramowania — od analizy biznesowej i projektowania architektury, przez programowanie, aż po wdrożenie i utrzymanie systemu. Z mojego doświadczenia wynika, że taki model pracy generuje specyficzną atmosferę dużej odpowiedzialności za kod, zaangażowania oraz realnego wpływu na końcowe rozwiązanie — a to jest dokładnie to środowisko, w którym chcę dalej rozwijać swoją karierę.</p>
+</div>
+
+<div class="q-card" id="q8">
+  <strong>8. Dlaczego chcesz zmienić pracę?</strong>
+  <p class="tag">Motywacja · HR, hiring manager</p>
+  <p class="answer">Głównym powodem jest chęć wejścia w nowe, ambitne projekty oraz dalszy rozwój technologiczny. W obecnym miejscu zrealizowałem postawione przede mną cele, jednak zależy mi na pracy w środowisku, które stawia na nowoczesne rozwiązania architektoniczne i aktywnie integruje technologie AI oraz modele LLM z procesem wytwórczym. Państwa firma daje taką możliwość, dlatego uznałem to za idealny moment na kolejny krok w mojej karierze.</p>
+</div>
+
+<div class="q-card" id="q9">
+  <strong>9. Ile zarabiasz? / Jakie są Twoje oczekiwania finansowe?</strong>
+  <p class="tag">Rozmowa o stawce · HR, rekruter</p>
+  <p class="answer">Moje oczekiwania finansowe to xxx zł netto za godzinę na kontrakcie B2B. Jest to stawka, która odzwierciedla moje dotychczasowe doświadczenie inżynierskie i liderskie oraz holistyczne podejście do projektów. Jestem jednak otwarty na elastyczne rozmowy i negocjacje. Ostateczna kwota zależy od całościowych warunków współpracy, poziomu odpowiedzialności na tym stanowisku, pakietu benefitów oraz — przede wszystkim — od tego, jak Państwo ocenią moje dopasowanie techniczne i merytoryczne po zakończeniu całego procesu rekrutacji.</p>
+</div>
+
+</body>
+</html>
