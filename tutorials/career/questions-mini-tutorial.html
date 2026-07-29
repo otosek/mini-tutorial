@@ -72,9 +72,29 @@
     }
 
     .qa-item p {
-      margin: 0;
+      margin: 0 0 0.55rem;
       font-size: 0.92rem;
       color: var(--text);
+    }
+
+    .qa-item p:last-of-type { margin-bottom: 0; }
+
+    .qa-item .answer-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 0.75rem 0 0.35rem;
+    }
+
+    .qa-item .answer-label:first-of-type { margin-top: 0; }
+
+    .qa-item .fill {
+      background: #fffbeb;
+      border-bottom: 1px dashed var(--accent);
+      padding: 0 0.15em;
     }
 
     .qa-item .hint {
@@ -106,8 +126,8 @@ Format: HTML, offline · rozbudowujemy pytanie po pytaniu</p>
 <nav class="toc">
   <strong>Spis treści</strong>
   <ol id="toc-list">
+    <li><a href="#q1">1. Tell me something about yourself</a></li>
   </ol>
-  <p class="empty" id="toc-empty">Brak pytań — dodamy je w kolejnych rozmowach.</p>
 </nav>
 
 <hr>
@@ -115,7 +135,34 @@ Format: HTML, offline · rozbudowujemy pytanie po pytaniu</p>
 <h2 id="pytania">Pytania i odpowiedzi</h2>
 
 <div class="qa-list" id="qa-list">
-  <p class="placeholder">Tu trafią pytania z rozmowy QC wraz z gotowymi odpowiedziami — każde omawiamy osobno, potem dopisujemy do pliku.</p>
+
+  <div class="qa-item" id="q1">
+    <strong>1. Tell me something about yourself.</strong>
+
+    <span class="answer-label">Jak mówić (max ~2 min)</span>
+    <p>Idź <strong>od początku do dziś</strong>, ale krótko — nie czytaj CV wiersz po wierszu. Szkoła i studia to 2–3 zdania (skąd zainteresowanie IT), potem ścieżka zawodowa jako <strong>logiczna historia</strong>, na końcu „gdzie jestem teraz” i most do tej rozmowy.</p>
+
+    <span class="answer-label">Gotowa odpowiedź (wzorzec)</span>
+    <p>Sure. I’ll walk you through my path briefly, from education to what I do today.</p>
+    <p>I became interested in technology quite early — at school I was drawn to [math / logic / computers / programming classes], and that’s what pushed me toward an IT-focused path. I studied [field, e.g. computer science / engineering] at [university], where I built a solid foundation in [e.g. algorithms, software engineering, databases] and did [optional: first projects, internship, thesis topic relevant to the role].</p>
+    <p>After graduation I started as a [first role, e.g. junior developer / QA engineer / support + automation], where I learned [concrete skills: production systems, testing, working in a team, client communication]. Over the next years I moved toward [backend / full-stack / quality / leadership — pick your arc], taking on more responsibility — not only delivering tasks, but also [code reviews, design discussions, mentoring, owning a module, improving quality/process].</p>
+    <p>In my recent roles I’ve been focused on [2–3 keywords matching the job: e.g. Java/Spring, APIs, cloud, test automation, CI/CD, working with product]. A typical example of my work is [one short outcome: e.g. “stabilizing releases by introducing better test coverage and clearer Definition of Done” / “shipping feature X that reduced manual work by Y%”].</p>
+    <p>Today I’d describe myself as a [current level: e.g. mid/senior software engineer / QC lead] who cares about [quality + delivery / reliable software / clear communication with business]. I’m here because [1 sentence: role/team/product resonates — e.g. “this position combines hands-on engineering with the quality mindset I’ve been building for years”].</p>
+
+    <span class="answer-label">Szkielet (gdy mówisz po polsku)</span>
+    <p>„Od szkoły interesowałem się […] → na studiach [kierunek, co Cię ukształtowało] → pierwsza praca [czego się nauczyłeś w praktyce] → kolejne kroki [coraz większy zakres, nie lista firm] → dziś [stack, rola, jeden konkretny wynik] → dlaczego ta rozmowa QC [most do stanowiska].”</p>
+
+    <span class="hint">→ Nie zaczynaj od „I was born in…”. Szkoła = 1 zdanie o zainteresowaniu, nie daty i nazwy szkoły, chyba że coś wyjątkowego. Kończ zdaniem o tym, co wnosisz na to stanowisko.</span>
+
+    <span class="answer-label">Co podkreślić na rozmowie QC</span>
+    <ul>
+      <li><strong>Jakość myślenia</strong> — nie tylko „pisałem kod”, ale jak dbasz o jakość (testy, review, ryzyko, komunikacja z biznesem).</li>
+      <li><strong>Ciągłość</strong> — widać, że od edukacji do dziś budujesz jedną linię (np. inżynieria → odpowiedzialność za delivery → QC mindset).</li>
+      <li><strong>Konkret</strong> — jeden przykład z ostatnich 1–2 lat; reszta ogólnie.</li>
+      <li><strong>Tempo</strong> — ~90–120 s; jak widzą, że masz więcej — „happy to go deeper on any part”.</li>
+    </ul>
+  </div>
+
 </div>
 
 </body>
