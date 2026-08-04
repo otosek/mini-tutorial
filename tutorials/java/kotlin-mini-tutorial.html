@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kotlin — różnice względem Java 25</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #7f52ff;
+      --kotlin: #7f52ff;
+      --java: #ea580c;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.02rem; margin-top: 0; color: var(--text); }
+
+    p { margin: 0.75rem 0; }
+    ul { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.3rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f3f0ff; font-weight: 600; }
+
+    .feat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem 1rem;
+      margin: 0.75rem 0;
+    }
+
+    .feat h3 { margin-bottom: 0.5rem; color: var(--accent); }
+
+    .lang {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.15em 0.45em;
+      border-radius: 4px;
+      margin-bottom: 0.35rem;
+    }
+
+    .lang-kotlin { background: #ede9fe; color: var(--kotlin); }
+    .lang-java { background: #fff7ed; color: var(--java); }
+
+  .feat p { margin: 0.4rem 0; font-size: 0.95rem; }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      margin: 0.5rem 0 0.75rem;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.75rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Kotlin — najważniejsze różnice względem Java 25</h1>
+<p class="meta">Porównanie cecha → co robi w Kotlin → jak to osiągnąć w Java 25 (JDK 25 LTS, 2026).<br>
+Format: HTML offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#null">Null i typy</a></li>
+    <li><a href="#klasy">Klasy i dane</a></li>
+    <li><a href="#funkcje">Funkcje i rozszerzenia</a></li>
+    <li><a href="#skladnia">Składnia i wyrażenia</a></li>
+    <li><a href="#kolekcje">Kolekcje i API</a></li>
+    <li><a href="#wspolbieznosc">Współbieżność</a></li>
+    <li><a href="#java25">Kotlin vs Java 25</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Fundamenty</h2>
+<p><strong>Kotlin</strong> to język na JVM (JetBrains, 2016) — 100% interoperacyjny z Javą: wywołujesz biblioteki Java z Kotlina i vice versa. Kompiluje się do bytecode jak Java. Na Androidzie Kotlin jest domyślny; w backendie (Spring) obok Javy.</p>
+<p>Kotlin nie zastępuje Javy 1:1 — część „magii” to składnia i bezpieczeństwo typów w compile-time. Java 25 (LTS) nadal jest referencją na JVM; wiele pomysłów Kotlina trafiła do Javy (records, sealed, pattern matching), ale Kotlin wciąż ma unikalne cechy (extensions, coroutines, null w typach).</p>
+
+<table>
+  <thead><tr><th></th><th>Kotlin</th><th>Java 25</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Paradygmat</strong></td><td>OO + funkcyjny, składnia lekka</td><td>OO + Stream/lambda od J8</td></tr>
+    <tr><td><strong>Null</strong></td><td>W typie: <code>String?</code></td><td>Brak w typie — Optional / adnotacje</td></tr>
+    <tr><td><strong>Domyślny entry</strong></td><td><code>fun main()</code></td><td><code>void main()</code> (JEP 512)</td></tr>
+    <tr><td><strong>Build</strong></td><td>kotlinc, Gradle Kotlin DSL</td><td>javac, Maven/Gradle</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="null" class="must-know">Null i typy</h2>
+
+<div class="feat">
+  <h3>Nullable types</h3>
+  <p><strong>Co robi:</strong> Typ z <code>?</code> jawno oznacza, że wartość może być <code>null</code>. Bez <code>?</code> — compile error przy przypisaniu null.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>var name: String = "Anna"
+var nick: String? = null
+// nick.length — błąd kompilacji; użyj safe call lub check</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Brak nullable w typie — <code>Optional</code>, adnotacje (<code>@Nullable</code>), lub konwencja. Records i pattern matching nie rozwiązują null w sygnaturze.</p>
+  <pre><code>String name = "Anna";
+String nick = null; // legalne — NPE w runtime
+
+Optional&lt;String&gt; nickOpt = Optional.empty();
+nickOpt.orElse("default");</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Safe call <code>?.</code> i Elvis <code>?:</code></h3>
+  <p><strong>Co robi:</strong> <code>?.</code> zwraca null zamiast NPE; <code>?:</code> to wartość domyślna gdy null.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>val len = nick?.length          // Int? — null jeśli nick null
+val label = nick ?: "anonymous"</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> <code>Optional.map</code>, lub pattern matching z <code>null</code> w switch (J21+).</p>
+  <pre><code>Integer len = nick != null ? nick.length() : null;
+
+String label = nick != null ? nick : "anonymous";
+// lub
+String label2 = Optional.ofNullable(nick).orElse("anonymous");</code></pre>
+</div>
+
+<div class="feat">
+  <h3><code>!!</code> (not-null assertion)</h3>
+  <p><strong>Co robi:</strong> Wymusza „to nie jest null” — NPE w runtime jak w Javie. Unikaj w produkcji.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>val s = nick!!  // NPE jeśli nick == null</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <pre><code>String s = nick; // po ręcznym sprawdzeniu lub świadomym ryzyku NPE</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Smart cast</h3>
+  <p><strong>Co robi:</strong> Po sprawdzeniu typu/null kompilator „wie”, że zmienna jest bezpieczna — bez jawnego cast.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>if (x is String) {
+    println(x.length)  // x już String
+}</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Pattern matching <code>instanceof</code> (od J16) — ten sam pomysł.</p>
+  <pre><code>if (x instanceof String s) {
+    System.out.println(s.length());
+}</code></pre>
+</div>
+
+<hr>
+
+<h2 id="klasy" class="must-know">Klasy i dane</h2>
+
+<div class="feat">
+  <h3>Data class</h3>
+  <p><strong>Co robi:</strong> Jedna linija — <code>equals</code>, <code>hashCode</code>, <code>toString</code>, <code>copy</code>, komponenty destrukturyzacji.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>data class Author(val id: String, val name: String)
+
+val a = Author("1", "Anna")
+val b = a.copy(name = "Jan")
+val (id, name) = a</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> <code>record</code> (od J16) + record patterns w switch (J21+).</p>
+  <pre><code>record Author(String id, String name) {}
+
+var a = new Author("1", "Anna");
+// brak copy() — nowy record lub ręcznie
+var b = new Author(a.id(), "Jan");
+
+switch (a) {
+    case Author(var id, var name) -&gt; ...
+}</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Sealed class / interface</h3>
+  <p><strong>Co robi:</strong> Zamknięta hierarchia — znane podtypy w compile-time; idealne z <code>when</code>.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>sealed interface Result
+data class Ok(val data: String) : Result
+data class Err(val msg: String) : Result</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> <code>sealed</code> + <code>permits</code> (od J17) — prawie identyczny model.</p>
+  <pre><code>sealed interface Result permits Ok, Err {}
+record Ok(String data) implements Result {}
+record Err(String msg) implements Result {}</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Properties (val / var)</h3>
+  <p><strong>Co robi:</strong> Pole + getter (+ setter dla <code>var</code>) bez boilerplate; <code>val</code> = tylko odczyt.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>class User(val id: String, var email: String)
+// user.id — wywołuje getId() w bytecode</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Record dla immutable DTO; Lombok <code>@Getter</code>; lub ręczne gettery/settery.</p>
+  <pre><code>record User(String id, String email) {} // immutable
+
+// mutable — klasa z polami + get/set lub Lombok</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Object (singleton) i companion object</h3>
+  <p><strong>Co robi:</strong> <code>object</code> = jedna instancja (singleton). <code>companion object</code> = statyczne metody/pola jak w Javie, ale z interfejsami i extensions.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>object Config { val apiUrl = "https://api" }
+
+class Factory {
+    companion object {
+        fun create() = Factory()
+    }
+}</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <pre><code>// Singleton — enum lub holder pattern
+enum Config { INSTANCE;
+    String apiUrl() { return "https://api"; }
+}
+
+class Factory {
+    static Factory create() { return new Factory(); }
+}</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Primary constructor</h3>
+  <p><strong>Co robi:</strong> Parametry konstruktora w nagłówku klasy — mniej kodu niż Java bean.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>class Service(private val repo: Repo) {
+    fun run() = repo.findAll()
+}</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <pre><code>class Service {
+    private final Repo repo;
+    Service(Repo repo) { this.repo = repo; }
+    void run() { repo.findAll(); }
+}
+// lub record jeśli tylko dane</code></pre>
+</div>
+
+<hr>
+
+<h2 id="funkcje">Funkcje i rozszerzenia</h2>
+
+<div class="feat">
+  <h3>Extension functions</h3>
+  <p><strong>Co robi:</strong> „Metoda” na istniejącym typie bez dziedziczenia — compile-time sugar, statyczna funkcja z receiverem.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>fun String.isEmail(): Boolean =
+    contains("@") &amp;&amp; contains(".")
+
+"user@mail.com".isEmail()</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Statyczna metoda util (<code>StringUtils</code>), lub wrapper — brak extensions w języku.</p>
+  <pre><code>class StringExt {
+    static boolean isEmail(String s) {
+        return s.contains("@") &amp;&amp; s.contains(".");
+    }
+}</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Default parameters i named arguments</h3>
+  <p><strong>Co robi:</strong> Domyślne wartości parametrów; wywołanie z nazwami — czytelne API bez builderów.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>fun greet(name: String, polite: Boolean = true) = ...
+greet("Anna", polite = false)</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Overloady metod, builder pattern, lub record z opcjonalnymi polami + <code>Optional</code>.</p>
+  <pre><code>void greet(String name) { greet(name, true); }
+void greet(String name, boolean polite) { ... }</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Top-level functions</h3>
+  <p><strong>Co robi:</strong> Funkcje poza klasą — plik staje się modułem procedur (jak w Go).</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>// utils.kt
+fun parseId(raw: String): Long = raw.toLong()</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Klasa util ze statycznymi metodami; od J9 — można mieć wiele klas w jednym pliku tylko przez inner/nested — top-level to zawsze klasa.</p>
+  <pre><code>// Utils.java
+public final class Utils {
+    public static long parseId(String raw) { ... }
+}</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Inline functions + reified generics</h3>
+  <p><strong>Co robi:</strong> <code>inline</code> wstawia bytecode na miejsce wywołania (zero overhead lambdy). <code>reified T</code> — typ generyczny dostępny w runtime (np. <code>gson.fromJson&lt;List&lt;Author&gt;&gt;()</code>).</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>inline fun &lt;reified T&gt; Gson.fromJson(json: String): T =
+    fromJson(json, object : TypeToken&lt;T&gt;() {}.type)</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Brak reified — przekazuj <code>Type</code>, <code>Class&lt;T&gt;</code>, lub MethodHandle. Inline — optymalizacja JIT, nie składnia.</p>
+  <pre><code>&lt;T&gt; T fromJson(Gson gson, String json, Class&lt;T&gt; type) {
+    return gson.fromJson(json, type);
+}</code></pre>
+</div>
+
+<hr>
+
+<h2 id="skladnia">Składnia i wyrażenia</h2>
+
+<div class="feat">
+  <h3><code>when</code> (wyrażenie)</h3>
+  <p><strong>Co robi:</strong> Switch zwracający wartość; gałęzie bez <code>break</code>; wzorce typów, wyrażenia warunkowe.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>val label = when (result) {
+    is Ok -&gt; result.data
+    is Err -&gt; "error: ${result.msg}"
+    else -&gt; "unknown"
+}</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Switch expression + pattern matching (J21+).</p>
+  <pre><code>String label = switch (result) {
+    case Ok(var data) -&gt; data;
+    case Err(var msg) -&gt; "error: " + msg;
+    default -&gt; "unknown";
+};</code></pre>
+</div>
+
+<div class="feat">
+  <h3>String templates</h3>
+  <p><strong>Co robi:</strong> <code>"Hello $name"</code> i <code>"${expr}"</code> — interpolacja w compile-time gdzie możliwe.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>val msg = "User $name has ${orders.size} orders"</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> <code>String.format</code>, <code>String.join</code>, text blocks (J15+) — string templates w preview w starszych wersjach; w 25 nadal głównie format/concat.</p>
+  <pre><code>String msg = String.format("User %s has %d orders", name, orders.size());
+// lub "User " + name + " has " + orders.size() + " orders"</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Scope functions: let, run, apply, also, with</h3>
+  <p><strong>Co robi:</strong> Krótkie bloki na obiekcie — transformacja, konfiguracja, side-effect. Różnią się receiverem (<code>it</code> vs <code>this</code>) i zwrotem.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>val id = raw?.let { parseId(it) }
+val user = User().apply { email = "a@b.c" }
+also { log.info("created {}", it) }</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> <code>Optional.map</code>, try-with-resources, lub lambdy na builderze — brak jednego standardu.</p>
+  <pre><code>Long id = raw != null ? parseId(raw) : null;
+
+var user = new User();
+user.setEmail("a@b.c");
+log.info("created {}", user);</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Delegated properties (<code>by</code>)</h3>
+  <p><strong>Co robi:</strong> Lazy init, observable, mapowanie — logika get/set w delegacie.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>val heavy by lazy { computeHeavy() }
+var name by Delegates.observable("") { _, old, new -&gt;
+    println("$old -&gt; $new")
+}</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Holder pattern, <code>Supplier</code> + volatile, lub framework (Spring <code>@Lazy</code>).</p>
+  <pre><code>private volatile Object heavy;
+Object getHeavy() {
+    if (heavy == null) heavy = computeHeavy();
+    return heavy;
+}</code></pre>
+</div>
+
+<hr>
+
+<h2 id="kolekcje">Kolekcje i API</h2>
+
+<div class="feat">
+  <h3>Immutable vs mutable collections</h3>
+  <p><strong>Co robi:</strong> Osobne typy: <code>List</code> (read-only interfejs) vs <code>MutableList</code> — jawna mutability w API.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>val readOnly: List&lt;String&gt; = listOf("a")
+val mutable: MutableList&lt;String&gt; = mutableListOf("a")</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> <code>List.of()</code> — niemutowalna; <code>new ArrayList&lt;&gt;()</code> — mutowalna. Brak rozróżnienia w typie interfejsu — konwencja lub <code>UnmodifiableList</code>.</p>
+  <pre><code>List&lt;String&gt; readOnly = List.of("a");
+List&lt;String&gt; mutable = new ArrayList&lt;&gt;(List.of("a"));</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Collection operators</h3>
+  <p><strong>Co robi:</strong> <code>map</code>, <code>filter</code>, <code>flatMap</code>, <code>groupBy</code> jako metody na kolekcji — jak LINQ, bez Stream API.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>authors.filter { it.active }.map { it.name }</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Stream API (od J8) — deklaratywnie, ale przez <code>.stream()</code>.</p>
+  <pre><code>authors.stream()
+    .filter(a -&gt; a.isActive())
+    .map(Author::getName)
+    .toList();</code></pre>
+</div>
+
+<hr>
+
+<h2 id="wspolbieznosc" class="must-know">Współbieżność</h2>
+
+<div class="feat">
+  <h3>Coroutines</h3>
+  <p><strong>Co robi:</strong> Lekkie „wątky” w bibliotece (kotlinx.coroutines) — <code>suspend</code>, strukturalna współbieżność, cancellation, async/await w składni. Główna przewaga Kotlina na I/O.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>suspend fun fetchAuthors(): List&lt;Author&gt; =
+    withContext(Dispatchers.IO) { repo.loadAll() }
+
+val authors = async { fetchAuthors() }</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Virtual Threads (J21+) — synchroniczny styl bez callbacków; Structured Concurrency (<code>StructuredTaskScope</code>, preview w 25). Brak <code>suspend</code> w języku — CompletableFuture lub czysty sync na virtual thread.</p>
+  <pre><code>try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+    Subtask&lt;List&lt;Author&gt;&gt; t = scope.fork(() -&gt; repo.loadAll());
+    scope.join();
+    var authors = t.get();
+}
+// lub prościej na virtual thread:
+try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
+    ex.submit(() -&gt; repo.loadAll()).get();
+}</code></pre>
+</div>
+
+<div class="feat">
+  <h3>Flow (cold stream)</h3>
+  <p><strong>Co robi:</strong> Asynchroniczny strumień wartości z backpressure — odpowiednik Rx bez pełnego Rx; <code>flow { emit() }</code>, operatory jak w kolekcjach.</p>
+  <span class="lang lang-kotlin">Kotlin</span>
+  <pre><code>fun events(): Flow&lt;Event&gt; = flow {
+    while (true) emit(readEvent())
+}</code></pre>
+  <span class="lang lang-java">Java 25</span>
+  <p><strong>Jak w Javie:</strong> Reactive Streams (Project Reactor, RxJava), <code>Stream</code> (synchroniczny), lub async generatorów — brak w standard library.</p>
+  <pre><code>Flux&lt;Event&gt; events = Flux.create(sink -&gt; {
+    while (!sink.isCancelled()) sink.next(readEvent());
+});</code></pre>
+</div>
+
+<hr>
+
+<h2 id="java25">Kotlin vs Java 25 — co się zbliżyło</h2>
+<p>Java 25 nie „kopiuje” całego Kotlina, ale wiele luk zamyka:</p>
+
+<table>
+  <thead><tr><th>Cecha Kotlina</th><th>Odpowiednik w Java 25</th><th>Różnica</th></tr></thead>
+  <tbody>
+    <tr><td>Data class</td><td><code>record</code></td><td>Record bez <code>copy</code>; mutability tylko przez nową instancję</td></tr>
+    <tr><td>Sealed</td><td><code>sealed</code></td><td>Prawie 1:1</td></tr>
+    <tr><td>Smart cast</td><td>Pattern <code>instanceof</code></td><td>Prawie 1:1</td></tr>
+    <tr><td><code>when</code></td><td>Switch expression + patterns</td><td>Java wymaga <code>case</code>; Kotlin <code>is</code></td></tr>
+    <tr><td><code>var</code></td><td><code>var</code> (J10)</td><td>Oba — inferencja lokalna</td></tr>
+    <tr><td>Coroutines</td><td>Virtual Threads + Structured Concurrency</td><td>Java — OS/JVM threads; Kotlin — lekki scheduler w lib</td></tr>
+    <tr><td>Null safety w typie</td><td>—</td><td>Java nadal bez <code>String?</code></td></tr>
+    <tr><td>Extensions</td><td>—</td><td>Tylko static utils</td></tr>
+    <tr><td><code>fun main()</code></td><td><code>void main()</code> (JEP 512)</td><td>Oba uproszczają entry point</td></tr>
+    <tr><td>Scoped Values</td><td><code>ScopedValue</code> (J25)</td><td>Zamiennik ThreadLocal pod virtual threads — Kotlin używa coroutine context</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Kiedy Kotlin:</strong> Android, multiplatform (KMP), team preferuje składnię, coroutines/Flow w całym stacku. <strong>Kiedy Java 25:</strong> ekosystem czysto JVM/Spring bez Kotlina, rekordy + virtual threads wystarczą, zero dodatkowego runtime (coroutines lib).</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ul>
+  <li><strong>Platform types z Javy</strong> — <code>String!</code> z Javy w Kotlinie to „unknown nullability” — traktuj jak nullable w API.</li>
+  <li><strong><code>!!</code> zamiast safe call</strong> — wraca NPE; w Javie też, ale w Kotlinie wygląda „bezpiecznie”.</li>
+  <li><strong>Extension ukrywa metodę</strong> — extension nie nadpisuje metody klasy; kolejność importów ma znaczenie.</li>
+  <li><strong><code>data class</code> z mutowalnymi polami</strong> — <code>copy</code> shallow; mutowalny <code>var</code> w data class psuje immutability.</li>
+  <li><strong>Coroutine na Main bez <code>Dispatchers</code></strong> — blokujesz UI / event loop.</li>
+  <li><strong>GlobalScope</strong> — brak structured concurrency; wycieki i trudny cancellation.</li>
+  <li><strong>Mylenie <code>runBlocking</code> z produkcją</strong> — tylko testy / main; w serwisie użyj scope z lifecycle.</li>
+  <li><strong>Java: Optional w polach encji</strong> — antywzorzec; Optional tylko w return type API.</li>
+  <li><strong>Java: ignorowanie virtual threads przy migracji z Kotlina</strong> — nie 1:1 z coroutines, ale podobny model I/O.</li>
+  <li><strong>Mieszanie stylów w jednym module</strong> — half Kotlin half Java beans bez records/data class — boilerplate wraca.</li>
+</ul>
+
+</body>
+</html>
