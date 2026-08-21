@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REST + OpenAPI</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #059669;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .m {
+      display: inline-block;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.1em 0.5em;
+      border-radius: 4px;
+    }
+    .m-get { background: #d1fae5; color: #065f46; }
+    .m-post { background: #dbeafe; color: #1d4ed8; }
+    .m-put { background: #fef3c7; color: #92400e; }
+    .m-patch { background: #ede9fe; color: #6d28d9; }
+    .m-delete { background: #fee2e2; color: #b91c1c; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #ecfdf5; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>REST + OpenAPI</h1>
+<p class="meta">REST: ograniczenia Fieldinga, zasoby, metody HTTP, kody statusów, HATEOAS · OpenAPI 3.x: kontrakt, generowanie kodu, contract-first<br>
+Format: HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#co-to">Co to jest REST</a></li>
+    <li><a href="#zasoby">Zasoby i URI</a></li>
+    <li><a href="#metody">Metody HTTP ★</a></li>
+    <li><a href="#kody">Kody statusów ★</a></li>
+    <li><a href="#naglowki">Nagłówki: negocjacja, cache, wersjonowanie</a></li>
+    <li><a href="#rmm">Richardson Maturity Model i HATEOAS</a></li>
+    <li><a href="#openapi">OpenAPI — specyfikacja</a></li>
+    <li><a href="#praktyka">OpenAPI w praktyce</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="co-to">Co to jest REST</h2>
+<p><strong>REST</strong> (Representational State Transfer) to <strong>styl architektoniczny</strong> opisany przez Roya Fieldinga w dysertacji z 2000 r. Nie jest protokołem ani standardem — to zestaw ograniczeń. API spełniające je nazywa się „RESTful"; w praktyce większość tzw. REST API to po prostu HTTP + JSON na poziomie 2 skali Richardsona.</p>
+
+<table>
+  <thead><tr><th>Ograniczenie</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Client–Server</strong></td><td>Separacja klienta (UI) od serwera (dane) — rozwijają się niezależnie</td></tr>
+    <tr><td><strong>Stateless</strong></td><td>Każde żądanie zawiera wszystko, co potrzebne; serwer nie trzyma sesji — token w nagłówku, nie w pamięci serwera</td></tr>
+    <tr><td><strong>Cacheable</strong></td><td>Odpowiedzi oznaczone jako cache'owalne (ETag, Cache-Control) — klient i proxy mogą je przechowywać</td></tr>
+    <tr><td><strong>Uniform Interface</strong></td><td>Jednolity interfejs: zasoby adresowane URI, manipulacja przez reprezentacje, standardowe metody HTTP, HATEOAS</td></tr>
+    <tr><td><strong>Layered System</strong></td><td>Pośrednicy (proxy, gateway, load balancer) przezroczysti dla klienta</td></tr>
+    <tr><td><strong>Code on Demand</strong></td><td>Opcjonalne: serwer może wysłać kod do wykonania (np. JS) — jedynie nieobowiązkowe ograniczenie</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="zasoby">Zasoby i URI</h2>
+<p><strong>Zasób (resource)</strong> to rzeczownik, nie czasownik. URI identyfikuje <em>co</em>, metoda HTTP mówi <em>co z tym zrobić</em>.</p>
+
+<pre><code>DOBRZE                          ŹLE
+/authors                        /getAuthors
+/authors/42                     /getAuthor?id=42
+POST /authors                   /createAuthor
+/authors/42/titles              /getTitlesForAuthor
+DELETE /authors/42              /deleteAuthor?id=42</code></pre>
+
+<ul>
+  <li><strong>Kolekcja vs element:</strong> <code>/authors</code> (lista) vs <code>/authors/42</code> (jeden zasób)</li>
+  <li><strong>Zagnieżdżanie płytkie</strong> — max 2 poziomy: <code>/authors/42/titles</code>, głębiej lepiej <code>/titles?authorId=42</code></li>
+  <li><strong>Liczba mnoga</strong> dla kolekcji, spójnie w całym API</li>
+  <li><strong>Query string</strong> na filtry i paginację, nie na akcje: <code>?status=active&amp;page=2&amp;size=20&amp;sort=name</code></li>
+</ul>
+
+<hr>
+
+<h2 id="metody" class="must-know">Metody HTTP</h2>
+
+<table>
+  <thead><tr><th>Metoda</th><th>Semantyka</th><th>Bezpieczna</th><th>Idempotentna</th><th>Typowy sukces</th></tr></thead>
+  <tbody>
+    <tr><td><span class="m m-get">GET</span></td><td>Pobierz reprezentację zasobu</td><td>tak</td><td>tak</td><td>200 + body</td></tr>
+    <tr><td><span class="m m-post">POST</span></td><td>Utwórz podzasób / wykonaj akcję</td><td>nie</td><td>nie</td><td>201 + nagłówek Location</td></tr>
+    <tr><td><span class="m m-put">PUT</span></td><td>Zastąp zasób w całości (upsert na znanym URI)</td><td>nie</td><td>tak</td><td>200 / 204</td></tr>
+    <tr><td><span class="m m-patch">PATCH</span></td><td>Zmień częściowo (tylko podane pola)</td><td>nie</td><td>nie (zależy od formatu)</td><td>200 / 204</td></tr>
+    <tr><td><span class="m m-delete">DELETE</span></td><td>Usuń zasób</td><td>nie</td><td>tak</td><td>204 / 200</td></tr>
+    <tr><td>HEAD</td><td>Jak GET, ale bez body — metadane, sprawdzenie istnienia</td><td>tak</td><td>tak</td><td>200</td></tr>
+    <tr><td>OPTIONS</td><td>Dozwolone metody; CORS preflight</td><td>tak</td><td>tak</td><td>204</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Bezpieczna (safe)</strong>
+  <p>Nie zmienia stanu serwera — można ją wołać bez skutków. Crawlery i prefetch klika GET bez obaw.</p>
+</div>
+
+<div class="keyword">
+  <strong>Idempotentna</strong>
+  <p>Powtórzenie żądania N razy daje ten sam efekt co 1 raz. <code>DELETE /authors/42</code> dwa razy → autor nadal nie istnieje. Kluczowe przy retry po timeoutach.</p>
+</div>
+
+<p><strong>Pułapka:</strong> PUT zastępuje <em>całą</em> reprezentację — pominięte pola mogą zostać wyzerowane. Częściowa aktualizacja to PATCH (format JSON Merge Patch lub JSON Patch).</p>
+
+<hr>
+
+<h2 id="kody" class="must-know">Kody statusów HTTP</h2>
+
+<table>
+  <thead><tr><th>Grupa</th><th>Kod</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="4"><strong>2xx</strong> sukces</td><td>200 OK</td><td>GET/PATCH/PUT zwracające reprezentację</td></tr>
+    <tr><td>201 Created</td><td>POST utworzył zasób — obowiązkowo nagłówek <code>Location: /authors/43</code></td></tr>
+    <tr><td>202 Accepted</td><td>Przyjęte do asynchronicznego przetworzenia (kolejka, raport)</td></tr>
+    <tr><td>204 No Content</td><td>Sukces bez body — typowe dla DELETE i PUT</td></tr>
+    <tr><td rowspan="2"><strong>3xx</strong> przekierowania</td><td>301 Moved Permanently</td><td>Trwała zmiana URI (SEO, migracja)</td></tr>
+    <tr><td>304 Not Modified</td><td>Odpowiedź na warunkowy GET z <code>If-None-Match</code> — użyj cache</td></tr>
+    <tr><td rowspan="10"><strong>4xx</strong> wina klienta</td><td>400 Bad Request</td><td>Nieparsowalne żądanie, błąd walidacji pól</td></tr>
+    <tr><td>401 Unauthorized</td><td><strong>Brak uwierzytelnienia</strong> — nie wiem, kim jesteś (token brak/wygasł)</td></tr>
+    <tr><td>403 Forbidden</td><td>Wiem, kim jesteś, ale <strong>nie masz uprawnień</strong></td></tr>
+    <tr><td>404 Not Found</td><td>Zasób nie istnieje (albo ukrywamy, że istnieje)</td></tr>
+    <tr><td>405 Method Not Allowed</td><td>DELETE na kolekcji, gdy niedozwolone</td></tr>
+    <tr><td>409 Conflict</td><td>Konflikt stanu — duplikat emaila, edycja po cudzej zmianie</td></tr>
+    <tr><td>412 Precondition Failed</td><td><code>If-Match</code> nie przeszedł — optimistic locking</td></tr>
+    <tr><td>415 Unsupported Media Type</td><td>Klient wysłał XML zamiast JSON</td></tr>
+    <tr><td>422 Unprocessable Content</td><td>Składnia OK, ale semantycznie błędne (reguła biznesowa)</td></tr>
+    <tr><td>429 Too Many Requests</td><td>Rate limit — warto dodać <code>Retry-After</code></td></tr>
+    <tr><td rowspan="4"><strong>5xx</strong> wina serwera</td><td>500 Internal Server Error</td><td>Nieobsłużony wyjątek — bug, nie błąd klienta</td></tr>
+    <tr><td>502 Bad Gateway</td><td>Proxy/gateway dostał błędną odpowiedź z upstream</td></tr>
+    <tr><td>503 Service Unavailable</td><td>Przeciążenie, maintenance — <code>Retry-After</code></td></tr>
+    <tr><td>504 Gateway Timeout</td><td>Upstream nie odpowiedział w czasie</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Format błędów:</strong> standard <strong>RFC 9457 Problem Details</strong> — <code>Content-Type: application/problem+json</code> z polami <code>type</code>, <code>title</code>, <code>status</code>, <code>detail</code>, <code>instance</code>. Spring Boot 3 wspiera z pudełka (<code>spring.mvc.problemdetails.enabled=true</code>).</p>
+
+<p><strong>Pułapka:</strong> 401 vs 403 są odwrotnie niż sugerują nazwy — „Unauthorized" znaczy „nieuwierzytelniony", nie „nieautoryzowany".</p>
+
+<hr>
+
+<h2 id="naglowki">Nagłówki: negocjacja, cache, wersjonowanie</h2>
+
+<table>
+  <thead><tr><th>Nagłówek</th><th>Kierunek</th><th>Rola</th></tr></thead>
+  <tbody>
+    <tr><td><code>Accept</code> / <code>Content-Type</code></td><td>żądanie / obie</td><td>Negocjacja treści — co klient przyjmie vs co faktycznie wysłano (<code>application/json</code>)</td></tr>
+    <tr><td><code>Authorization</code></td><td>żądanie</td><td>Poświadczenia, typowo <code>Bearer &lt;token&gt;</code></td></tr>
+    <tr><td><code>Location</code></td><td>odpowiedź</td><td>URI nowego zasobu po 201</td></tr>
+    <tr><td><code>ETag</code> / <code>If-None-Match</code></td><td>odpowiedź / żądanie</td><td>Wersja reprezentacji → warunkowy GET i 304</td></tr>
+    <tr><td><code>If-Match</code></td><td>żądanie</td><td>Optimistic locking przy PUT/PATCH — 412 przy konflikcie</td></tr>
+    <tr><td><code>Cache-Control</code></td><td>obie</td><td><code>no-store</code>, <code>max-age=60</code>, <code>private</code></td></tr>
+    <tr><td><code>Retry-After</code></td><td>odpowiedź</td><td>Ile sekund poczekać przy 429 / 503</td></tr>
+    <tr><td><code>Idempotency-Key</code></td><td>żądanie</td><td>Klucz deduplikacji POST (płatności) — serwer zwraca wynik pierwszej próby</td></tr>
+  </tbody>
+</table>
+
+<pre><code>GET /authors/42
+→ 200 OK   ETag: "v17"
+
+GET /authors/42
+If-None-Match: "v17"
+→ 304 Not Modified          # bez body — klient bierze z cache
+
+PUT /authors/42
+If-Match: "v17"             # optimistic locking
+→ 412 Precondition Failed   # ktoś zmienił zasób w międzyczasie</code></pre>
+
+<h3>Wersjonowanie API</h3>
+<table>
+  <thead><tr><th>Sposób</th><th>Przykład</th><th>Plusy</th><th>Minusy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>URI</strong></td><td><code>/v1/authors</code></td><td>Widoczne, proste, dobrze się cache'uje</td><td>Wersjonuje całe API, nie zasób</td></tr>
+    <tr><td><strong>Media type</strong></td><td><code>Accept: application/vnd.app.v2+json</code></td><td>Czyste URI, zgodne z ideą REST</td><td>Niewidoczne, trudniej testować w przeglądarce</td></tr>
+    <tr><td><strong>Query param</strong></td><td><code>?version=2</code></td><td>Łatwe</td><td>Rzadkie, słabe dla cache</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="rmm">Richardson Maturity Model i HATEOAS</h2>
+<p>Skala dojrzałości API — Leonard Richardson (2008). Większość produkcyjnych „REST API" stoi na poziomie 2 i to wystarcza.</p>
+
+<pre><code>Poziom 3  HATEOAS          zasoby + metody + kody + linki w odpowiedziach
+Poziom 2  HTTP verbs       zasoby + poprawne metody i kody statusów   ← typowe API
+Poziom 1  Resources        wiele URI, ale wszystko POST-em
+Poziom 0  The Swamp of POX jeden URI, jeden POST (SOAP, XML-RPC)</code></pre>
+
+<p><strong>HATEOAS</strong> (Hypermedia as the Engine of Application State): odpowiedź zawiera linki do dozwolonych akcji — klient nie zna URI na sztywno, tylko „nawiguje" po API:</p>
+
+<pre><code>{
+  "id": 42,
+  "name": "Andrzej Sapkowski",
+  "_links": {
+    "self":   { "href": "/authors/42" },
+    "titles": { "href": "/authors/42/titles" },
+    "update": { "href": "/authors/42", "method": "PUT" }
+  }
+}</code></pre>
+
+<p><strong>Pułapka:</strong> nazywanie poziomu 2 „pełnym REST-em" — bez hypermediów to „HTTP API". HATEOAS w praktyce jest rzadki: klienci i tak piszą ścieżki na sztywno, a kontrakt opisuje OpenAPI.</p>
+
+<hr>
+
+<h2 id="openapi" class="must-know">OpenAPI — specyfikacja</h2>
+<p><strong>OpenAPI Specification (OAS)</strong> to standardowy, maszynowo czytelny opis HTTP API w YAML lub JSON. Wywodzi się ze <strong>Swagger Specification</strong> (2011); w 2015 przekazana pod Linux Foundation jako OpenAPI Initiative. Wersje: 2.0 (= Swagger), 3.0, <strong>3.1</strong> (pełna zgodność z JSON Schema 2020-12).</p>
+
+<p>Jeden dokument = <strong>kontrakt API</strong>. Z niego generujesz dokumentację, klientów, mocki i testy — bez czytania kodu serwera.</p>
+
+<h3>Struktura dokumentu</h3>
+<pre><code>openapi: 3.1.0
+info:        # tytuł, wersja, opis, kontakt
+servers:     # URL-e środowisk (dev, prod)
+paths:       # /authors/{id}: → get / put / delete → parameters, requestBody, responses
+components:  # schemas, securitySchemes, responses — re-użycie przez $ref
+security:    # globalnie lub per operacja
+tags:        # grupowanie operacji w dokumentacji</code></pre>
+
+<h3>Przykład — Authors API</h3>
+<pre><code>openapi: 3.1.0
+info:
+  title: Authors API
+  version: 1.0.0
+paths:
+  /authors:
+    get:
+      summary: Lista autorów
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: Strona autorów
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Author' }
+    post:
+      summary: Utwórz autora
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthorInput' }
+      responses:
+        '201': { description: Utworzono, headers: { Location: { schema: { type: string } } } }
+        '422': { description: Błąd walidacji }
+  /authors/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Autor
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Author' }
+        '404': { description: Nie znaleziono }
+components:
+  schemas:
+    Author:
+      type: object
+      required: [id, name]
+      properties:
+        id:   { type: integer, format: int64 }
+        name: { type: string, minLength: 1 }
+    AuthorInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+security:
+  - bearerAuth: []</code></pre>
+
+<hr>
+
+<h2 id="praktyka">OpenAPI w praktyce</h2>
+
+<h3>Contract-first vs code-first</h3>
+<table>
+  <thead><tr><th></th><th>Contract-first</th><th>Code-first</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Punkt startu</strong></td><td>Najpierw spec YAML, potem implementacja</td><td>Kod + adnotacje, spec generowany</td></tr>
+    <tr><td><strong>Gwarancja zgodności</strong></td><td>Wysoka — kod generowany/walidowany względem spec</td><td>Spec odzwierciedla kod „jak jest", razem z błędami</td></tr>
+    <tr><td><strong>Równoległa praca</strong></td><td>Frontend dostaje mock z spec od dnia 1</td><td>Spec dopiero po implementacji</td></tr>
+    <tr><td><strong>Narzędzia</strong></td><td>openapi-generator, Prism (mock)</td><td>springdoc-openapi (Spring Boot), Swashbuckle (.NET)</td></tr>
+    <tr><td><strong>Kiedy</strong></td><td>API publiczne, wiele zespołów, długi żywot kontraktu</td><td>API wewnętrzne, szybki CRUD, jeden zespół</td></tr>
+  </tbody>
+</table>
+
+<h3>Narzędzia</h3>
+<table>
+  <thead><tr><th>Narzędzie</th><th>Do czego</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Swagger UI / Redoc</strong></td><td>Interaktywna dokumentacja z pliku spec — „try it out"</td></tr>
+    <tr><td><strong>openapi-generator</strong></td><td>Generowanie klientów i serwerów (Java, TS, Python…)</td></tr>
+    <tr><td><strong>openapi-typescript</strong></td><td>Typy TS ze spec — fetch bez generatora runtime</td></tr>
+    <tr><td><strong>springdoc-openapi</strong></td><td>Spring Boot: spec i Swagger UI z adnotacji, <code>/v3/api-docs</code></td></tr>
+    <tr><td><strong>Spectral</strong></td><td>Lint spec — style guide (nazewnictwo, wymagane pola)</td></tr>
+    <tr><td><strong>Prism</strong></td><td>Mock server z samego spec — frontend bez backendu</td></tr>
+    <tr><td><strong>Schemathesis</strong></td><td>Fuzz testy kontraktowe — czy API trzyma się spec</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Pułapka (code-first):</strong> polimorfizm, projekcje i <code>Pageable</code> Springa generują złączone schematy — ratują adnotacje <code>@Schema</code>, ale spec łatwo rozjeżdża się z intencją. Przy API publicznym bezpieczniejszy jest contract-first.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>Czasowniki w URI</strong> — <code>/getAuthors</code>, <code>/createAuthor</code> zamiast zasobów i metod HTTP</li>
+  <li><strong>POST do wszystkiego</strong> — tracisz semantykę GET/PUT/DELETE, idempotencję i cache</li>
+  <li><strong>Zawsze 200 + błąd w body</strong> — kody statusów istnieją; klient nie powinien parsować body, by poznać wynik</li>
+  <li><strong>500 na błąd walidacji</strong> — błąd klienta to 4xx; 500 to bug po Twojej stronie</li>
+  <li><strong>Mylenie 401 i 403</strong> — 401: nie wiem, kim jesteś; 403: wiem i odmawiam</li>
+  <li><strong>Eksponowanie encji JPA jako API 1:1</strong> — wyciek modelu wewnętrznego, over-posting, cykle w JSON; używaj DTO</li>
+  <li><strong>Zmiana łamiąca kontrakt bez wersji</strong> — usunięcie/zmiana pola wymaga nowej wersji API; dodanie pola jest bezpieczne</li>
+  <li><strong>Endpoint bez paginacji</strong> — <code>GET /authors</code> zwracające 100 tys. rekordów; domyślny <code>page/size</code> od początku</li>
+  <li><strong>Spec rozjechany z kodem</strong> — dokumentacja kłamie; pilnuj contract-first albo testów kontraktowych w CI</li>
+  <li><strong>Brak idempotencji przy POST płatności</strong> — retry klienta po timeout = podwójne obciążenie; rozwiązuje <code>Idempotency-Key</code></li>
+</ol>
+
+</body>
+</html>
