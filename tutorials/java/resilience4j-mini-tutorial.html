@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resilience4j — odporność w Javie</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0d9488;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #ccfbf1; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .lib-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: #ccfbf1;
+      color: #0f766e;
+      padding: 0.15em 0.5em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Resilience4j</h1>
+<p class="meta">Circuit breaker, retry, bulkhead, rate limiter, time limiter — Java + Spring Boot<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#wzorce">Wzorce i moduły</a></li>
+    <li><a href="#circuit-breaker">Circuit Breaker</a></li>
+    <li><a href="#retry-bulkhead">Retry, Bulkhead, Rate/Time Limiter</a></li>
+    <li><a href="#spring">Spring Boot</a></li>
+    <li><a href="#dekoratory">Dekoratory i kolejność</a></li>
+    <li><a href="#metryki">Metryki i observability</a></li>
+    <li><a href="#alternatywy">vs Hystrix / Spring 7</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><span class="lib-tag">Resilience4j 2.x</span> Lekka biblioteka odporności dla Javy — następca Netflix Hystrix. Nie wymaga osobnego wątku ani serwera; wzorce jako małe, komponowalne moduły z funkcjonalnym API (<code>Vavr</code>-style <code>Try</code> opcjonalnie).</p>
+
+<p>Typowy use case: wołanie niestabilnego API, bazy lub zewnętrznego serwisu — ograniczasz kaskadę awarii, dajesz downstreamowi czas na recovery i chronisz własne zasoby (wątki, pamięć, CPU).</p>
+
+<div class="flow-box">
+<pre><code>Request → RateLimiter → Bulkhead → CircuitBreaker → Retry → TimeLimiter → downstream
+                ↑              ↑              ↑           ↑
+           limit RPS      izolacja      open = fail-fast  ponów błąd
+                          wątków/połączeń</code></pre>
+</div>
+
+<p>Pułapka: Resilience4j nie zastępuje dobrego timeoutu HTTP klienta (RestClient, WebClient) — to osobna warstwa. Łącz oba.</p>
+
+<hr>
+
+<h2 id="wzorce" class="must-know">Część 1 — Wzorce i moduły</h2>
+
+<table>
+  <thead>
+    <tr><th>Moduł</th><th>Co robi</th><th>Kiedy</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>resilience4j-circuitbreaker</code></td><td>Przerwanie wołań po serii błędów (open → half-open → closed)</td><td>Downstream pada lub jest wolny — fail-fast zamiast timeoutów w kolejce</td></tr>
+    <tr><td><code>resilience4j-retry</code></td><td>Ponawia wywołanie przy wybranych wyjątkach</td><td>Błędy przejściowe (503, timeout sieci)</td></tr>
+    <tr><td><code>resilience4j-bulkhead</code></td><td>Ogranicza równoległe wywołania (semaphore lub thread pool)</td><td>Ochrona przed zalaniem wątków / connection pool</td></tr>
+    <tr><td><code>resilience4j-ratelimiter</code></td><td>Limit wywołań w oknie czasu</td><td>Quota API, fair use, ochrona własnego serwisu</td></tr>
+    <tr><td><code>resilience4j-timelimiter</code></td><td>Przerywa wywołanie po czasie (Future / CompletableFuture)</td><td>Blokujące I/O bez wbudowanego timeoutu</td></tr>
+    <tr><td><code>resilience4j-cache</code></td><td>Cache wokół wywołania (Caffeine / JCache)</td><td>Fallback na dane z cache przy open CB</td></tr>
+  </tbody>
+</table>
+
+<p>Maven (wybierz moduły — nie musisz brać wszystkiego):</p>
+<pre><code>&lt;dependency&gt;
+  &lt;groupId&gt;io.github.resilience4j&lt;/groupId&gt;
+  &lt;artifactId&gt;resilience4j-spring-boot3&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;!-- lub osobno: circuitbreaker, retry, micrometer... --&gt;</code></pre>
+
+<hr>
+
+<h2 id="circuit-breaker" class="must-know">Część 2 — Circuit Breaker</h2>
+
+<h3>2.1 Stany</h3>
+<table>
+  <thead>
+    <tr><th>Stan</th><th>Zachowanie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>CLOSED</strong></td><td>Normalne wołania; liczy błędy w sliding window</td></tr>
+    <tr><td><strong>OPEN</strong></td><td>Natychmiast <code>CallNotPermittedException</code> — bez wołania downstream</td></tr>
+    <tr><td><strong>HALF_OPEN</strong></td><td>Testowe wołania (np. 3); sukces → CLOSED, błąd → OPEN</td></tr>
+    <tr><td><strong>DISABLED / FORCED_OPEN</strong></td><td>Ręczne wyłączenie lub wymuszenie open (maintenance)</td></tr>
+  </tbody>
+</table>
+
+<h3>2.2 Konfiguracja (programowo)</h3>
+<pre><code>CircuitBreakerConfig config = CircuitBreakerConfig.custom()
+    .failureRateThreshold(50)              // % błędów → open
+    .slowCallRateThreshold(50)             // % wolnych wołań → open
+    .slowCallDurationThreshold(Duration.ofSeconds(2))
+    .waitDurationInOpenState(Duration.ofSeconds(30))
+    .permittedNumberOfCallsInHalfOpenState(3)
+    .slidingWindowType(SlidingWindowType.COUNT_BASED)
+    .slidingWindowSize(10)
+    .minimumNumberOfCalls(5)               // zanim ocenisz failure rate
+    .recordExceptions(IOException.class, TimeoutException.class)
+    .ignoreExceptions(BusinessException.class)
+    .build();
+
+CircuitBreaker cb = CircuitBreaker.of("paymentApi", config);</code></pre>
+
+<h3>2.3 Użycie</h3>
+<pre><code>Supplier&lt;Payment&gt; decorated = CircuitBreaker
+    .decorateSupplier(cb, () -&gt; paymentClient.charge(order));
+
+try {
+    Payment p = decorated.get();
+} catch (CallNotPermittedException e) {
+    return fallback(order);  // CB open — nie dzwonisz do API
+}</code></pre>
+
+<div class="trap"><strong>Pułapka:</strong> <code>failureRateThreshold</code> liczy się z okna — przy małym <code>slidingWindowSize</code> i niskim ruchu jeden błąd może otworzyć breaker (albo odwrotnie: duże okno = wolna reakcja). Dostosuj <code>minimumNumberOfCalls</code>.</div>
+
+<hr>
+
+<h2 id="retry-bulkhead">Część 3 — Retry, Bulkhead, Rate/Time Limiter</h2>
+
+<h3>3.1 Retry</h3>
+<pre><code>RetryConfig retryConfig = RetryConfig.custom()
+    .maxAttempts(3)
+    .waitDuration(Duration.ofMillis(500))
+    .intervalFunction(IntervalFunction.ofExponentialBackoff(500, 2))
+    .retryOnException(e -&gt; e instanceof IOException)
+    .retryOnResult(response -&gt; response.getStatus() == 503)
+    .build();
+
+Retry retry = Retry.of("paymentApi", retryConfig);
+
+Supplier&lt;Payment&gt; withRetry = Retry.decorateSupplier(retry, decorated);</code></pre>
+<p>Retry <strong>po</strong> circuit breakerze w łańcuchu — inaczej ponawiasz wołania do padającego serwisu zamiast fail-fast.</p>
+
+<h3>3.2 Bulkhead</h3>
+<table>
+  <thead>
+    <tr><th>Typ</th><th>Mechanizm</th><th>Uwagi</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Semaphore</strong> (default)</td><td>Licznik równoległych wołań w tym samym wątku</td><td>Lekki; OK na virtual threads</td></tr>
+    <tr><td><strong>Thread pool</strong></td><td>Osobna pula wątków dla wywołań</td><td>Izolacja CPU; nie mnoż pul na virtual threads bez potrzeby</td></tr>
+  </tbody>
+</table>
+<pre><code>Bulkhead bulkhead = Bulkhead.of("paymentApi",
+    BulkheadConfig.custom().maxConcurrentCalls(25).build());
+
+Supplier&lt;Payment&gt; isolated = Bulkhead.decorateSupplier(bulkhead, withRetry);</code></pre>
+
+<h3>3.3 Rate Limiter</h3>
+<pre><code>RateLimiter limiter = RateLimiter.of("externalApi",
+    RateLimiterConfig.custom()
+        .limitForPeriod(100)
+        .limitRefreshPeriod(Duration.ofSeconds(1))
+        .timeoutDuration(Duration.ofMillis(200))  // czekaj max 200 ms na permit
+        .build());</code></pre>
+
+<h3>3.4 Time Limiter</h3>
+<pre><code>TimeLimiter timeLimiter = TimeLimiter.of(Duration.ofSeconds(3));
+
+Callable&lt;Payment&gt; futureCall = TimeLimiter.decorateFutureSupplier(
+    timeLimiter, () -&gt; CompletableFuture.supplyAsync(() -&gt; client.charge(order)));</code></pre>
+<p>Na blokującym kodzie z virtual threads często wystarczy timeout w kliencie HTTP; TimeLimiter ma sens przy <code>CompletableFuture</code> / async.</p>
+
+<hr>
+
+<h2 id="spring" class="must-know">Część 4 — Spring Boot</h2>
+
+<h3>4.1 Adnotacje (AOP)</h3>
+<pre><code>@Service
+public class PaymentService {
+
+    @CircuitBreaker(name = "paymentApi", fallbackMethod = "chargeFallback")
+    @Retry(name = "paymentApi")
+    @Bulkhead(name = "paymentApi")
+  public Payment charge(Order order) {
+        return client.charge(order);
+    }
+
+    private Payment chargeFallback(Order order, Exception ex) {
+        return Payment.pending(order.getId());
+    }
+}</code></pre>
+
+<p><code>application.yml</code>:</p>
+<pre><code>resilience4j.circuitbreaker:
+  instances:
+    paymentApi:
+      slidingWindowSize: 20
+      failureRateThreshold: 50
+      waitDurationInOpenState: 30s
+      registerHealthIndicator: true
+
+resilience4j.retry:
+  instances:
+    paymentApi:
+      maxAttempts: 3
+      waitDuration: 500ms
+      enableExponentialBackoff: true
+      exponentialBackoffMultiplier: 2
+
+resilience4j.bulkhead:
+  instances:
+    paymentApi:
+      maxConcurrentCalls: 25</code></pre>
+
+<h3>4.2 Health i Actuator</h3>
+<pre><code>management.health.circuitbreakers.enabled: true
+management.endpoints.web.exposure.include: health,metrics,circuitbreakers</code></pre>
+<p>Endpoint <code>/actuator/circuitbreakers</code> pokazuje stany instancji — przydatne przy debugowaniu open breakerów na prod.</p>
+
+<h3>4.3 Spring Cloud Circuit Breaker</h3>
+<p>Abstrakcja <code>org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j</code> — <code>CircuitBreakerFactory</code>, integracja z <code>@CircuitBreaker</code> w Spring Cloud. Pod spodem Resilience4j; wybierz jedną warstwę (adnotacje R4j vs factory SC) — nie duplikuj konfiguracji.</p>
+
+<hr>
+
+<h2 id="dekoratory">Część 5 — Dekoratory i kolejność</h2>
+
+<p>Pełny łańcuch jednym wywołaniem:</p>
+<pre><code>Supplier&lt;Payment&gt; supplier = () -&gt; client.charge(order);
+
+supplier = RateLimiter.decorateSupplier(rateLimiter, supplier);
+supplier = Bulkhead.decorateSupplier(bulkhead, supplier);
+supplier = CircuitBreaker.decorateSupplier(circuitBreaker, supplier);
+supplier = Retry.decorateSupplier(retry, supplier);
+
+Payment result = supplier.get();</code></pre>
+
+<p>Albo <code>Decorators.ofSupplier(supplier)</code>:</p>
+<pre><code>Supplier&lt;Payment&gt; decorated = Decorators.ofSupplier(() -&gt; client.charge(order))
+    .withRateLimiter(rateLimiter)
+    .withBulkhead(bulkhead)
+    .withCircuitBreaker(circuitBreaker)
+    .withRetry(retry)
+    .decorate();</code></pre>
+
+<table>
+  <thead>
+    <tr><th>Kolejność (zewnętrzny → wewnętrzny)</th><th>Dlaczego</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>RateLimiter → Bulkhead → CircuitBreaker → Retry</td><td>Najpierw limit RPS i wątków; CB fail-fast przed retry; retry tylko gdy CB closed</td></tr>
+    <tr><td>Retry wewnątrz CB</td><td>Błędy z retry liczą się do failure rate — CB widzi realny stan downstream</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> Retry <strong>na zewnątrz</strong> circuit breakera — każda próba to osobne wołanie przy OPEN; dostajesz lawinę wyjątków zamiast jednego fail-fast.</div>
+
+<hr>
+
+<h2 id="metryki">Część 6 — Metryki i observability</h2>
+
+<p>Resilience4j integruje się z Micrometer — tagi <code>name</code> instancji, stan CB, liczniki wywołań, failure rate, slow calls.</p>
+
+<pre><code>// programowo — rejestracja eventów
+cb.getEventPublisher()
+    .onStateTransition(e -&gt; log.warn("CB {}: {} -&gt; {}",
+        e.getCircuitBreakerName(),
+        e.getStateTransition().getFromState(),
+        e.getStateTransition().getToState()));</code></pre>
+
+<table>
+  <thead>
+    <tr><th>Metryka (przykład)</th><th>Znaczenie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>resilience4j.circuitbreaker.calls</code></td><td>kind: successful, failed, not_permitted</td></tr>
+    <tr><td><code>resilience4j.circuitbreaker.state</code></td><td>0=closed, 1=open, 2=half_open, …</td></tr>
+    <tr><td><code>resilience4j.retry.calls</code></td><td>retry_without_success, retry_with_success</td></tr>
+    <tr><td><code>resilience4j.bulkhead.available_concurrent_calls</code></td><td>Ile slotów zostało</td></tr>
+  </tbody>
+</table>
+
+<p>Alertuj na: długi stan OPEN, wysoki <code>not_permitted</code>, bulkhead rejections, retry storms. Dashboard per instancja (<code>paymentApi</code>, <code>inventoryApi</code>).</p>
+
+<hr>
+
+<h2 id="alternatywy">Część 7 — Resilience4j vs alternatywy</h2>
+
+<table>
+  <thead>
+    <tr><th></th><th>Resilience4j</th><th>Netflix Hystrix</th><th>Spring 7 <code>@Retryable</code></th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Status</td><td>Aktywny (2.x)</td><td>Maintenance mode / deprecated</td><td>Wbudowany w spring-core (FW 7)</td></tr>
+    <tr><td>Circuit breaker</td><td>Tak</td><td>Tak</td><td>Nie (tylko retry + concurrency limit)</td></tr>
+    <tr><td>Bulkhead / rate limit</td><td>Tak</td><td>Ograniczony (thread pool)</td><td><code>@ConcurrencyLimit</code> tylko</td></tr>
+    <tr><td>Overhead</td><td>Niski, bez osobnego wątku</td><td>Wysoki (Hystrix thread pool)</td><td>Minimalny dla retry</td></tr>
+    <tr><td>Spring Boot</td><td>Starter + adnotacje</td><td>Brak wsparcia w Boot 3+</td><td><code>@EnableResilientMethods</code></td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Kiedy Resilience4j</strong>
+  <p>Pełny zestaw wzorców, metryki Micrometer, dojrzały ekosystem — typowy wybór w microservices na Spring Boot 3.</p>
+</div>
+
+<div class="keyword">
+  <strong>Kiedy Spring 7 retry</strong>
+  <p>Proste ponawianie metod bez CB/bulkhead — mniej zależności; nie zastępuje circuit breakera przy kaskadach awarii.</p>
+</div>
+
+<div class="keyword">
+  <strong>Kiedy service mesh (Istio, Linkerd)</strong>
+  <p>Retry/timeout na poziomie sidecar — polityki per deployment; R4j nadal sensowny w aplikacji na logikę biznesową (fallback, które błędy retryować).</p>
+</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong>Brak fallbacku przy OPEN</strong> — użytkownik dostaje 500 zamiast degradacji (cache, domyślna odpowiedź, kolejka).</li>
+  <li><strong>Retry na zewnątrz circuit breakera</strong> — lawina wołań do padającego serwisu; zła kolejność dekoratorów.</li>
+  <li><strong>Retry na błędy nienaprawialne</strong> — 400, 404, <code>BusinessException</code> — marnujesz czas i obciążasz downstream (<code>ignoreExceptions</code>).</li>
+  <li><strong>Jeden globalny CB na całą aplikację</strong> — awaria jednego endpointu otwiera breaker dla wszystkich; osobna instancja per downstream / operacja.</li>
+  <li><strong>Zbyt agresywny failure rate</strong> — <code>minimumNumberOfCalls=1</code> + małe okno = flaky breaker przy sporadycznym ruchu.</li>
+  <li><strong>Bulkhead thread pool × virtual threads</strong> — niepotrzebna pula platform threads; preferuj semaphore bulkhead na Loom.</li>
+  <li><strong>Brak timeoutu HTTP</strong> — TimeLimiter/CB nie zastąpią <code>connectTimeout</code>/<code>readTimeout</code> w kliencie.</li>
+  <li><strong>Fallback wywołuje ten sam downstream</strong> — fallback musi być tańszy (cache, statyczna odpowiedź, inny serwis).</li>
+  <li><strong>Ignorowanie metryk <code>not_permitted</code></strong> — użytkownicy widzą błędy, a Ty nie wiesz, że CB jest open od godziny.</li>
+  <li><strong>Testy bez symulacji open</strong> — unit testy z <code>CircuitBreakerRegistry</code> + wymuszenie stanu (<code>transitionToOpenState()</code>) sprawdzają fallback.</li>
+</ol>
+
+</body>
+</html>
