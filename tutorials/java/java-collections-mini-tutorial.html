@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Java Collections — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #ea580c;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .concept-card strong { color: var(--accent); }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.35rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    .qa-item p + p { margin-top: 0.5rem; }
+
+    .solution-label {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-senior { background: #dbeafe; color: #1e40af; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Java Collections — mini-tutorial</h1>
+<p class="meta">Listy · mapy · zbiory · kolejki · złożoność · kiedy co w biznesie · pytania rekrutacyjne<br>
+Format: HTML (otwórz w przeglądarce — podwójne kliknięcie lub przeciągnij na kartę)</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Fundamenty i hierarchia</a></li>
+    <li><a href="#czesc-2">Listy — ArrayList, LinkedList</a></li>
+    <li><a href="#czesc-3">Mapy — HashMap, TreeMap, LinkedHashMap</a></li>
+    <li><a href="#czesc-4">Zbiory — HashSet, TreeSet</a></li>
+    <li><a href="#czesc-5">Kolejki, stosy, Deque</a></li>
+    <li><a href="#czesc-6">Kiedy co w praktyce biznesowej</a></li>
+    <li><a href="#czesc-7">Współbieżność w kolekcjach</a></li>
+    <li><a href="#czesc-8">Typowe błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Fundamenty i hierarchia</h2>
+
+<h3>1.1 Co to jest Java Collections Framework</h3>
+<p>Collections Framework to zestaw interfejsów i gotowych implementacji do przechowywania grup obiektów. Zamiast pisać własne tablice z ręcznym resize, używasz <code>List</code>, <code>Set</code>, <code>Map</code> lub <code>Queue</code> — z przewidywalnym API i złożonością operacji.</p>
+
+<h3>1.2 Hierarchia (skrót)</h3>
+<pre><code>Iterable
+ └── Collection
+      ├── List        (kolejność, duplikaty OK)
+      ├── Set         (unikalne elementy)
+      └── Queue / Deque
+
+Map — osobna gałąź (klucz → wartość, nie dziedziczy Collection)</code></pre>
+
+<p><strong>Zasada:</strong> programuj na interfejsie (<code>List&lt;Order&gt;</code>), twórz konkretną implementację (<code>new ArrayList&lt;&gt;()</code>). Ułatwia testy (mock), zamianę implementacji i czytelność kodu.</p>
+
+<h3>1.3 equals, hashCode i kontrakty</h3>
+<p><code>HashMap</code> i <code>HashSet</code> opierają się na <code>hashCode()</code> (kubełek) i <code>equals()</code> (porównanie w kubełku). Jeśli dwa obiekty są równe (<code>equals</code> = true), muszą mieć ten sam <code>hashCode</code>. Odwrotnie nie musi być prawda — kolizje hash są normalne.</p>
+<p><strong>Pułapka:</strong> mutowalny obiekt jako klucz w <code>HashMap</code> — po zmianie pola używanego w <code>hashCode</code> klucz „ginie” w mapie.</p>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Listy: ArrayList vs LinkedList</h2>
+
+<h3>2.1 ArrayList — tablica dynamiczna</h3>
+<p>Wewnętrznie: tablica <code>Object[] elementData</code>. Gdy brakuje miejsca — alokacja nowej, większej tablicy i kopiowanie (zwykle ×1,5 rozmiaru). Elementy leżą obok siebie w pamięci — szybki dostęp po indeksie.</p>
+
+<pre><code>// uproszczony model ArrayList
+Object[] data = new Object[10];
+// get(i)     → data[i]                    O(1)
+// add(end)   → data[size++]               O(1) amortyzowane
+// add(0, x)  → przesuń wszystko w prawo   O(n)
+// remove(i)  → przesuń elementy w lewo     O(n)</code></pre>
+
+<div class="concept-card">
+  <strong>ArrayList — kiedy w biznesie</strong>
+  <ul>
+    <li>Domyślna lista — 99% przypadków (<code>List.of()</code>, wyniki z repozytorium, DTO)</li>
+    <li>Częsty odczyt po indeksie: paginacja, <code>items.get(page * size)</code></li>
+    <li>Iteracja sekwencyjna po dużej liście zamówień, faktur, logów</li>
+    <li>Dodawanie na końcu listy (append) — np. zbieranie wyników w pętli</li>
+  </ul>
+</div>
+
+<h3>2.2 LinkedList — lista dwukierunkowa</h3>
+<p>Wewnętrznie: łańcuch węzłów (<code>Node</code>). Każdy węzeł ma trzy pola: <code>prev</code> (wskaźnik na poprzedni), <code>next</code> (wskaźnik na następny) i <code>item</code> (dane). Brak ciągłej tablicy — dostęp po indeksie wymaga przejścia od początku lub końca.</p>
+
+<pre><code>// uproszczony model LinkedList
+static class Node {
+    Node prev;   // ← wskaźnik na poprzedni element
+    Node next;   // → wskaźnik na następny element
+    Object item;
+}
+// get(i)           → przejdź i kroków od head/tail   O(n)
+// addFirst/Last    → podłącz węzeł                    O(1)
+// removeFirst/Last → odłącz węzeł                      O(1)
+// add(i, x)        → znajdź pozycję + wstaw           O(n)</code></pre>
+
+<div class="concept-card">
+  <strong>LinkedList — kiedy w biznesie</strong>
+  <ul>
+    <li>Rzadko jako „zwykła lista” — <code>ArrayList</code> jest szybszy przez cache CPU (lokalność pamięci)</li>
+    <li>Implementacja <code>Deque</code> — kolejka FIFO po obu stronach (starszy kod)</li>
+    <li>Scenariusze z częstym dodawaniem/usuwaniem na początku <strong>i</strong> znanym małym rozmiarem</li>
+    <li>W nowym kodzie: zamiast <code>LinkedList</code> jako listy → <code>ArrayDeque</code> jako kolejka</li>
+  </ul>
+</div>
+
+<h3>2.3 Porównanie list</h3>
+<table>
+  <thead>
+    <tr><th>Operacja</th><th>ArrayList</th><th>LinkedList</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>get(i)</code> / <code>set(i)</code></td><td>O(1)</td><td>O(n)</td></tr>
+    <tr><td><code>add(end)</code></td><td>O(1)*</td><td>O(1)</td></tr>
+    <tr><td><code>add(0, x)</code> / <code>remove(0)</code></td><td>O(n)</td><td>O(1)**</td></tr>
+    <tr><td>Pamięć</td><td>mniej overheadu</td><td>2 wskaźniki + obiekt na element</td></tr>
+    <tr><td>Iteracja</td><td>szybka (cache-friendly)</td><td>wolniejsza (rozproszone węzły)</td></tr>
+  </tbody>
+</table>
+<p>* amortyzowane &nbsp; ** jeśli masz referencję do węzła — przy indeksie nadal O(n)</p>
+
+<h3>2.4 Inne listy (krótko)</h3>
+<ul>
+  <li><code>Vector</code> — zsynchronizowany <code>ArrayList</code>; legacy, nie używaj w nowym kodzie</li>
+  <li><code>CopyOnWriteArrayList</code> — kopia przy każdym zapisie; czytania bez blokady (listenery, snapshot konfiguracji)</li>
+  <li><code>Collections.synchronizedList()</code> — opakowanie; lepsze: <code>CopyOnWriteArrayList</code> lub struktury z <code>java.util.concurrent</code></li>
+</ul>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Mapy: HashMap, LinkedHashMap, TreeMap</h2>
+
+<h3>3.1 HashMap — tablica kubełków + lista/drzewo</h3>
+<p>Klucz → <code>hashCode()</code> → indeks kubełka. W kubełku: lista (Java 7) lub lista/drzewo (Java 8+, gdy &gt;8 elementów w kubełku). Średnio O(1) dla <code>get</code>/<code>put</code>.</p>
+
+<pre><code>// model logiczny
+bucket[index] → Node(key, value, next) → Node → ...
+// od Java 8: przy wielu kolizjach → drzewo binarne w kubełku</code></pre>
+
+<div class="concept-card">
+  <strong>HashMap — kiedy w biznesie</strong>
+  <ul>
+    <li>Lookup po ID: <code>Map&lt;Long, Customer&gt;</code>, cache w pamięci</li>
+    <li>Grupowanie: <code>ordersByStatus.computeIfAbsent(status, k -&gt; new ArrayList&lt;&gt;())</code></li>
+    <li>Liczniki, agregaty: <code>merge()</code>, <code>compute()</code></li>
+    <li>Indeks pomocniczy z listy encji przed zapisem batch</li>
+  </ul>
+</div>
+
+<h3>3.2 LinkedHashMap — HashMap + lista dwukierunkowa</h3>
+<p>Ta sama struktura co <code>HashMap</code>, plus łańcuch węzłów w kolejności wstawiania (lub dostępu — tryb <code>accessOrder</code>). Iteracja w przewidywalnej kolejności.</p>
+
+<div class="concept-card">
+  <strong>LinkedHashMap — kiedy w biznesie</strong>
+  <ul>
+    <li>Prosty LRU cache — nadpisz <code>removeEldestEntry()</code></li>
+    <li>Kolejność wyświetlania zgodna z dodaniem (formularz, kreator kroków)</li>
+    <li>Debug — „w jakiej kolejności co wpadło do mapy”</li>
+  </ul>
+</div>
+
+<pre><code>Map&lt;String, Product&gt; lru = new LinkedHashMap&lt;&gt;(16, 0.75f, true) {
+    @Override protected boolean removeEldestEntry(Map.Entry&lt;String, Product&gt; e) {
+        return size() &gt; 1000;
+    }
+};</code></pre>
+
+<h3>3.3 TreeMap — czerwono-czarne drzewo (Red-Black Tree)</h3>
+<p>Klucze posortowane naturalnie (<code>Comparable</code>) lub przez <code>Comparator</code>. <code>get</code>/<code>put</code>/<code>remove</code> — O(log n). Brak kubełków hash — porównania kluczy.</p>
+
+<div class="concept-card">
+  <strong>TreeMap — kiedy w biznesie</strong>
+  <ul>
+    <li>Raporty po dacie/kluczu: <code>TreeMap&lt;LocalDate, BigDecimal&gt;</code></li>
+    <li><code>firstKey()</code>, <code>lastKey()</code>, <code>subMap(from, to)</code> — zakresy czasowe</li>
+    <li>Kolejka priorytetowa po kluczu (rzadziej niż <code>PriorityQueue</code>)</li>
+  </ul>
+</div>
+
+<h3>3.4 Porównanie map</h3>
+<table>
+  <thead>
+    <tr><th>Mapa</th><th>Kolejność</th><th>Null klucz</th><th>Złożoność get/put</th><th>Przypadek biznesowy</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>HashMap</code></td><td>brak*</td><td>1 null (JDK)</td><td>O(1) śr.</td><td>domyślna mapa, cache</td></tr>
+    <tr><td><code>LinkedHashMap</code></td><td>insert / access</td><td>jak HashMap</td><td>O(1) śr.</td><td>LRU, stabilna iteracja</td></tr>
+    <tr><td><code>TreeMap</code></td><td>posortowana</td><td>nie</td><td>O(log n)</td><td>zakresy, rankingi</td></tr>
+    <tr><td><code>ConcurrentHashMap</code></td><td>brak</td><td>nie</td><td>O(1) śr.</td><td>współdzielony stan wątków</td></tr>
+  </tbody>
+</table>
+<p>* kolejność iteracji może się zmieniać po rehash</p>
+
+<hr>
+
+<h2 id="czesc-4">Część 4 — Zbiory: HashSet, LinkedHashSet, TreeSet</h2>
+
+<h3>4.1 Implementacja przez mapę</h3>
+<p><code>HashSet</code> to <code>HashMap</code> z pustymi wartościami — element = klucz. <code>add(x)</code> = <code>map.put(x, PRESENT)</code>. Dlatego kontrakt <code>equals</code>/<code>hashCode</code> jest krytyczny.</p>
+
+<h3>4.2 Kiedy który Set</h3>
+<table>
+  <thead>
+    <tr><th>Set</th><th>Właściwość</th><th>Biznes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>HashSet</code></td><td>O(1) śr., brak kolejności</td><td>Unikalne ID już przetworzonych eventów, deduplikacja</td></tr>
+    <tr><td><code>LinkedHashSet</code></td><td>O(1) + kolejność wstawiania</td><td>Unikalne, ale zachowaj kolejność pierwszego wystąpienia</td></tr>
+    <tr><td><code>TreeSet</code></td><td>posortowany</td><td>Top N unikalnych wartości, harmonogram po czasie</td></tr>
+  </tbody>
+</table>
+
+<pre><code>Set&lt;String&gt; seen = new HashSet&lt;&gt;();
+for (Event e : events) {
+    if (!seen.add(e.getId())) continue; // duplikat — pomiń
+    process(e);
+}</code></pre>
+
+<hr>
+
+<h2 id="czesc-5">Część 5 — Kolejki, stosy, Deque</h2>
+
+<h3>5.1 ArrayDeque — tablica cykliczna</h3>
+<p>Dwa wskaźniki <code>head</code> i <code>tail</code> na tablicy — O(1) <code>addFirst</code>/<code>addLast</code>/<code>poll</code>. Szybszy i lżejszy niż <code>LinkedList</code> jako kolejka.</p>
+
+<h3>5.2 PriorityQueue — kopiec (min-heap)</h3>
+<p>Element z najwyższym priorytetem (najmniejszy wg <code>Comparable</code> lub <code>Comparator</code>) na wierzchu. <code>poll()</code> — O(log n). Nie jest posortowana w całości — tylko korzeń gwarantowany.</p>
+
+<div class="concept-card">
+  <strong>Kolejki w biznesie</strong>
+  <ul>
+    <li><code>ArrayDeque</code> — BFS, undo/redo, stos (<code>push</code>/<code>pop</code>), kolejka zadań w jednym wątku</li>
+    <li><code>PriorityQueue</code> — najbliższy termin, najtańsza oferta, scheduler zadań</li>
+    <li><code>BlockingQueue</code> (<code>ArrayBlockingQueue</code>, <code>LinkedBlockingQueue</code>) — producer/consumer między wątkami</li>
+    <li>Nie używaj <code>Stack</code> (legacy) — użyj <code>ArrayDeque</code></li>
+  </ul>
+</div>
+
+<pre><code>Queue&lt;Task&gt; urgent = new PriorityQueue&lt;&gt;(
+    Comparator.comparing(Task::getDeadline));
+urgent.offer(task);
+Task next = urgent.poll(); // najwcześniejszy deadline</code></pre>
+
+<hr>
+
+<h2 id="czesc-6" class="must-know">Część 6 — Kiedy co w praktyce biznesowej</h2>
+
+<h3>6.1 Ściąga decyzyjna</h3>
+<table>
+  <thead>
+    <tr><th>Potrzeba</th><th>Wybór</th><th>Dlaczego</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Lista wyników z API/DB</td><td><code>ArrayList</code></td><td>Szybki odczyt, iteracja, append</td></tr>
+    <tr><td>Kolejka FIFO w jednym wątku</td><td><code>ArrayDeque</code></td><td>O(1) na końcach, bez wskaźników Node</td></tr>
+    <tr><td>Mapa po ID</td><td><code>HashMap</code></td><td>Najszybszy lookup</td></tr>
+    <tr><td>Cache z limitem i „najstarsze wyleć”</td><td><code>LinkedHashMap</code> + <code>removeEldestEntry</code></td><td>LRU bez biblioteki zewnętrznej</td></tr>
+    <tr><td>Raport chronologiczny / zakres dat</td><td><code>TreeMap</code></td><td>Sorted keys, <code>subMap</code></td></tr>
+    <tr><td>Unikalne elementy, kolejność bez znaczenia</td><td><code>HashSet</code></td><td>Najszybszy test członkostwa</td></tr>
+    <tr><td>Następne zadanie po priorytecie</td><td><code>PriorityQueue</code></td><td>Heap — nie sortuj całej listy</td></tr>
+    <tr><td>Współdzielona mapa wątków</td><td><code>ConcurrentHashMap</code></td><td>Segmenty / CAS, bez globalnego locka</td></tr>
+    <tr><td>Lista + częste czytanie, rzadki zapis wielowątkowy</td><td><code>CopyOnWriteArrayList</code></td><td>Iteratory bez <code>ConcurrentModificationException</code></td></tr>
+  </tbody>
+</table>
+
+<h3>6.2 Immutable collections (Java 9+)</h3>
+<p><code>List.of()</code>, <code>Set.of()</code>, <code>Map.of()</code> — niemutowalne, kompaktowe, bezpieczne do zwracania z API. <code>Map.of(k1,v1, k2,v2)</code> max 10 par; więcej → <code>Map.ofEntries()</code>.</p>
+<p><strong>Biznes:</strong> zwracaj immutable z serwisu — wywołujący nie psuje wewnętrznego stanu. Do budowania → <code>ArrayList</code>, na wyjściu → <code>List.copyOf()</code>.</p>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — Współbieżność w kolekcjach</h2>
+
+<table>
+  <thead>
+    <tr><th>Struktura</th><th>Bezpieczna?</th><th>Uwagi</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>HashMap</code>, <code>ArrayList</code></td><td>Nie</td><td>Jeden wątek lub zewnętrzna synchronizacja</td></tr>
+    <tr><td><code>ConcurrentHashMap</code></td><td>Tak (operacje pojedyncze)</td><td><code>compute</code>, <code>merge</code>; iteracja weakly consistent</td></tr>
+    <tr><td><code>CopyOnWriteArrayList</code></td><td>Tak (read-heavy)</td><td>Zapis drogi — kopiuje całą tablicę</td></tr>
+    <tr><td><code>Collections.synchronizedMap</code></td><td>Tak*</td><td>Synchronizuj całą iterację ręcznie</td></tr>
+  </tbody>
+</table>
+<p>* każda operacja pod lockiem — przy wielu wątkach wolne</p>
+
+<hr>
+
+<h2 id="czesc-8">Część 8 — Typowe błędy</h2>
+
+<ol>
+  <li><strong>LinkedList „bo wstawianie jest O(1)”</strong> — tylko na końcach; przy indeksie nadal O(n). W praktyce <code>ArrayList</code> wygrywa.</li>
+  <li><strong>Mutowalny obiekt jako klucz HashMap</strong> — po zmianie pola używanego w hash klucz jest nie do znalezienia.</li>
+  <li><strong>Brak <code>equals</code>/<code>hashCode</code> w encji jako kluczu</strong> — duplikaty w <code>HashSet</code>, „zgubione” wpisy w mapie.</li>
+  <li><strong>Modyfikacja kolekcji w enhanced for</strong> — <code>ConcurrentModificationException</code>; użyj <code>Iterator.remove()</code> lub stream z kolekcją mutowalną świadomie.</li>
+  <li><strong><code>subList()</code> jako kopia</strong> — to widok na oryginał; zmiana subList zmienia parent.</li>
+  <li><strong><code>Arrays.asList()</code> ma stały rozmiar</strong> — <code>add</code>/<code>remove</code> rzuca wyjątek; do mutowalnej listy: <code>new ArrayList&lt;&gt;(Arrays.asList(...))</code>.</li>
+  <li><strong>Sortowanie <code>TreeSet</code> bez spójnego <code>Comparator</code></strong> — <code>ClassCastException</code> lub niespójność z <code>equals</code>.</li>
+  <li><strong><code>PriorityQueue.iterator()</code> nie daje kolejności priorytetu</strong> — tylko <code>poll()</code>/<code>peek()</code> respektują heap.</li>
+  <li><strong>Domyślny rozmiar HashMap przy znanej liczbie elementów</strong> — zbędne rehash; ustaw load factor i initial capacity (<code>expectedSize / 0.75 + 1</code>).</li>
+  <li><strong><code>Vector</code> / <code>Hashtable</code> w nowym kodzie</strong> — legacy synchronized; użyj <code>ArrayList</code> + <code>ConcurrentHashMap</code>.</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Jaka jest różnica między <code>List</code> a <code>Set</code>?</strong>
+  <p><code>List</code> — uporządkowana sekwencja, duplikaty dozwolone. <code>Set</code> — unikalne elementy, kolejność zależy od implementacji.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Czym różni się <code>ArrayList</code> od <code>LinkedList</code>?</strong>
+  <p><code>ArrayList</code> — dynamiczna tablica, szybki <code>get(i)</code> O(1). <code>LinkedList</code> — dwukierunkowa lista węzłów (prev/next), szybkie operacje na końcach O(1), wolny dostęp po indeksie O(n).</p>
+</div>
+<div class="qa-item">
+  <strong>3. Jak wygląda węzeł w <code>LinkedList</code>?</strong>
+  <p>Pola: <code>prev</code> (poprzedni węzeł), <code>next</code> (następny), <code>item</code> (dane). Lista jest dwukierunkowa.</p>
+</div>
+<div class="qa-item">
+  <strong>4. Kiedy wybrać <code>ArrayList</code>?</strong>
+  <p>Domyślnie zawsze, gdy potrzebujesz listy — częsty odczyt po indeksie, iteracja, dodawanie na końcu.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Jak działa <code>HashMap</code>?</strong>
+  <p>Klucz → hash → indeks kubełka. W kubełku lista lub drzewo (przy wielu kolizjach). <code>equals</code> rozstrzyga kolizje.</p>
+</div>
+<div class="qa-item">
+  <strong>6. Jaki jest kontrakt <code>equals</code> i <code>hashCode</code>?</strong>
+  <p>Jeśli <code>a.equals(b)</code>, to <code>a.hashCode() == b.hashCode()</code>. Spójność w czasie dla niemutowalnych kluczy.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Czym różni się <code>HashMap</code> od <code>Hashtable</code>?</strong>
+  <p><code>HashMap</code> — niesynchronizowany, null klucz/wartość dozwolone (1 klucz). <code>Hashtable</code> — legacy, synchronized, bez null.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Co to jest <code>LinkedHashMap</code>?</strong>
+  <p><code>HashMap</code> + lista dwukierunkowa utrzymująca kolejność wstawiania lub dostępu (access order).</p>
+</div>
+<div class="qa-item">
+  <strong>9. Kiedy <code>TreeMap</code> zamiast <code>HashMap</code>?</strong>
+  <p>Gdy potrzebujesz posortowanych kluczy lub operacji na zakresach (<code>subMap</code>, <code>ceilingKey</code>) — O(log n).</p>
+</div>
+<div class="qa-item">
+  <strong>10. Jak zaimplementowany jest <code>HashSet</code>?</strong>
+  <p>Jako <code>HashMap</code> — element to klucz, wartość to stały obiekt <code>PRESENT</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Czym jest <code>Deque</code>?</strong>
+  <p>Kolejka dwustronna — <code>addFirst</code>/<code>addLast</code>, <code>pollFirst</code>/<code>pollLast</code>. Implementacja: <code>ArrayDeque</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Dlaczego nie używać <code>Stack</code>?</strong>
+  <p>Legacy, extends <code>Vector</code> (synchronized). Zamiast tego <code>ArrayDeque</code> jako stos (<code>push</code>/<code>pop</code>).</p>
+</div>
+<div class="qa-item">
+  <strong>13. Co robi <code>PriorityQueue</code>?</strong>
+  <p>Kopiec — element o najwyższym priorytecie (min wg natural order/Comparator) dostępny przez <code>peek</code>/<code>poll</code> w O(log n).</p>
+</div>
+<div class="qa-item">
+  <strong>14. Czy <code>Map</code> implementuje <code>Collection</code>?</strong>
+  <p>Nie — osobna hierarchia. Mapa to pary klucz-wartość, nie kolekcja elementów.</p>
+</div>
+<div class="qa-item">
+  <strong>15. Co zwraca <code>List.of()</code>?</strong>
+  <p>Niemutowalną listę (Java 9+). Próba modyfikacji → <code>UnsupportedOperationException</code>.</p>
+</div>
+
+<h3><span class="level-tag level-senior">Mid / Senior</span></h3>
+
+<div class="qa-item">
+  <strong>16. Złożoność operacji na <code>ArrayList</code>?</strong>
+  <p><code>get/set</code> O(1), <code>add(end)</code> O(1) amortyzowane, <code>add/remove(i)</code> O(n), <code>contains</code> O(n).</p>
+  <p><span class="solution-label">Biznes:</span> unikaj częstego wstawiania na początek dużej listy faktur.</p>
+</div>
+<div class="qa-item">
+  <strong>17. Dlaczego <code>LinkedList</code> rzadko wygrywa z <code>ArrayList</code>?</strong>
+  <p>Overhead węzłów, brak lokalności cache, O(n) dostęp po indeksie. CPU przewidywalnie szybszy na tablicy.</p>
+  <p><span class="solution-label">Wyjątek:</span> <code>Deque</code> z częstymi operacjami na obu końcach — wtedy <code>ArrayDeque</code>, nie <code>LinkedList</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>18. Co się dzieje przy rehash w <code>HashMap</code>?</strong>
+  <p>Nowa, większa tablica kubełków; elementy rozmieszczane ponownie wg hash. Koszt O(n), ale rzadki przy dobrym load factor (0,75).</p>
+</div>
+<div class="qa-item">
+  <strong>19. Dlaczego Java 8 zmieniła kubełki na drzewo?</strong>
+  <p>Ochrona przed atakiem kolizji hash — degradacja do O(n) na liście. Drzewo w kubełku → O(log n) przy wielu kolizjach.</p>
+</div>
+<div class="qa-item">
+  <strong>20. Jak zbudować prosty LRU cache?</strong>
+  <p><code>LinkedHashMap</code> z <code>accessOrder=true</code> i <code>removeEldestEntry()</code> gdy <code>size() &gt; limit</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>21. <code>ConcurrentHashMap</code> vs <code>Collections.synchronizedMap</code>?</strong>
+  <p>CHM — lock na segment/ kubełek (lub CAS), lepsza skalowalność. SynchronizedMap — jeden lock na całą mapę.</p>
+</div>
+<div class="qa-item">
+  <strong>22. Czy iteracja po <code>ConcurrentHashMap</code> jest snapshot?</strong>
+  <p>Nie — weakly consistent: widzi elementy od startu iteracji, bez <code>ConcurrentModificationException</code>, może nie widzieć najnowszych zapisów.</p>
+</div>
+<div class="qa-item">
+  <strong>23. <code>computeIfAbsent</code> vs ręczny <code>get</code> + <code>put</code>?</strong>
+  <p><code>computeIfAbsent</code> atomowe w CHM — jeden wątek tworzy wartość. Ręczny wzorzec może podwójnie utworzyć obiekt.</p>
+</div>
+<div class="qa-item">
+  <strong>24. Kiedy <code>CopyOnWriteArrayList</code>?</strong>
+  <p>Read-heavy, write-rare: lista listenerów, konfiguracja odczytywana przez wiele wątków, rzadko aktualizowana.</p>
+</div>
+<div class="qa-item">
+  <strong>25. <code>TreeSet</code> a spójność z <code>equals</code>?</strong>
+  <p>Jeśli <code>compareTo</code> zwraca 0, ale <code>equals</code> false — <code>TreeSet</code> uzna za duplikat. Comparator musi być spójny z equals.</p>
+</div>
+<div class="qa-item">
+  <strong>26. Różnica <code>Comparable</code> vs <code>Comparator</code>?</strong>
+  <p><code>Comparable</code> — natural order w klasie (<code>compareTo</code>). <code>Comparator</code> — zewnętrzna logika sortowania, wiele strategii.</p>
+</div>
+<div class="qa-item">
+  <strong>27. Co to jest <code>fail-fast</code> iterator?</strong>
+  <p>Przy strukturalnej modyfikacji poza iteratorem → <code>ConcurrentModificationException</code> (modCount). Dotyczy <code>ArrayList</code>, <code>HashMap</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>28. <code>subList(from, to)</code> — pułapka?</strong>
+  <p>Widok na oryginalną listę. <code>clear()</code> na subList usuwa zakres z parent. Zmiana rozmiaru parent może invalidować subList.</p>
+</div>
+<div class="qa-item">
+  <strong>29. Initial capacity <code>HashMap</code> — jak liczyć?</strong>
+  <p><code>ceil(expectedSize / loadFactor) + 1</code>, domyślny load factor 0,75 — mniej rehash przy znanej liczbie wpisów.</p>
+</div>
+<div class="qa-item">
+  <strong>30. <code>Stream</code> + modyfikacja źródłowej kolekcji?</strong>
+  <p>Nie modyfikuj źródła w trakcie streamu na tej samej kolekcji — undefined behavior / CME na niektórych implementacjach.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki</span></h3>
+
+<div class="qa-item">
+  <strong>31. Czy <code>LinkedList</code> ma szybkie wstawianie „w środku”?</strong>
+  <p>Nie bezpośrednio — najpierw O(n) znalezienie indeksu, potem O(1) podłączenie węzła. Łącznie O(n).</p>
+</div>
+<div class="qa-item">
+  <strong>32. Dwa obiekty z tym samym <code>hashCode</code> — czy są równe?</strong>
+  <p>Nie muszą. <code>equals</code> rozstrzyga w kubełku. Kolizje hash są normalne.</p>
+</div>
+<div class="qa-item">
+  <strong>33. Mutowalny klucz w <code>HashMap</code> — co się stanie?</strong>
+  <p>Zmiana pola wpływającego na hash — wpis zostaje w złym kubełku. „Zgubiony” klucz, memory leak w mapie.</p>
+</div>
+<div class="qa-item">
+  <strong>34. <code>Arrays.asList(array)</code> — czy mogę <code>add</code>?</strong>
+  <p>Nie — fixed-size. <code>set</code> działa. Mutowalna kopia: <code>new ArrayList&lt;&gt;(Arrays.asList(...))</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>35. Czy <code>PriorityQueue</code> jest posortowana?</strong>
+  <p>Nie w całości — tylko korzeń (min/max). Pełne sortowanie wymaga <code>poll()</code> w pętli lub <code>stream().sorted()</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>36. <code>Map.of()</code> — null klucz lub wartość?</strong>
+  <p><code>NullPointerException</code> — immutable mapy z <code>Map.of</code> nie akceptują null.</p>
+</div>
+<div class="qa-item">
+  <strong>37. Dlaczego nie używać <code>enum</code> jako klucza w <code>TreeMap</code> bez ostrożności?</strong>
+  <p>Enum ma natural order — OK. Problem jest z klasami bez spójnego <code>compareTo</code>/<code>Comparator</code>, nie z enum.</p>
+  <p><span class="solution-label">Pułapka:</span> custom <code>Comparator</code> na enumie ignorujący wartości — niespodziewane duplikaty w <code>TreeSet</code>.</p>
+</div>
+<div class="qa-item">
+  <strong>38. <code>keySet()</code> vs <code>entrySet()</code> przy iteracji mapy?</strong>
+  <p><code>entrySet()</code> — efektywna iteracja par bez drugiego <code>get(key)</code>. <code>keySet()</code> + <code>get</code> — podwójny lookup.</p>
+</div>
+<div class="qa-item">
+  <strong>39. Czy <code>size()</code> <code>ConcurrentHashMap</code> jest dokładne w trakcie zapisów?</strong>
+  <p>Przybliżone w starszych wersjach; w nowszych JDK liczenie może być kosztowne — nie polegaj na size w hot path bez dokumentacji wersji.</p>
+</div>
+<div class="qa-item">
+  <strong>40. <code>List&lt;?&gt;</code> — czy mogę dodać element?</strong>
+  <p>Nie — wildcard <code>? extends T</code> uniemożliwia add (poza <code>null</code>). Kolekcja tylko do odczytu z perspektywy typów.</p>
+</div>
+
+</body>
+</html>
