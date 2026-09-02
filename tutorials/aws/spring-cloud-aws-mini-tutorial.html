@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud AWS</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #ff9900;
+      --aws: #232f3e;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.28rem; margin-top: 2.25rem; color: var(--aws); border-left: 4px solid var(--accent); padding-left: 0.65rem; }
+    h3 { font-size: 1.05rem; margin-top: 1.4rem; color: var(--accent); }
+
+    h2.must-know::after { content: " ★"; color: var(--star); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.87rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--aws);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .map-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    .ok {
+      background: #f0fdf4;
+      border-left: 4px solid #16a34a;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; padding-left: 1.4rem; }
+    .toc a { color: var(--aws); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud AWS</h1>
+<p class="meta">Kiedy brać startery <code>io.awspring.cloud</code> · lista usług z przykładami · credentials, config, LocalStack · błędy i „nie-błędy”<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#kiedy">Kiedy tak / kiedy nie</a></li>
+    <li><a href="#setup">BOM, region, IAM</a></li>
+    <li><a href="#uslugi">Usługi i przykłady</a></li>
+    <li><a href="#config">Parameter Store i sekrety</a></li>
+    <li><a href="#poza">Poza starterami</a></li>
+    <li><a href="#localstack">LocalStack i testy</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p>Spring Cloud AWS to warstwa Spring Boot nad <strong>AWS SDK v2</strong>: auto-config regionu i credentials, beany klientów oraz Springowe API (<code>S3Template</code>, <code>@SqsListener</code>, <code>spring.config.import</code>). Nie jest to Spring Cloud Netflix (Eureka, Config Server) ani „SDK do całego AWS”.</p>
+
+<table>
+  <thead><tr><th>Wersja SCA</th><th>Spring Boot</th><th>Uwagi</th></tr></thead>
+  <tbody>
+    <tr><td>2.x · <code>org.springframework.cloud</code></td><td>2.x</td><td>SDK v1 — legacy; RDS/ElastiCache były tu i <strong>wyleciały</strong></td></tr>
+    <tr><td>3.3 / 3.4 · <code>io.awspring.cloud</code></td><td>3.4 / 3.5</td><td>Produkcja 2025–26 na Boot 3</td></tr>
+    <tr><td>4.0.x · <code>io.awspring.cloud</code></td><td>4.0</td><td>Jackson 3, Kinesis Integration / Stream binder</td></tr>
+  </tbody>
+</table>
+
+<div class="trap">Stare artefakty <code>org.springframework.cloud:spring-cloud-starter-aws</code> to inna era (SDK v1). Mieszanie z 3.x/4.x = dwa łańcuchy credentials i dziwne <code>NoClassDefFoundError</code>.</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">1. Kiedy używać / kiedy nie</h2>
+
+<table>
+  <thead><tr><th>Bierz SCA</th><th>Olej SCA</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Spring Boot gada z <strong>S3, SQS, SNS, DynamoDB, SES</strong> — chcesz template / <code>@SqsListener</code> / <code>s3://</code> Resource</td>
+      <td>Tylko <strong>RDS / Aurora / Postgres</strong> — JDBC URL + Hibernate; SCA nic tu nie daje (wsparcie RDS z 2.x usunięte)</td>
+    </tr>
+    <tr>
+      <td>Config i sekrety z <strong>Parameter Store / Secrets Manager</strong> przez <code>spring.config.import</code></td>
+      <td>Tylko <strong>ElastiCache / Redis</strong> — Spring Data Redis + endpoint; analogicznie usunięte z 2.x</td>
+    </tr>
+    <tr>
+      <td>Chcesz jeden zestaw credentials/region także pod <strong>własnego</strong> klienta SDK (Bedrock, EventBridge…)</td>
+      <td><strong>Cognito, Lambda invoke, Step Functions, Bedrock, Textract, OpenSearch</strong> — brak startera; SDK v2 albo libka domenowa</td>
+    </tr>
+    <tr>
+      <td>Testy na <strong>LocalStack</strong> jednym endpointem</td>
+      <td>Quarkus / Micronaut / czysty servlet — to biblioteka Springowa</td>
+    </tr>
+    <tr>
+      <td>Metryki Micrometer → <strong>CloudWatch</strong></td>
+      <td>Lambda „hello world” i walka o każdy MB cold startu — cienki SDK / Powertools bywa lżejszy</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="map-box">
+<strong>Reguła:</strong> SCA tam, gdzie daje idiom Springa (listener, Resource, ConfigData). Tam, gdzie i tak wołasz jedno API SDK — wstrzyknij klienta z core albo stwórz beana SDK. Nie pakuj startera „na zapas” do całej chmury.
+</div>
+
+<div class="ok"><strong>Nie-błąd:</strong> aplikacja z Hibernate + RDS <em>bez</em> Spring Cloud AWS. To normalny, zalecany układ. SCA nie zastępuje JDBC.</div>
+
+<hr>
+
+<h2 id="setup" class="must-know">2. BOM, region, IAM</h2>
+
+<p>Importuj BOM, startery bez wersji. Core (<code>spring-cloud-aws-starter</code>) wchodzi tranzytywnie — sam wystarczy, gdy chcesz tylko auto-config credentials pod własny klient SDK.</p>
+
+<pre><code>&lt;dependencyManagement&gt;
+  &lt;dependencies&gt;
+    &lt;dependency&gt;
+      &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+      &lt;artifactId&gt;spring-cloud-aws-dependencies&lt;/artifactId&gt;
+      &lt;version&gt;3.4.0&lt;/version&gt; &lt;!-- Boot 4 → 4.0.x --&gt;
+      &lt;type&gt;pom&lt;/type&gt;&lt;scope&gt;import&lt;/scope&gt;
+    &lt;/dependency&gt;
+  &lt;/dependencies&gt;
+&lt;/dependencyManagement&gt;
+
+&lt;dependency&gt;
+  &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-aws-starter-s3&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+
+<pre><code>spring:
+  cloud:
+    aws:
+      region:
+        static: eu-central-1   # albo DefaultAwsRegionProviderChain (env / IMDS)
+      # credentials.access-key / secret-key — TYLKO lokalnie, nigdy w git</code></pre>
+
+<p>Domyślnie <code>DefaultCredentialsProvider</code> (kolejność SDK): zmienne <code>AWS_ACCESS_KEY_ID</code> → profil <code>~/.aws/credentials</code> → IRSA / web identity → credentials kontenera ECS → instance profile EC2.</p>
+
+<table>
+  <thead><tr><th>Środowisko</th><th>Jak się logować</th></tr></thead>
+  <tbody>
+    <tr><td>Laptop</td><td><code>aws sso login</code> / profil; nie commituj kluczy</td></tr>
+    <tr><td>ECS / EC2</td><td>task role / instance profile — zero kluczy w YAML</td></tr>
+    <tr><td>EKS</td><td>IRSA (service account); dodaj artefakt SDK <code>sts</code> pod <code>StsWebIdentityTokenFileCredentialsProvider</code></td></tr>
+    <tr><td>CI</td><td>OIDC do roli (GitHub Actions) albo krótkie klucze w secret store runnera</td></tr>
+  </tbody>
+</table>
+
+<div class="trap">Brak regionu = start pada albo klienci lecą w <code>us-east-1</code>. Ustaw <code>AWS_REGION</code> / <code>spring.cloud.aws.region.static</code> albo polegaj na IMDS na EC2/ECS.</div>
+
+<hr>
+
+<h2 id="uslugi" class="must-know">3. Usługi — lista i przykłady</h2>
+
+<p>Starter = klient SDK + template / listener. Możesz wstrzyknąć niski klient (<code>S3Client</code>, <code>SqsAsyncClient</code>) obok template’u — to zamierzone.</p>
+
+<table>
+  <thead><tr><th>Usługa</th><th>Starter</th><th>Springowe API</th></tr></thead>
+  <tbody>
+    <tr><td>S3</td><td><code>…-starter-s3</code></td><td><code>S3Template</code>, <code>S3Client</code>, Resource <code>s3://</code>, presigned URL</td></tr>
+    <tr><td>SQS</td><td><code>…-starter-sqs</code></td><td><code>SqsTemplate</code>, <code>@SqsListener</code> (klient async)</td></tr>
+    <tr><td>SNS</td><td><code>…-starter-sns</code></td><td><code>SnsTemplate</code> / <code>SnsOperations</code></td></tr>
+    <tr><td>DynamoDB</td><td><code>…-starter-dynamodb</code></td><td><code>DynamoDbTemplate</code> + adnotacje Enhanced Client</td></tr>
+    <tr><td>SES</td><td><code>…-starter-ses</code></td><td>Spring <code>JavaMailSender</code></td></tr>
+    <tr><td>Parameter Store</td><td><code>…-starter-parameter-store</code></td><td><code>aws-parameterstore:</code> w <code>spring.config.import</code></td></tr>
+    <tr><td>Secrets Manager</td><td><code>…-starter-secrets-manager</code></td><td><code>aws-secretsmanager:</code></td></tr>
+    <tr><td>CloudWatch metrics</td><td><code>…-starter-metrics</code></td><td>Micrometer → <code>PutMetricData</code></td></tr>
+    <tr><td>IMDS</td><td><code>…-starter-imds</code></td><td>metadane EC2 jako properties</td></tr>
+    <tr><td>Kinesis (4.x)</td><td><code>…-starter-integration-kinesis</code> (+ binder Stream)</td><td>adaptery Spring Integration / Cloud Stream</td></tr>
+  </tbody>
+</table>
+
+<h3>S3</h3>
+<pre><code>@Service
+class InvoiceStore {
+  private final S3Template s3;
+  InvoiceStore(S3Template s3) { this.s3 = s3; }
+
+  void put(String id, InputStream bytes) {
+    s3.store("invoices", "2026/" + id + ".pdf", bytes);
+  }
+  URL signedGet(String key) {
+    return s3.createSignedGetURL("invoices", key, Duration.ofMinutes(15));
+  }
+}
+
+@Value("s3://invoices/config/rules.json")
+Resource rules;</code></pre>
+
+<h3>SQS — produkcja i konsumpcja</h3>
+<pre><code>sqsTemplate.send("orders", orderCreated);
+
+@Component
+class OrderListener {
+  @SqsListener("orders")
+  void on(OrderCreated event) { /* biznes */ }
+}</code></pre>
+
+<p><strong>Pułapka:</strong> SNS → SQS owija payload w JSON z polami <code>Type</code>/<code>Message</code>. Na listenerze: <code>@SnsNotificationMessage OrderCreated event</code>, inaczej deserializacja „nie pasuje do DTO”. FIFO wymaga <code>MessageGroupId</code> (i zwykle deduplikacji). <code>@SqsListener</code> + Spring Boot DevTools = problem classloadera — wyłącz DevTools albo nie używaj listenera lokalnie.</p>
+
+<h3>SNS i SES</h3>
+<pre><code>snsTemplate.convertAndSend("order-events", event);
+
+SimpleMailMessage mail = new SimpleMailMessage();
+mail.setTo("ops@example.com");
+mail.setSubject("Order " + id);
+mail.setText("…");
+mailSender.send(mail);</code></pre>
+
+<p>SES: zweryfikowany adres/domena w regionie klienta. Sandbox AWS odrzuci nieznanego odbiorcę — to limit konta, nie bug Springa.</p>
+
+<h3>DynamoDB</h3>
+<pre><code>@DynamoDbBean
+public class Person {
+  private UUID id;
+  private String name;
+  @DynamoDbPartitionKey public UUID getId() { return id; }
+  public void setId(UUID id) { this.id = id; }
+  // getters/setters name…
+}
+dynamoDbTemplate.save(person);  // tabela domyślnie: "person"</code></pre>
+
+<p>Nazwa tabeli = snake_case klasy + opcjonalny <code>spring.cloud.aws.dynamodb.table-prefix</code>. To nie jest <code>@Table</code> z JPA. DevTools wymaga <code>StaticTableSchema</code>.</p>
+
+<h3>CloudWatch (metryki)</h3>
+<pre><code>management:
+  cloudwatch:
+    metrics:
+      export:
+        namespace: my-app   # wymagane, bez tego auto-config nie wstanie
+        step: 1m</code></pre>
+
+<p>IAM: <code>cloudwatch:PutMetricData</code>. Custom metryki biznesowe — zwykły Micrometer; SCA tylko eksportuje.</p>
+
+<hr>
+
+<h2 id="config">4. Parameter Store i Secrets Manager</h2>
+
+<p>To ConfigData API Boota, nie Spring Cloud Config Server. Aplikacja wciąga properties przy starcie — bez dodatkowego serwera configu.</p>
+
+<pre><code>spring:
+  config:
+    import:
+      - optional:aws-parameterstore:/config/my-app/
+      - optional:aws-secretsmanager:/secrets/my-app</code></pre>
+
+<table>
+  <thead><tr><th></th><th>Parameter Store</th><th>Secrets Manager</th></tr></thead>
+  <tbody>
+    <tr><td>Po co</td><td>Config (feature flags, URL-e, limity); taniej przy dużej liczbie kluczy</td><td>Hasła DB, tokeny, rotacja</td></tr>
+    <tr><td>Format</td><td>ścieżka → property; trailing <code>/</code> w prefixie ma znaczenie</td><td>JSON (klucze → properties) albo plain text</td></tr>
+    <tr><td>IAM (minimum)</td><td><code>ssm:GetParameter(s)</code>, <code>ssm:GetParametersByPath</code>; KMS gdy SecureString</td><td><code>secretsmanager:GetSecretValue</code>, <code>DescribeSecret</code></td></tr>
+  </tbody>
+</table>
+
+<div class="trap">Bez <code>optional:</code> brak AWS na laptopie = aplikacja <strong>nie wstaje</strong>. Z <code>optional:</code> lokalnie lecisz na <code>application-local.yml</code>, na ECS import jest obowiązkowy w profilu <code>prod</code>.</div>
+
+<div class="map-box">
+<code>/config/my-app/spring.datasource.url</code> + import z trailing slash → property <code>spring.datasource.url</code>. Ten sam prefix bez slashu skleja nazwy inaczej — „dziwne” puste property to zwykle slash, nie IAM.
+</div>
+
+<hr>
+
+<h2 id="poza">5. Łączymy się też bez startera SCA</h2>
+
+<p>Core ustawia credentials/region. Reszta — własny <code>@Bean</code> klienta SDK albo inna biblioteka.</p>
+
+<table>
+  <thead><tr><th>Usługa</th><th>Jak w Springu</th></tr></thead>
+  <tbody>
+    <tr><td>RDS / Aurora Postgres</td><td><code>jdbc:postgresql://…rds.amazonaws.com</code> + Hikari; IAM auth = plugin JDBC / token RDS, nie SCA</td></tr>
+    <tr><td>ElastiCache Redis</td><td>Spring Data Redis, TLS, AUTH token</td></tr>
+    <tr><td>Cognito</td><td>Spring Security OAuth2 / JWT issuer; admin API = SDK <code>cognitoidentityprovider</code></td></tr>
+    <tr><td>EventBridge</td><td><code>EventBridgeClient</code> bean (core credentials)</td></tr>
+    <tr><td>Lambda (wywołanie)</td><td><code>LambdaClient</code>; wejście do Twojej Lambdy = handler AWS, nie SCA</td></tr>
+    <tr><td>Bedrock / S3 Vector / Textract</td><td>SDK v2; SCA nie ma warstwy</td></tr>
+    <tr><td>Kinesis (Boot 3 / bez 4.x)</td><td>Spring Cloud Stream Kinesis binder / Spring Integration AWS — osobny projekt historycznie</td></tr>
+    <tr><td>OpenSearch</td><td>klient OpenSearch / REST</td></tr>
+  </tbody>
+</table>
+
+<pre><code>@Bean
+EventBridgeClient eventBridge(AwsCredentialsProvider creds,
+                              AwsRegionProvider region) {
+  return EventBridgeClient.builder()
+      .credentialsProvider(creds)
+      .region(region.getRegion())
+      .build();
+}</code></pre>
+
+<hr>
+
+<h2 id="localstack">6. LocalStack i testy</h2>
+
+<p>Jeden endpoint na auto-configowanych klientach. Testcontainers + LocalStack albo profil <code>local</code>.</p>
+
+<pre><code># application-local.yml
+spring:
+  cloud:
+    aws:
+      endpoint: http://localhost:4566
+      credentials:
+        access-key: test
+        secret-key: test
+      region:
+        static: eu-central-1
+      s3:
+        path-style-access-enabled: true</code></pre>
+
+<p>Integracyjne testy: Testcontainers module LocalStack albo <code>@SpringBootTest</code> + Testcontainers. Nie wołaj prawdziwego AWS z CI bez izolowanego konta sandbox.</p>
+
+<div class="ok"><strong>Nie-błąd:</strong> LocalStack nie implementuje każdej usługi 1:1 (SES, niektóre IAM/KMS). Brak feature’u w LocalStack ≠ zła konfiguracja SCA. S3/SQS/SNS/DynamoDB/SSM pokryte dobrze.</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong>Klucze w <code>application.yml</code> na prod.</strong> Instance profile / IRSA / OIDC. YAML z <code>access-key</code> wycieka w logach Actuatora i w git.</li>
+  <li><strong>Starter 2.x (stary groupId) obok 3.x.</strong> Dwa SDK, dwa łańcuchy credentials.</li>
+  <li><strong>Oczekiwanie auto-config RDS/ElastiCache.</strong> Usunięte w 3.x — JDBC i Redis ręcznie.</li>
+  <li><strong><code>spring.config.import</code> bez <code>optional:</code> na local.</strong> Timeout / błąd startu bez VPN do AWS.</li>
+  <li><strong>AccessDenied = „SCA popsute”.</strong> Najpierw IAM (akcja + zasób + region) i SCP. SCA tylko woła SDK.</li>
+  <li><strong>SNS→SQS bez <code>@SnsNotificationMessage</code>.</strong> DTO nie wstaje, wygląda jak zły Jackson.</li>
+  <li><strong>FIFO bez group id / dedup.</strong> <code>MissingParameter</code> albo cicha utrata kolejności.</li>
+  <li><strong>Listener bez DLQ i za krótkiego visibility timeout.</strong> Ponowienia w kółko; to nie memory leak Springa.</li>
+  <li><strong><code>@SqsListener</code> + DevTools.</strong> Oficjalnie zepsute classloaderem — wyłącz restart.</li>
+  <li><strong>Bucket w innym regionie niż klient.</strong> 301/redirect albo <code>PermanentRedirect</code> — ustaw region per-klient (<code>spring.cloud.aws.s3.region</code>).</li>
+</ol>
+
+<h3>Nie-błędy (wyglądają groźnie, są OK)</h3>
+<ul>
+  <li><strong>Brak SCA przy samym Postgresie na RDS</strong> — właściwy design.</li>
+  <li><strong>Wstrzyknięty <code>S3Client</code> obok <code>S3Template</code></strong> — niski poziom do CopyObject / multipart; template do CRUD i presign.</li>
+  <li><strong>SQS listener „nic nie robi” przez 20 s</strong> — long polling; nie spin-wait.</li>
+  <li><strong>Lokalny start bez AWS po <code>optional:</code> import</strong> — config z AWS po prostu nie wchodzi.</li>
+  <li><strong>SES sandbox odrzuca maila</strong> — limit konta AWS, nie MailSender.</li>
+  <li><strong>Parameter Store SecureString działa</strong> — SCA dekoduje; potrzebujesz kms:Decrypt.</li>
+  <li><strong>Core-only + BedrockClient</strong> — legalne użycie SCA bez startera S3/SQS.</li>
+</ul>
+
+</body>
+</html>
