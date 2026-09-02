@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud — stack mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6db33f;
+      --edge: #2563eb;
+      --sync: #0891b2;
+      --async: #9333ea;
+      --infra: #ca8a04;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .layer-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .tag-edge { background: #dbeafe; color: #1e40af; }
+    .tag-sync { background: #cffafe; color: #0e7490; }
+    .tag-async { background: #ede9fe; color: #5b21b6; }
+    .tag-infra { background: #fef3c7; color: #92400e; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef8e6; font-weight: 600; }
+
+    .map-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      font-family: ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud — mapa stacku</h1>
+<p class="meta">Jak składa się ekosystem · który moduł do czego · przepływ sync/async · co czytać dalej<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#warstwy">Warstwy i moduły</a></li>
+    <li><a href="#przeplyw-sync">Przepływ synchroniczny</a></li>
+    <li><a href="#przeplyw-async">Przepływ asynchroniczny</a></li>
+    <li><a href="#config-ops">Config i operacje</a></li>
+    <li><a href="#aws">AWS w stacku</a></li>
+    <li><a href="#czytaj">Co czytać kiedy</a></li>
+    <li><a href="#bledy">Typowe błędy architektury</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>Spring Cloud</strong> to nie jeden framework — to zestaw projektów (gateway, config, stream, openfeign…) współdzielących wersje w BOM-ie (<code>spring-cloud-dependencies</code>). Każdy moduł rozwiązuje jeden problem rozproszonego systemu; razem dają spójny stack dla mikroserwisów na JVM.</p>
+
+<p>Spring Boot = pojedyncza aplikacja. Spring Cloud = <em>jak te aplikacje gadają ze sobą</em>, jak wchodzi ruch z zewnątrz, skąd biorą config i jak testujesz kontrakty między zespołami.</p>
+
+<div class="map-box">                    ┌─────────────────────────────────────┐
+  Internet / SPA    │  Spring Cloud Gateway               │  ← brzeg (edge)
+                    │  OAuth2, rate limit, routing        │
+                    └──────────────┬──────────────────────┘
+                                   │ lb://
+           ┌───────────────────────┼───────────────────────┐
+           ▼                       ▼                       ▼
+    order-service            author-service           notification-service
+    Feign → author           REST API                 Stream → Kafka
+    Resilience4j             JPA + RDS                Consumer + DLQ
+           │                       │
+           └─────── Kafka: order-created ──────────────┘
+
+    Config Server (Git) ──► wszystkie serwisy przy starcie
+    Eureka / K8s DNS ──► lista instancji dla lb://</div>
+
+<div class="keyword">
+  <strong>Netflix → Spring</strong>
+  <p>Eureka, Zuul, Ribbon, Hystrix — era Netflix OSS. Dziś: Gateway zamiast Zuul, LoadBalancer zamiast Ribbon, Resilience4j zamiast Hystrix. Eureka nadal spotykany w legacy; na K8s często DNS Service zamiast Eureka.</p>
+</div>
+
+<hr>
+
+<h2 id="warstwy" class="must-know">1. Warstwy i moduły</h2>
+
+<table>
+  <thead><tr><th>Warstwa</th><th>Moduł</th><th>Rola w jednym zdaniu</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="layer-tag tag-edge">Edge</span></td>
+      <td><strong>Gateway</strong></td>
+      <td>Jedno wejście HTTP(S), routing, auth na brzegu, CORS, rate limit</td>
+    </tr>
+    <tr>
+      <td><span class="layer-tag tag-sync">Sync</span></td>
+      <td><strong>OpenFeign</strong></td>
+      <td>Serwis A woła serwis B przez REST — interfejs zamiast RestClient w pętli</td>
+    </tr>
+    <tr>
+      <td><span class="layer-tag tag-sync">Sync</span></td>
+      <td><strong>LoadBalancer + Discovery</strong></td>
+      <td><code>lb://order-service</code> — wybór instancji z Eureka/Consul/K8s</td>
+    </tr>
+    <tr>
+      <td><span class="layer-tag tag-async">Async</span></td>
+      <td><strong>Stream</strong></td>
+      <td>Eventy przez Kafka/Rabbit — luźne sprzężenie, outbox, saga</td>
+    </tr>
+    <tr>
+      <td><span class="layer-tag tag-infra">Infra</span></td>
+      <td><strong>Config</strong></td>
+      <td>Centralny YAML w Git/Vault; refresh bez przebudowy JAR</td>
+    </tr>
+    <tr>
+      <td><span class="layer-tag tag-infra">Infra</span></td>
+      <td><strong>Contract</strong></td>
+      <td>Testy kontraktowe HTTP/messaging — producer vs consumer w CI</td>
+    </tr>
+    <tr>
+      <td><span class="layer-tag tag-infra">Infra</span></td>
+      <td><strong>AWS (io.awspring)</strong></td>
+      <td>S3, SQS, SNS, Parameter Store — Spring idiom nad SDK v2</td>
+    </tr>
+    <tr>
+      <td><span class="layer-tag tag-sync">Cross</span></td>
+      <td><strong>Resilience4j</strong></td>
+      <td>CB, retry, bulkhead — w serwisie i na Gateway</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Nie musisz brać wszystkiego. Minimalny sensowny mikroserwis: Boot + (Feign <em>lub</em> Stream) + LB. Gateway gdy wiele serwisów na jednym hoście publicznym. Config gdy &gt;3 serwisy i wspólne properties.</p>
+
+<hr>
+
+<h2 id="przeplyw-sync" class="must-know">2. Przepływ synchroniczny (request-response)</h2>
+
+<pre><code>1. Klient → GET https://api.example.com/api/orders/42
+2. Gateway: walidacja JWT, StripPrefix, route → lb://order-service
+3. LoadBalancer: wybór repliki order-service (K8s Endpoints)
+4. order-service: logika; potrzebuje autora → AuthorClient (Feign)
+5. Feign → lb://author-service/authors/7
+6. Resilience4j: CB open? → fallback lub 503
+7. Odpowiedź JSON w górę łańcucha</code></pre>
+
+<table>
+  <thead><tr><th>Krok</th><th>Narzędzie</th><th>Pułapka</th></tr></thead>
+  <tbody>
+    <tr><td>Auth</td><td>Gateway OAuth2 Resource Server</td><td>Serwisy bez auth w VPC — każdy z sieci może ominąć gateway</td></tr>
+    <tr><td>Routing</td><td>Gateway predicates</td><td>Zły StripPrefix → 404 na backendzie</td></tr>
+    <tr><td>Wołanie wewnętrzne</td><td>OpenFeign + LB</td><td>Brak discovery → „No instances”</td></tr>
+    <tr><td>Odporność</td><td>Resilience4j na Feign/Gateway</td><td>Retry na POST → duplikaty</td></tr>
+    <tr><td>Test</td><td>Spring Cloud Contract</td><td>Stub tylko u konsumenta bez verifiera u producenta</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Łańcuch wywołań:</strong> każdy hop dodaje latency. Trzy synchroniczne Feigny pod rząd = suma timeoutów. Gdy &gt;2 hopów — rozważ event (Stream) albo agregację w BFF na Gateway.</p>
+
+<hr>
+
+<h2 id="przeplyw-async">3. Przepływ asynchroniczny (event-driven)</h2>
+
+<pre><code>1. order-service: zapis do DB + wpis outbox (ta sama transakcja)
+2. scheduler / Debezium: publish OrderCreated → topic order-created
+3. Stream Supplier/Consumer lub @KafkaListener
+4. notification-service: Consumer → wysyłka maila (SES / Stream)
+5. inventory-service: Consumer → rezerwacja stanu
+6. Błąd → retry → DLQ order-created.dlq</code></pre>
+
+<p>Spring Cloud Stream abstrahuje brokera; kontrakty messaging testujesz SCC (ten sam koncept co HTTP). Saga choreograficzna = wiele consumerów na eventy; orkiestracja = osobny serwis + stan (Camunda, Temporal) — poza samym Stream.</p>
+
+<div class="keyword">
+  <strong>Sync vs async — reguła</strong>
+  <p><em>Sync (Feign):</em> potrzebujesz odpowiedzi teraz, prosty query, mało zależności. <em>Async (Stream):</em> notyfikacje, integracja w tle, wiele subskrybentów, buforowanie szczytów, eventual consistency akceptowalna.</p>
+</div>
+
+<hr>
+
+<h2 id="config-ops">4. Config, Bus, observability</h2>
+
+<table>
+  <thead><tr><th>Potrzeba</th><th>Rozwiązanie Spring Cloud</th><th>Alternatywa</th></tr></thead>
+  <tbody>
+    <tr><td>Config poza JAR</td><td>Config Server + Git</td><td>K8s ConfigMap, AWS Parameter Store</td></tr>
+    <tr><td>Refresh bez restartu</td><td><code>/actuator/refresh</code> + <code>@RefreshScope</code></td><td>Redeploy (GitOps)</td></tr>
+    <tr><td>Refresh całego klastra</td><td>Spring Cloud Bus (Kafka/Rabbit)</td><td>Rollout restart w K8s</td></tr>
+    <tr><td>Discovery</td><td>Eureka / Consul / K8s client</td><td>DNS <code>service.namespace.svc</code></td></tr>
+    <tr><td>Trace</td><td>Micrometer Tracing + propagacja z Gateway</td><td>OpenTelemetry agent</td></tr>
+  </tbody>
+</table>
+
+<p>Na K8s częsty stack 2025+: ConfigMap/Secret + External Secrets, bez Config Server; DNS zamiast Eureka; Gateway jako Ingress backend; Stream na managed Kafka (MSK, Confluent Cloud).</p>
+
+<hr>
+
+<h2 id="aws">5. Spring Cloud AWS w tym obrazku</h2>
+
+<p><code>io.awspring.cloud</code> nie zastępuje Gateway ani Stream — uzupełnia:</p>
+
+<ul>
+  <li><strong>SQS/SNS</strong> — kolejki managed zamiast self-hosted Rabbit (Stream ma binder Kafka; SQS przez listener SCA)</li>
+  <li><strong>Parameter Store / Secrets Manager</strong> — config bez Config Server (<code>spring.config.import</code>)</li>
+  <li><strong>S3</strong> — załączniki w evencie (w Kafka tylko URL, nie plik)</li>
+</ul>
+
+<p>RDS/Postgres — zwykły JDBC + Hibernate, <em>bez</em> startera SCA. Cognito — OAuth2 issuer dla Gateway Resource Server.</p>
+
+<hr>
+
+<h2 id="czytaj" class="must-know">6. Co czytać kiedy — mapa tutoriali</h2>
+
+<table>
+  <thead><tr><th>Pytanie / sytuacja</th><th>Tutorial</th></tr></thead>
+  <tbody>
+    <tr><td>Jak wejść ruch z internetu i routować?</td><td><a href="spring-cloud-gateway-mini-tutorial.html">Gateway</a></td></tr>
+    <tr><td>Jak serwis woła inny serwis REST?</td><td><a href="spring-cloud-openfeign-mini-tutorial.html">OpenFeign</a></td></tr>
+    <tr><td>Skąd <code>lb://</code> wie, gdzie są instancje?</td><td><a href="spring-cloud-discovery-mini-tutorial.html">Discovery · LoadBalancer</a></td></tr>
+    <tr><td>Eventy, Kafka, DLQ?</td><td><a href="spring-cloud-stream-mini-tutorial.html">Stream</a></td></tr>
+    <tr><td>Config w Git, refresh?</td><td><a href="spring-cloud-config-mini-tutorial.html">Config</a></td></tr>
+    <tr><td>Testy między zespołami bez E2E?</td><td><a href="spring-cloud-contract-mini-tutorial.html">Contract</a></td></tr>
+    <tr><td>S3, SQS, Parameter Store?</td><td><a href="../aws/spring-cloud-aws-mini-tutorial.html">Spring Cloud AWS</a></td></tr>
+    <tr><td>Circuit breaker, retry w kodzie?</td><td><a href="resilience4j-mini-tutorial.html">Resilience4j</a></td></tr>
+    <tr><td>Multi-tenant przez gateway i nagłówki?</td><td><a href="../architecture/multi-tenancy-mini-tutorial.html">Multi-tenancy</a></td></tr>
+  </tbody>
+</table>
+
+<p>Kolejność nauki (sugerowana): Discovery/LB → OpenFeign → Gateway → Stream <em>lub</em> Config (zależnie od projektu) → Contract → AWS jeśli chmura AWS.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy architektury stacku</h2>
+
+<ol>
+  <li><strong>Wszystko synchroniczne Feignem.</strong> Kaskada timeoutów i tight coupling — event tam, gdzie nie potrzebujesz odpowiedzi od razu.</li>
+  <li><strong>Gateway + Eureka + K8s naraz.</strong> Trzy źródła prawdy o instancjach — wybierz jeden model discovery.</li>
+  <li><strong>Config Server + Parameter Store + ConfigMap.</strong> Trzy miejsca na properties — jeden kanał configu per środowisko.</li>
+  <li><strong>Brak kontraktów przy niezależnym deployu.</strong> Zielony build, czerwony prod — SCC taniej niż E2E na stagingu.</li>
+  <li><strong>Logika biznesowa w filtrach Gateway.</strong> Gateway routuje i auth; domena zostaje w serwisach.</li>
+  <li><strong>Stream bez DLQ i idempotencji.</strong> At-least-once = duplikaty — consumer musi to obsłużyć.</li>
+  <li><strong>Resilience4j wszędzie bez metryk.</strong> CB bez obserwowalności — nie wiesz, kiedy open jest uzasadniony.</li>
+  <li><strong>Spring Cloud „bo korporacja” w 2-serwisowym systemie.</strong> Operacyjny koszt brokera, config servera, gateway — YAGNI.</li>
+  <li><strong>Testy tylko E2E na pełnym stacku.</strong> Wolne, flaky — piramida: unit → contract → kilka E2E.</li>
+  <li><strong>Wersje Boot i Cloud nie z jednego BOM.</strong> <code>spring-cloud-dependencies</code> w <code>dependencyManagement</code> — inaczej <code>NoSuchMethodError</code> w runtime.</li>
+</ol>
+
+</body>
+</html>
