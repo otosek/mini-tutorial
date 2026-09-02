@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud Contract — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6db33f;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef8e6; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .flow-box {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .qa-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin: 0.55rem 0;
+    }
+
+    .qa-item strong { display: block; margin-bottom: 0.3rem; font-size: 0.95rem; }
+    .qa-item p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .level-junior { background: #dcfce7; color: #166534; }
+    .level-tricky { background: #fef3c7; color: #92400e; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud Contract</h1>
+<p class="meta">Testy kontraktowe (CDC) · stuby WireMock · verifier producenta · kiedy stosować / kiedy nie<br>
+Format: HTML, offline · 12 pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#jak-dziala">Jak działa</a></li>
+    <li><a href="#przyklad">Przykład</a></li>
+    <li><a href="#kiedy">Kiedy stosować / kiedy nie</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+    <li><a href="#pytania">Pytania rekrutacyjne</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>Test kontraktowy</strong> sprawdza, że dwa serwisy zgadzają się co do kształtu komunikacji (HTTP albo messaging) — bez stawiania całego środowiska. <strong>Spring Cloud Contract</strong> (SCC): jeden plik kontraktu (YAML / Groovy DSL) daje testy po stronie producenta i stuby WireMock po stronie konsumenta.</p>
+
+<p>To nie jest OpenAPI (dokumentacja/schemat API) ani E2E (prawdziwa sieć, auth, infra). Schemat mówi „jakie pola mogą być”; kontrakt mówi „przy tym requeście dostaniesz ten status, te nagłówki i taki body”.</p>
+
+<table>
+  <thead><tr><th>Warstwa</th><th>Co sprawdza</th><th>Koszt</th></tr></thead>
+  <tbody>
+    <tr><td>Unit</td><td>Logika w procesie</td><td>Niski</td></tr>
+    <tr><td>Kontrakt (SCC)</td><td>Kształt request/response między serwisami</td><td>Niski</td></tr>
+    <tr><td>IT / Testcontainers</td><td>Serwis + DB / broker</td><td>Średni</td></tr>
+    <tr><td>E2E</td><td>Kilka żywych serwisów</td><td>Wysoki</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>CDC (consumer-driven contracts)</strong>
+  <p>Konsument opisuje, czego potrzebuje. Producent musi to spełnić — inaczej CI pada. W SCC kontrakty często leżą w repo producenta (łatwiejszy verifier): to hybryda, nie czysty CDC.</p>
+</div>
+
+<hr>
+
+<h2 id="jak-dziala" class="must-know">Część 1 — Jak działa</h2>
+
+<div class="flow-box">kontrakt YAML/Groovy  (zwykle src/test/resources/contracts/)
+        │
+        ├─ producer CI: Contract Verifier
+        │     testy vs prawdziwy controller (MockMvc / WebTestClient)
+        │     PASS → publikacja *-stubs.jar  (Nexus / Artifactory)
+        │
+        └─ consumer CI: Stub Runner
+              WireMock ze stubów, bez żywego producenta</div>
+
+<p>Producer: plugin (<code>spring-cloud-contract-maven-plugin</code> / Gradle) + <code>spring-cloud-starter-contract-verifier</code>. Generuje testy RestAssured z kontraktu. Klasa bazowa (<code>baseClassForTests</code>) ma <code>@SpringBootTest</code> i setup — bez niej verifier nie wie, jak odpalić aplikację.</p>
+
+<p>Consumer: <code>spring-cloud-starter-contract-stub-runner</code> + <code>@AutoConfigureStubRunner(ids = "g:a:+:stubs:port")</code>. <code>stubsMode</code>: <code>REMOTE</code> (repo), <code>LOCAL</code> (m2), <code>CLASSPATH</code> (JAR na teście).</p>
+
+<p>Konwencja CDC: katalogi per konsument — <code>contracts/order-service/shouldReturnAuthor.yaml</code>. Jeden producer, wielu konsumentów, różne oczekiwania.</p>
+
+<div class="keyword">
+  <strong>Messaging</strong>
+  <p>Ten sam mechanizm dla Kafka / Spring Cloud Stream: kontrakt opisuje wiadomość zamiast HTTP. Stub Runner podaje wiadomość na kanał; verifier sprawdza, że producer ją emituje. Nie myl z Testcontainers na prawdziwym brokerze.</p>
+</div>
+
+<hr>
+
+<h2 id="przyklad">Część 2 — Przykład</h2>
+
+<pre><code>request:
+  method: GET
+  url: /authors/1
+  headers:
+    Accept: application/json
+response:
+  status: 200
+  headers:
+    Content-Type: application/json
+  body:
+    id: 1
+    name: Lem</code></pre>
+
+<p>Po stronie konsumenta testujesz klienta HTTP, nie WireMock ręcznie:</p>
+
+<pre><code>@SpringBootTest
+@AutoConfigureStubRunner(
+    ids = "com.ex:author-service:+:stubs:8081",
+    stubsMode = StubRunnerProperties.StubsMode.LOCAL)
+class AuthorClientIT {
+  @Autowired AuthorClient client;
+
+  @Test void fetchesAuthor() {
+    assertThat(client.get(1L).name()).isEqualTo("Lem");
+  }
+}</code></pre>
+
+<p><strong>Dynamiczne wartości</strong> — osobno co widzi stub (konsument) i co asercja producenta:</p>
+
+<pre><code>id: $(consumer(regex('[0-9]+')), producer(1))
+name: $(consumer('Lem'), producer(regex(nonBlank())))</code></pre>
+
+<p>Albo echo z requestu: <code>fromRequest().path(1)</code> (segment <code>/authors/{id}</code>). Bez tego stub zwraca zawsze <code>1</code>, a test producenta pęka przy UUID z bazy.</p>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">Część 3 — Kiedy stosować / kiedy nie</h2>
+
+<table>
+  <thead><tr><th>Stosuj</th><th>Nie stosuj</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Mikroserwisy, niezależny deploy, różne zespoły</td>
+      <td>Monolit / jeden zespół / zawsze ten sam pipeline</td>
+    </tr>
+    <tr>
+      <td>Konsument startuje, zanim producer jest gotowy (stuby)</td>
+      <td>Publiczne API dla nieznanych klientów → OpenAPI + wersje</td>
+    </tr>
+    <tr>
+      <td>Łapanie breaking change w CI taniej niż E2E na env</td>
+      <td>Test logiki biznesowej producenta (to unit / IT)</td>
+    </tr>
+    <tr>
+      <td>Kontrakt HTTP <em>i</em> messaging między bounded contextami</td>
+      <td>UI, OAuth redirect, timeouty, retry, mTLS, prawdziwy SSL</td>
+    </tr>
+    <tr>
+      <td>Stabilny, wąski kontrakt (kilka endpointów, które ktoś realnie woła)</td>
+      <td>„Pokryj całe API kontraktami” zamiast dokumentacji</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Pułapka:</strong> SCC nie dowodzi, że serwisy ze sobą gadają na produkcji. Dowodzi, że producer spełnia kontrakt, a konsument umie czytać stub z tego kontraktu. Sieć, auth, schemat DB, kolejki — osobne testy.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>Kontrakt = kopia DTO</strong> — asercja wszystkich pól wewnętrznych; łamie się przy każdej refaktoryzacji. Kontraktuj to, co konsument czyta.</li>
+  <li><strong>Tylko happy path</strong> — brak 400/404/409. Konsument obsłuży błąd „na oko”, stub milczy.</li>
+  <li><strong>Stuby niepublikowane / zła wersja</strong> — consumer na <code>1.2.0-stubs</code>, producer już zdeployował <code>1.3.0</code>. CI zielone, prod czerwone.</li>
+  <li><strong>Za luźny regex</strong> — <code>byRegex('.*')</code> na body: verifier zawsze przechodzi, stub przyjmuje śmieci.</li>
+  <li><strong>Za sztywny JSON</strong> — dokładne porównanie całego body z UUID/timestampem. Użyj matchers + pary consumer/producer.</li>
+  <li><strong>Kontrakty tylko u konsumenta</strong> — producer nigdy ich nie weryfikuje. To dokumentacja, nie test.</li>
+  <li><strong>SCC zamiast E2E</strong> — nie łapie timeoutów, retry, kolejności wiadomości, uprawnień, DNS.</li>
+  <li><strong>Nagłówki poza kontraktem</strong> — <code>Content-Type</code>, correlation-id, <code>Idempotency-Key</code>. Stub nie wymaga, produkcja odrzuca.</li>
+  <li><strong>Nakładające się stuby bez <code>priority</code></strong> — WireMock bierze pierwszy match; testy flakują.</li>
+  <li><strong>Verifier bez klasy bazowej / bez stubów serwisów</strong> — generowany test pada na NPE w serwisie, nie na kontrakcie.</li>
+</ol>
+
+<hr>
+
+<h2 id="pytania">Pytania rekrutacyjne — krótkie odpowiedzi</h2>
+
+<h3><span class="level-tag level-junior">Junior / Mid</span></h3>
+
+<div class="qa-item">
+  <strong>1. Czym test kontraktowy różni się od E2E?</strong>
+  <p>Kontrakt sprawdza zgodność interfejsu na stubach/generowanych testach, bez żywego drugiego serwisu. E2E stawia prawdziwe instancje i sieć.</p>
+</div>
+<div class="qa-item">
+  <strong>2. Co z jednego kontraktu dostaje producer, a co consumer?</strong>
+  <p>Producer: wygenerowane testy (verifier) przeciwko prawdziwej aplikacji. Consumer: stuby WireMock (Stub Runner) do testów klienta.</p>
+</div>
+<div class="qa-item">
+  <strong>3. Gdzie trzymać kontrakty?</strong>
+  <p>Najczęściej repo producenta (<code>src/test/resources/contracts/</code>), ewentualnie osobne repo kontraktów. Muszą być wejściem do CI producenta.</p>
+</div>
+<div class="qa-item">
+  <strong>4. SCC vs OpenAPI?</strong>
+  <p>OpenAPI opisuje API (dokumentacja, codegen). SCC weryfikuje zachowanie i publikuje stuby. Można je łączyć; samo YAML OpenAPI nie odpala testów producenta.</p>
+</div>
+<div class="qa-item">
+  <strong>5. Po co <code>*-stubs.jar</code>?</strong>
+  <p>Artefakt ze mappingami WireMock. Consumer ściąga go z repozytorium zamiast odpalać producenta.</p>
+</div>
+
+<h3><span class="level-tag level-tricky">Pułapki</span></h3>
+
+<div class="qa-item">
+  <strong>6. Kontrakty w repo producenta — to jeszcze CDC?</strong>
+  <p>Czysty CDC: konsument proponuje kontrakt. Lokalizacja w producerze to wygoda narzędzia. Jeśli zespół producenta pisze kontrakty „pod siebie”, to producer-driven — CDC tylko z nazwy.</p>
+</div>
+<div class="qa-item">
+  <strong>7. Zielony kontrakt = można deployować niezależnie?</strong>
+  <p>Nie. Masz zgodność kształtu wiadomości. Brakuje auth, schematu DB, kompatybilności wstecznej wielu wersji naraz, SLO. Deploy nadal wymaga wersjonowania i monitoringu.</p>
+</div>
+<div class="qa-item">
+  <strong>8. Dlaczego para <code>consumer()</code> / <code>producer()</code>?</strong>
+  <p>Stub musi zwrócić konkret (konsument). Verifier musi asercjować wzorzec albo wynik metody (producer, np. UUID z DB). Jedna wartość psuje jedną ze stron.</p>
+</div>
+<div class="qa-item">
+  <strong>9. SCC vs Pact?</strong>
+  <p>Pact jest wielojęzykowy: consumer nagrywa interaction, producer weryfikuje pact file. SCC jest JVM/Spring: kontrakt zwykle u producenta, stuby jako JAR. SCC umie importować Pact; to nie to samo narzędzie.</p>
+</div>
+<div class="qa-item">
+  <strong>10. Czy SCC testuje Kafkę „naprawdę”?</strong>
+  <p>Nie. Testuje kontrakt wiadomości (payload, destynacja, trigger). Broker, offsety, poison pill, idempotentny consumer — Testcontainers / IT.</p>
+</div>
+<div class="qa-item">
+  <strong>11. Consumer na stubach <code>+</code> (latest), producer jeszcze nie opublikował — co się dzieje?</strong>
+  <p>Stub Runner nie znajdzie artefaktu albo weźmie starą wersję z m2. „Latest” bez gated publikacji stubów to fałszywe bezpieczeństwo; pinuj wersję albo publikuj stuby w tym samym buildzie co producenta.</p>
+</div>
+<div class="qa-item">
+  <strong>12. Verifier przechodzi, a na prodzie 415 / 401. Dlaczego?</strong>
+  <p>Kontrakt nie obejmował <code>Content-Type</code> albo trailing slash. Verifier często stoi na MockMvc / <code>standaloneSetup</code> bez filtrów Spring Security i bez API gateway — 401/415 na prodzie w teście nie istnieją. Kontrakt ≠ pełny request na bramce.</p>
+</div>
+
+</body>
+</html>
