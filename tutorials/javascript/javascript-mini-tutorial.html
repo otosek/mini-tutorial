@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #ca8a04;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fefce8; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.65rem 0;
+    }
+
+    .concept-card strong { color: var(--accent); }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>JavaScript — mini-tutorial</h1>
+<p class="meta">Historia · ES6+ · domknięcia · <code>this</code> · Promises · async/await · moduły · event loop · ES2024<br>
+Format: HTML (otwórz w przeglądarce) · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Historia i „wars”</a></li>
+    <li><a href="#czesc-2">ES6 (2015) — przełom</a></li>
+    <li><a href="#czesc-3">Domknięcia i zakres</a></li>
+    <li><a href="#czesc-4"><code>this</code> i strzałkowe funkcje</a></li>
+    <li><a href="#czesc-5">Asynchroniczność: Promises i async/await</a></li>
+    <li><a href="#czesc-6">Event loop</a></li>
+    <li><a href="#czesc-7">Moduły i ekosystem</a></li>
+    <li><a href="#czesc-8">Nowoczesny JS (2020–2024)</a></li>
+    <li><a href="#czesc-9">Co stosuje się dziś w aplikacjach</a></li>
+    <li><a href="#czesc-10">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1">Część 1 — Historia i „wars”</h2>
+
+<h3>1.1 Skąd się wziął JavaScript</h3>
+<p>JavaScript powstał w Netscape (1995) jako język skryptowy w przeglądarce. Standardyzacja przez ECMA → nazwa formalna <strong>ECMAScript</strong> (ES). Przez lata każda przeglądarka implementowała JS inaczej — stąd legenda o „dniach, w których IE psuł layout”.</p>
+
+<h3>1.2 Browser Wars i problem kompatybilności</h3>
+<p>Lata 90.–2000.: wojna Netscape vs Internet Explorer. Różne API DOM, różne błędy w JS. Firmy pisały <code>if (document.all) { /* IE */ }</code> albo używały bibliotek (jQuery — 2006) żeby ukryć różnice.</p>
+<p><strong>ES3 (1999)</strong> — długo „zamrożony” standard, na którym opierał się cały web 2.0. <strong>ES4</strong> — porzucony (zbyt ambitny). Przez ~10 lat prawie brak nowości w samym języku.</p>
+
+<h3>1.3 ES5 (2009) — pierwsza stabilna modernizacja</h3>
+<ul>
+  <li><code>strict mode</code> — <code>"use strict"</code></li>
+  <li><code>JSON.parse</code> / <code>JSON.stringify</code></li>
+  <li>Metody tablic: <code>forEach</code>, <code>map</code>, <code>filter</code>, <code>reduce</code></li>
+  <li><code>Object.defineProperty</code> — fundament późniejszego Reacta (reaktywność Vue 2)</li>
+</ul>
+<p>ES5 to nadal „stary JS” w głowach wielu osób — funkcje <code>function</code>, <code>var</code>, callbacki zamiast Promise.</p>
+
+<h3>1.4 ES6 / ES2015 — „nowy JavaScript”</h3>
+<p>Przełom: <code>let</code>/<code>const</code>, klasy, moduły <code>import</code>/<code>export</code>, strzałki, Promises, template literals, destructuring. Od 2015 standard ECMAScript dostaje <strong>roczną edycję</strong> (ES2016, ES2017… ES2024) zamiast wielkich skoków co dekadę.</p>
+
+<table>
+  <thead>
+    <tr><th>Era</th><th>Problem</th><th>Rozwiązanie dziś</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Browser wars</td><td>Różne implementacje DOM/JS</td><td>Standaryzacja + evergreen Chrome/Firefox/Safari</td></tr>
+    <tr><td>Callback hell</td><td>Zagnieżdżone callbacki</td><td>Promises, async/await</td></tr>
+    <tr><td>Brak modułów w przeglądarce</td><td>Global scope, IIFE, RequireJS</td><td>ES modules + bundlery (Vite)</td></tr>
+    <tr><td><code>var</code> i hoisting</td><td>Dziwne zachowanie zakresu</td><td><code>let</code>, <code>const</code>, block scope</td></tr>
+    <tr><td>Brak typów</td><td>Błędy w runtime</td><td>TypeScript (osobny tutorial)</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — ES6 (2015) — przełom</h2>
+
+<h3>2.1 let, const zamiast var</h3>
+<pre><code>// ES5 — function scope, hoisting, można nadpisać
+var count = 1
+var count = 2  // OK (źle)
+
+// ES6+ — block scope
+let items = []
+const API_URL = '/api/authors'
+// const API_URL = '...'  // błąd — nie nadpisujesz stałych</code></pre>
+<p><code>const</code> nie znaczy „głęboko niemutowalny” — tablica pod <code>const</code> może mieć <code>push</code>, ale nie możesz przypisać nowej tablicy do tej samej zmiennej.</p>
+
+<h3>2.2 Strzałkowe funkcje, template literals, destructuring</h3>
+<pre><code>// template literal
+const msg = `Author: ${author.firstName} ${author.lastName}`
+
+// destructuring
+const { id, email } = user
+const [first, ...rest] = tags
+
+// spread
+const merged = { ...defaults, ...overrides }
+const allTags = [...existing, 'new']</code></pre>
+
+<h3>2.3 Klasy — syntactic sugar nad prototypami</h3>
+<pre><code>class AuthorService {
+  constructor(api) {
+    this.api = api
+  }
+
+  async findById(id) {
+    return this.api.get(`/authors/${id}`)
+  }
+}</code></pre>
+<p>Pod spodem nadal prototypy — <code>class</code> to czytelniejsza składnia, nie nowy model obiektowy jak w Javie.</p>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Domknięcia (closures)</h2>
+
+<h3>3.1 Co to jest domknięcie</h3>
+<p>Funkcja „pamięta” zmienne z zewnętrznego zakresu (lexical scope), nawet gdy ten zakres już się skończył. To fundament modułów, prywatnych zmiennych i wielu wzorców w JS.</p>
+
+<pre><code>function createCounter() {
+  let count = 0           // „prywatne” — z zewnątrz niedostępne
+  return {
+  increment() { count++ },
+  getCount() { return count }
+  }
+}
+
+const counter = createCounter()
+counter.increment()
+counter.getCount()  // 1</code></pre>
+
+<h3>3.2 Domknięcia w praktyce biznesowej</h3>
+<div class="concept-card">
+  <strong>Gdzie spotkasz closures</strong>
+  <ul>
+    <li><strong>React hooks</strong> — <code>useEffect</code> „widzi” props/state z renderu, w którym powstał</li>
+    <li><strong>Event handlery</strong> — funkcja w <code>addEventListener</code> trzyma kontekst z momentu rejestracji</li>
+    <li><strong>Factory / DI</strong> — serwis zamknięty na konfigurację (<code>baseUrl</code>, token)</li>
+    <li><strong>Debouncing</strong> — <code>setTimeout</code> wewnątrz funkcji pamięta ostatni timer</li>
+  </ul>
+</div>
+
+<h3>3.3 Pułapka: pętla var + setTimeout</h3>
+<pre><code>// ES5 bug — wszystkie wypiszą 3
+for (var i = 0; i &lt; 3; i++) {
+  setTimeout(() =&gt; console.log(i), 100)
+}
+
+// fix: let (block scope) lub IIFE
+for (let i = 0; i &lt; 3; i++) {
+  setTimeout(() =&gt; console.log(i), 100)  // 0, 1, 2
+}</code></pre>
+
+<hr>
+
+<h2 id="czesc-4">Część 4 — <code>this</code> i strzałkowe funkcje</h2>
+
+<h3>4.1 <code>this</code> zależy od wywołania</h3>
+<table>
+  <thead>
+    <tr><th>Kontekst</th><th><code>this</code></th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Zwykła funkcja <code>f()</code></td><td><code>undefined</code> (strict) lub <code>global</code></td></tr>
+    <tr><td>Metoda <code>obj.f()</code></td><td><code>obj</code></td></tr>
+    <tr><td><code>new F()</code></td><td>nowy obiekt</td></tr>
+    <tr><td><code>call</code> / <code>apply</code> / <code>bind</code></td><td>jawnie podany obiekt</td></tr>
+    <tr><td>Strzałka <code>() =&gt;</code></td><td><code>this</code> z otaczającego zakresu (lexical)</td></tr>
+  </tbody>
+</table>
+
+<pre><code>const service = {
+  name: 'Authors',
+  load() {
+    // strzałka — this = service (z metody load)
+    setTimeout(() =&gt; console.log(this.name), 0)
+  }
+}</code></pre>
+<p><strong>Pułapka:</strong> strzałki nie mają własnego <code>this</code> — nie używaj ich jako metod obiektu, jeśli potrzebujesz dynamicznego <code>this</code> (np. w handlerze kliknięcia na prototypie).</p>
+
+<hr>
+
+<h2 id="czesc-5" class="must-know">Część 5 — Asynchroniczność: Promises i async/await</h2>
+
+<h3>5.1 Ewolucja: callback → Promise → async/await</h3>
+<pre><code>// callback (ES5) — zagnieżdżanie
+getAuthor(id, (err, author) =&gt; {
+  if (err) return handle(err)
+  getBooks(author.id, (err2, books) =&gt; { /* ... */ })
+})
+
+// Promise (ES2015)
+getAuthor(id)
+  .then(author =&gt; getBooks(author.id))
+  .then(books =&gt; render(books))
+  .catch(handle)
+
+// async/await (ES2017) — składnia synchroniczna
+async function showAuthor(id) {
+  try {
+    const author = await getAuthor(id)
+    const books = await getBooks(author.id)
+    render(books)
+  } catch (err) {
+    handle(err)
+  }
+}</code></pre>
+
+<h3>5.2 Stany Promise</h3>
+<p><code>pending</code> → <code>fulfilled</code> (wartość) lub <code>rejected</code> (błąd). Łańcuch <code>.then</code> zwraca nowy Promise. <code>Promise.all</code> — czeka na wszystkie; <code>Promise.allSettled</code> — zbiera wyniki nawet przy błędach; <code>Promise.race</code> — pierwszy kończy.</p>
+
+<pre><code>const [user, settings] = await Promise.all([
+  fetchUser(id),
+  fetchSettings(id)
+])
+
+const results = await Promise.allSettled([
+  fetch('/api/a'),
+  fetch('/api/b')  // może fail — reszta i tak wraca
+])</code></pre>
+
+<h3>5.3 fetch — standard w przeglądarce i Node</h3>
+<pre><code>const res = await fetch('/api/authors', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ firstName: 'Anna' })
+})
+if (!res.ok) throw new Error(`HTTP ${res.status}`)
+const author = await res.json()</code></pre>
+<p><code>fetch</code> nie rzuca przy 404/500 — sprawdzaj <code>res.ok</code>. W React + TanStack Query logika fetch często siedzi w <code>queryFn</code>.</p>
+
+<hr>
+
+<h2 id="czesc-6">Część 6 — Event loop</h2>
+
+<h3>6.1 Jednowątkowy JS + kolejka zadań</h3>
+<p>JavaScript w przeglądarce/Node ma <strong>jeden wątek</strong> na wykonanie kodu. Operacje I/O (sieć, timer, plik) deleguje do środowiska; wynik wraca przez <strong>callback queue</strong> (task queue) i <strong>microtask queue</strong> (Promises).</p>
+
+<pre><code>console.log('1')
+setTimeout(() =&gt; console.log('2'), 0)
+Promise.resolve().then(() =&gt; console.log('3'))
+console.log('4')
+// kolejność: 1, 4, 3, 2
+// microtasks (Promise) przed macrotasks (setTimeout)</code></pre>
+
+<h3>6.2 Dlaczego to ważne w aplikacjach</h3>
+<ul>
+  <li>Długi sync kod blokuje UI (freeze przeglądarki)</li>
+  <li><code>await</code> oddaje kontrolę — inne microtaski mogą wejść między krokami</li>
+  <li>Web Workers / <code>worker_threads</code> (Node) — ciężkie obliczenia poza głównym wątkiem</li>
+</ul>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — Moduły i ekosystem</h2>
+
+<h3>7.1 Wojna modułów (skrót)</h3>
+<table>
+  <thead>
+    <tr><th>System</th><th>Składnia</th><th>Gdzie</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>IIFE</td><td><code>(function(){ ... })()</code></td><td>Legacy, izolacja scope</td></tr>
+    <tr><td>CommonJS</td><td><code>require</code> / <code>module.exports</code></td><td>Node (tradycyjnie), sync</td></tr>
+    <tr><td>AMD</td><td><code>define</code> (RequireJS)</td><td>Stary frontend, async w przeglądarce</td></tr>
+    <tr><td>ES Modules</td><td><code>import</code> / <code>export</code></td><td>Standard — przeglądarka, Node, bundlery</td></tr>
+  </tbody>
+</table>
+
+<h3>7.2 ES Modules — dziś domyślnie</h3>
+<pre><code>// authorService.js
+export async function getAuthor(id) { /* ... */ }
+export default class AuthorApi { /* ... */ }
+
+// app.js
+import AuthorApi, { getAuthor } from './authorService.js'</code></pre>
+<p>W Node: <code>"type": "module"</code> w <code>package.json</code> lub rozszerzenie <code>.mjs</code>. Vite/Webpack transpilują i bundlują moduły do plików produkcyjnych.</p>
+
+<h3>7.3 Narzędzia (2024–2026)</h3>
+<ul>
+  <li><strong>Vite</strong> — dev server + build, natywne ESM w dev</li>
+  <li><strong>Node 20+ LTS</strong> — ESM dojrzały, <code>fetch</code> wbudowany</li>
+  <li><strong>npm / pnpm</strong> — zależności; <code>package.json</code> z <code>"exports"</code></li>
+</ul>
+
+<hr>
+
+<h2 id="czesc-8">Część 8 — Nowoczesny JS (2020–2024)</h2>
+
+<h3>8.1 Składnia, której używasz na co dzień</h3>
+<table>
+  <thead>
+    <tr><th>Funkcja</th><th>ES</th><th>Przykład</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Optional chaining</td><td>2020</td><td><code>user?.address?.city</code></td></tr>
+    <tr><td>Nullish coalescing</td><td>2020</td><td><code>port ?? 3000</code> (tylko null/undefined)</td></tr>
+    <tr><td><code>globalThis</code></td><td>2020</td><td>Jeden global w browser/Node/worker</td></tr>
+    <tr><td><code>Promise.allSettled</code></td><td>2020</td><td>Batch bez fail-fast</td></tr>
+    <tr><td>Logical assignment</td><td>2021</td><td><code>??=</code>, <code>&amp;&amp;=</code>, <code>||=</code></td></tr>
+    <tr><td><code>structuredClone</code></td><td>2022</td><td>Głęboka kopia (z limitami)</td></tr>
+    <tr><td>Top-level await</td><td>2022</td><td><code>await</code> w module bez async wrapper</td></tr>
+    <tr><td><code>Array.at(-1)</code></td><td>2022</td><td>Ostatni element bez <code>length - 1</code></td></tr>
+    <tr><td><code>Object.hasOwn</code></td><td>2022</td><td>Zamiast <code>hasOwnProperty</code></td></tr>
+    <tr><td><code>findLast</code> / <code>toSorted</code></td><td>2023</td><td>Immutowalne sortowanie tablic</td></tr>
+  </tbody>
+</table>
+
+<pre><code>// ?? vs ||
+const page = query.page ?? 1      // 0 jest OK
+const name = input.name || 'Guest' // 0, '', false → 'Guest'
+
+// toSorted — nie mutuje oryginału (React state!)
+const sorted = authors.toSorted((a, b) =&gt; a.name.localeCompare(b.name))</code></pre>
+
+<h3>8.2 Map, Set, WeakMap</h3>
+<p><code>Map</code> — klucze dowolnego typu, kolejność wstawiania. <code>Set</code> — unikalne wartości. <code>WeakMap</code> — klucze tylko obiekty, GC może posprzątać — cache metadanych DOM bez wycieków pamięci.</p>
+
+<hr>
+
+<h2 id="czesc-9" class="must-know">Część 9 — Co stosuje się dziś w aplikacjach</h2>
+
+<h3>9.1 Stack typowy (frontend + Node)</h3>
+<table>
+  <thead>
+    <tr><th>Warstwa</th><th>Technologia</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Język</td><td>JavaScript lub TypeScript (kompiluje do JS)</td></tr>
+    <tr><td>UI</td><td>React 18/19, Vue 3, Svelte — komponenty + hooks</td></tr>
+    <tr><td>Stan / API</td><td>TanStack Query, fetch/axios, async/await</td></tr>
+    <tr><td>Build</td><td>Vite, esbuild/swc pod spodem</td></tr>
+    <tr><td>Runtime</td><td>Przeglądarka evergreen; backend Node 20+ LTS</td></tr>
+    <tr><td>Testy</td><td>Vitest, Jest, Playwright</td></tr>
+  </tbody>
+</table>
+
+<h3>9.2 Czego unikać w nowym kodzie</h3>
+<ul>
+  <li><code>var</code>, <code>function</code> tylko dlatego że „tak zawsze było”</li>
+  <li>Callbacki zamiast Promise/async tam, gdzie API to wspiera</li>
+  <li>CommonJS w zielonym polu frontendu (ESM + bundler)</li>
+  <li>Mutowanie stanu React — preferuj spread, <code>toSorted</code>, immutable patterns</li>
+  <li><code>==</code> — używaj <code>===</code> (porównanie bez koercji typów)</li>
+</ul>
+
+<h3>9.3 JavaScript vs TypeScript</h3>
+<p>W korporacjach i większych aplikacjach dominuje <strong>TypeScript</strong> — ten sam runtime JS, typy tylko przy kompilacji. Czysty JS nadal w skryptach, małych narzędziach, legacy i fragmentach bez build step. Znasz nowoczesny JS → TS to dodatek składni, nie inny język.</p>
+
+<hr>
+
+<h2 id="czesc-10">Część 10 — Typowe błędy</h2>
+
+<ol>
+  <li><strong>Mylenie <code>==</code> i <code>===</code></strong> — <code>0 == false</code> jest true; używaj <code>===</code>.</li>
+  <li><strong><code>this</code> w callbacku</strong> — zgubione w zwykłej funkcji; strzałka lub <code>bind</code>.</li>
+  <li><strong>Closure w pętli z <code>var</code></strong> — wszystkie iteracje widzą tę samą wartość.</li>
+  <li><strong>Brak <code>catch</code> przy async</strong> — nieobsłużony rejection = cichy błąd lub crash w Node.</li>
+  <li><strong><code>await</code> w pętli zamiast <code>Promise.all</code></strong> — sekwencyjne requesty 10× wolniejsze niż równoległe (gdy nie muszą być po kolei).</li>
+  <li><strong>Mutacja obiektu ze stanu React</strong> — <code>state.push(x)</code> nie triggeruje re-render; nowa referencja.</li>
+  <li><strong><code>JSON.parse</code> bez try/catch</strong> — zły payload z API wywala cały handler.</li>
+  <li><strong><code>||</code> zamiast <code>??</code></strong> — wartość <code>0</code> lub <code>''</code> zostaje zastąpiona domyślną.</li>
+  <li><strong>Zakładanie że <code>fetch</code> rzuca na 404</strong> — trzeba sprawdzić <code>response.ok</code>.</li>
+  <li><strong>Import ścieżek bez rozszerzenia w Node ESM</strong> — wymaga pełnych ścieżek lub bundlera z resolverem.</li>
+</ol>
+
+</body>
+</html>
