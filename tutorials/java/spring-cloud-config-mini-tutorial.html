@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud Config — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6db33f;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef8e6; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      font-family: ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud Config</h1>
+<p class="meta">Centralny config server · Git / Vault / JDBC · refresh · vs Parameter Store<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#kiedy">Kiedy tak / kiedy nie</a></li>
+    <li><a href="#server">Config Server</a></li>
+    <li><a href="#client">Config Client</a></li>
+    <li><a href="#refresh">Refresh i szyfrowanie</a></li>
+    <li><a href="#alternatywy">Alternatywy</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>Spring Cloud Config</strong> to serwer centralizujący konfigurację aplikacji (properties/YAML) poza JAR-em. Aplikacje (klienci) przy starcie i na żądanie pobierają ustawienia z serwera — jedna zmiana w repo Git propaguje się na wiele instancji bez przebudowy obrazu.</p>
+
+<div class="flow-box">Git repo (config/)
+    order-service.yml
+    order-service-prod.yml
+    application.yml
+         │
+         ▼
+  Config Server (:8888)
+         │
+         ├─ GET /order-service/default
+         ├─ GET /order-service/prod
+         └─ POST /actuator/bus-refresh  (opcjonalnie)
+         │
+         ▼
+  order-service, author-service, …</div>
+
+<p>Konwencja nazw plików: <code>{application}-{profile}.yml</code>. <code>application.yml</code> — wspólne dla wszystkich. Profil <code>prod</code> + aplikacja <code>order-service</code> → merge <code>application.yml</code> + <code>application-prod.yml</code> + <code>order-service.yml</code> + <code>order-service-prod.yml</code> (późniejsze nadpisują wcześniejsze).</p>
+
+<div class="keyword">
+  <strong>Server vs Client</strong>
+  <p><em>Config Server</em> — osobna aplikacja Spring Boot (<code>@EnableConfigServer</code>). <em>Config Client</em> — każda mikroaplikacja z <code>spring-cloud-starter-config</code> + <code>spring.config.import=optional:configserver:</code> (Boot 2.4+).</p>
+</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">1. Kiedy używać / kiedy nie</h2>
+
+<table>
+  <thead><tr><th>Bierz Config Server</th><th>Olej Config Server</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Wiele serwisów Spring, wspólne i per-serwis properties w Git</td>
+      <td>K8s + ConfigMap/Secret per Deployment — wystarczy mount/env</td>
+    </tr>
+    <tr>
+      <td>Audyt zmian configu przez historię Git</td>
+      <td>AWS — Parameter Store / Secrets Manager + <code>spring.config.import</code> (patrz Spring Cloud AWS)</td>
+    </tr>
+    <tr>
+      <td>Refresh bez restartu (<code>/actuator/refresh</code>, Spring Cloud Bus)</td>
+      <td>12-factor: config tylko ze zmiennych środowiskowych — bez dodatkowego serwera</td>
+    </tr>
+    <tr>
+      <td>HashiCorp Vault jako backend zamiast Git</td>
+      <td>Jeden monolit, jeden plik <code>application.yml</code> w repo</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="trap">Config Server to kolejny komponent SPOF i do zabezpieczenia. Na K8s często prościej: Helm values + Sealed Secrets zamiast osobnego serwera configu.</div>
+
+<hr>
+
+<h2 id="server" class="must-know">2. Config Server</h2>
+
+<p>Starter: <code>spring-cloud-config-server</code>. Minimum:</p>
+
+<pre><code>@SpringBootApplication
+@EnableConfigServer
+public class ConfigServerApplication {
+  public static void main(String[] args) {
+    SpringApplication.run(ConfigServerApplication.class, args);
+  }
+}</code></pre>
+
+<pre><code>spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/org/config-repo
+          default-label: main
+          search-paths: '{application}'
+          clone-on-start: true
+server:
+  port: 8888</code></pre>
+
+<p>Endpointy REST (uproszczone):</p>
+
+<table>
+  <thead><tr><th>URL</th><th>Zwraca</th></tr></thead>
+  <tbody>
+    <tr><td><code>/{name}/{profile}</code></td><td>JSON z property sources</td></tr>
+    <tr><td><code>/{name}/{profile}/{label}</code></td><td>Konkretna gałąź/tag Git</td></tr>
+    <tr><td><code>/{name}-{profile}.yml</code></td><td>YAML plain text</td></tr>
+  </tbody>
+</table>
+
+<p><code>name</code> = <code>spring.application.name</code> klienta. <code>profile</code> = <code>spring.profiles.active</code> (np. <code>prod</code>).</p>
+
+<h3>Inne backendy</h3>
+
+<table>
+  <thead><tr><th>Backend</th><th>Użycie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Git</strong> (GitHub, GitLab, Bitbucket)</td><td>Domyślny — wersjonowanie, PR na zmiany configu</td></tr>
+    <tr><td><strong>Vault</strong></td><td>Sekrety dynamiczne, rotacja — <code>spring.cloud.config.server.vault</code></td></tr>
+    <tr><td><strong>JDBC</strong></td><td>Legacy — tabela PROPERTIES; rzadko w nowych systemach</td></tr>
+    <tr><td><strong>Composite</strong></td><td>Git + Vault — nie-sekrety w Git, hasła w Vault</td></tr>
+  </tbody>
+</table>
+
+<p>Bezpieczeństwo serwera: Spring Security + HTTP Basic / OAuth2. Klienci muszą się uwierzytelnić. W prod nie wystawiaj :8888 na internet bez TLS i auth.</p>
+
+<hr>
+
+<h2 id="client">3. Config Client</h2>
+
+<p>Starter: <code>spring-cloud-starter-config</code>. Boot 2.4+ — Config Data API:</p>
+
+<pre><code>spring:
+  application:
+    name: order-service
+  profiles:
+    active: prod
+  config:
+    import: "optional:configserver:https://config.example.com:8888"
+  cloud:
+    config:
+      username: ${CONFIG_USER}
+      password: ${CONFIG_PASS}
+      fail-fast: true   # nie startuj bez config servera (prod)</code></pre>
+
+<p>Kolejność ładowania (uproszczone): <code>application.yml</code> w JAR → import config server → zmienne środowiskowe (najwyższy priorytet w Boot).</p>
+
+<p><code>optional:</code> — przy local dev bez serwera aplikacja wstaje na lokalnym YAML. Na prod usuń <code>optional:</code> albo użyj profilu — inaczej cicho jedziesz na starym configu z JAR.</p>
+
+<p>Bootstrap (stary model, Boot &lt; 2.4): osobny <code>bootstrap.yml</code> + <code>spring-cloud-starter-bootstrap</code>. W nowych projektach — tylko <code>spring.config.import</code>.</p>
+
+<hr>
+
+<h2 id="refresh" class="must-know">4. Refresh, Bus i szyfrowanie</h2>
+
+<h3>@RefreshScope</h3>
+
+<p>Bean przeładowywany po refresh bez restartu JVM:</p>
+
+<pre><code>@RefreshScope
+@ConfigurationProperties(prefix = "feature")
+public class FeatureFlags {
+  private boolean newCheckout;
+  // getter/setter
+}</code></pre>
+
+<p>Wywołanie: <code>POST /actuator/refresh</code> (włącz endpoint) — przeładowuje tylko <code>@RefreshScope</code> beany. Reszta aplikacji (connection pool, cache) — bez zmian.</p>
+
+<h3>Spring Cloud Bus</h3>
+
+<p>Kafka/RabbitMQ — jeden <code>/actuator/busrefresh</code> na jednej instancji propaguje refresh na wszystkie mikroserwisy. Wymaga <code>spring-cloud-starter-bus-amqp</code> lub kafka.</p>
+
+<h3>Szyfrowanie wartości w Git</h3>
+
+<pre><code>spring:
+  datasource:
+    password: '{cipher}AQA...'</code></pre>
+
+<p>Config Server z <code>encrypt.key</code> (symetryczny) lub Vault — deszyfruje przy serwowaniu klientowi. Klucz szyfrowania <strong>nigdy</strong> w tym samym repo co ciphertext. W 2025+ częściej: sekrety w Vault/Secrets Manager, Git tylko na nie-wrażliwe flagi.</p>
+
+<hr>
+
+<h2 id="alternatywy">5. Alternatywy — kiedy co wybrać</h2>
+
+<table>
+  <thead><tr><th>Rozwiązanie</th><th>Plusy</th><th>Minusy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Spring Cloud Config + Git</strong></td><td>ZNany stack Spring, audyt Git</td><td>Osobny serwer, refresh wymaga Actuator/Bus</td></tr>
+    <tr><td><strong>K8s ConfigMap + Secret</strong></td><td>Natywne, bez extra serwisu</td><td>Brak centralnego repo dla wszystkich serwisów; rotacja ręczna</td></tr>
+    <tr><td><strong>AWS Parameter Store / Secrets Manager</strong></td><td>Managed, IAM, bez serwera</td><td>Vendor lock-in AWS; import przy starcie</td></tr>
+    <tr><td><strong>Helm + GitOps (Argo CD)</strong></td><td>Config jako manifesty K8s</td><td>Zmiana = deploy, nie live refresh</td></tr>
+    <tr><td><strong>Env vars / 12-factor</strong></td><td>Prostota, przenośność</td><td>Dużo zmiennych przy wielu serwisach</td></tr>
+  </tbody>
+</table>
+
+<p>Hybryda korporacyjna: nie-sekrety w Config Server (Git), hasła w Vault; albo Config Server z composite Git+Vault.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong>Hasła w plain text w Git.</strong> Repo configu wyciekło = prod skompromitowany. Cipher lub Vault/Secrets Manager.</li>
+  <li><strong><code>optional:configserver:</code> na prod.</strong> Serwer padł — aplikacja startuje na domyślnym JAR bez alarmu.</li>
+  <li><strong>Zła nazwa pliku.</strong> <code>orderservice.yml</code> zamiast <code>order-service.yml</code> — klient nie dostaje właściwego pliku.</li>
+  <li><strong>Refresh bez <code>@RefreshScope</code>.</strong> <code>/actuator/refresh</code> nic nie zmienia w już utworzonych beanach.</li>
+  <li><strong>Refresh connection pool / URL DB.</strong> <code>@RefreshScope</code> na DataSource — zamknięcie starych połączeń w trakcie ruchu. Często wymaga restartu rolling.</li>
+  <li><strong>Config Server bez HA.</strong> Jedna instancja — awaria blokuje start wszystkich klientów z <code>fail-fast: true</code>.</li>
+  <li><strong>Brak auth na Config Server.</strong> Każdy w sieci czyta prod secrets z <code>/order-service/prod</code>.</li>
+  <li><strong>Mieszanie bootstrap + import.</strong> Dwa mechanizmy — nieprzewidywalna kolejność property sources.</li>
+  <li><strong>Git <code>search-paths</code> źle ustawione.</strong> Puste odpowiedzi — pliki w podkatalogu, serwer szuka w root.</li>
+  <li><strong>Config Server „bo Spring Cloud” na K8s.</strong> Podwójna warstwa (ConfigMap + Config Server) bez korzyści — YAGNI.</li>
+</ol>
+
+</body>
+</html>
