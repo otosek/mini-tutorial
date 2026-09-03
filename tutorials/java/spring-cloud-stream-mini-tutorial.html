@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud Stream — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6db33f;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef8e6; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      font-family: ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud Stream</h1>
+<p class="meta">Messaging w Springu · Kafka / Rabbit binders · Supplier / Consumer · DLQ, retry<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#kiedy">Kiedy tak / kiedy nie</a></li>
+    <li><a href="#model">Model funkcyjny</a></li>
+    <li><a href="#kafka">Binder Kafka</a></li>
+    <li><a href="#naglowki">Nagłówki i partycje</a></li>
+    <li><a href="#bledy-handler">Błędy, retry, DLQ</a></li>
+    <li><a href="#testy">Testy</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>Spring Cloud Stream</strong> (SCS) to abstrakcja nad brokerami wiadomości (Kafka, RabbitMQ, Pulsar…). Piszesz logikę w Springu (<code>Supplier</code>, <code>Consumer</code>, <code>Function</code>) — <strong>binder</strong> mapuje to na konkretny broker bez zmiany kodu przy wymianie Kafka → Rabbit.</p>
+
+<div class="flow-box">OrderService                    Kafka topic: order-created
+  @Bean Consumer&lt;OrderCreated&gt;  ←── binder ──→  partition 0..N
+       process(event)
+  @Bean Supplier&lt;OrderShipped&gt; ── binder ──→  topic: order-shipped</div>
+
+<table>
+  <thead><tr><th>Pojęcie</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Binder</strong></td><td>Implementacja dla brokera — <code>spring-cloud-stream-binder-kafka</code></td></tr>
+    <tr><td><strong>Binding</strong></td><td>Połączenie między beanem a destination (topic / exchange)</td></tr>
+    <tr><td><strong>Destination</strong></td><td>Nazwa topicu (Kafka) lub exchange (Rabbit)</td></tr>
+    <tr><td><strong>Consumer group</strong></td><td>Grupa odbiorców — każda wiadomość raz na grupę (Kafka)</td></tr>
+    <tr><td><strong><code>Message&lt;T&gt;</code></strong></td><td>Payload + nagłówki (correlation-id, tenant, typ)</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>SCS 3+ — model funkcyjny</strong>
+  <p>Starszy model (<code>@Input</code> / <code>@Output</code>, <code>@EnableBinding</code>) jest deprecated. Nowe projekty: beany <code>java.util.function.Supplier</code>, <code>Consumer</code>, <code>Function</code> + konfiguracja YAML <code>spring.cloud.stream.bindings</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">1. Kiedy używać / kiedy nie</h2>
+
+<table>
+  <thead><tr><th>Bierz Spring Cloud Stream</th><th>Olej — użyj innego</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Event-driven między mikroserwisami Spring, możliwa zmiana brokera</td>
+      <td>Tylko Kafka, zespół zna ją dobrze — <code>@KafkaListener</code> / Spring for Apache Kafka prostsze</td>
+    </tr>
+    <tr>
+      <td>Jednolity model publish/subscribe w całym klastrze Spring</td>
+      <td>Wysoka przepustowość, niskie latency — czysty klient Kafka z ręcznym tuningiem</td>
+    </tr>
+    <tr>
+      <td>Testy z <code>TestChannelBinder</code> / embedded broker</td>
+      <td>Strumienie Kinesis — osobny binder AWS (Spring Cloud AWS 4.x)</td>
+    </tr>
+    <tr>
+      <td>Kontrakty messaging (Spring Cloud Contract)</td>
+      <td>Request-reply synchroniczny — Feign/REST wystarczy</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Starter Kafka: <code>spring-cloud-starter-stream-kafka</code>. Rabbit: <code>spring-cloud-starter-stream-rabbit</code>. Jeden binder na aplikację — nie mieszaj Kafka i Rabbit w jednym procesie bez wyraźnej potrzeby.</p>
+
+<hr>
+
+<h2 id="model" class="must-know">2. Model funkcyjny — Supplier, Consumer, Function</h2>
+
+<pre><code>@Bean
+public Consumer&lt;OrderCreated&gt; handleOrderCreated() {
+  return event -&gt; orderProcessor.process(event);
+}
+
+@Bean
+public Supplier&lt;OrderShipped&gt; publishShipped() {
+  return () -&gt; shipmentQueue.poll();  // lub Flux — patrz niżej
+}
+
+@Bean
+public Function&lt;OrderCreated, InvoiceGenerated&gt; orderToInvoice() {
+  return order -&gt; invoiceService.generate(order);
+}</code></pre>
+
+<p>Konfiguracja bindingów — nazwa beana = nazwa bindingu (domyślnie):</p>
+
+<pre><code>spring:
+  cloud:
+    stream:
+      bindings:
+        handleOrderCreated-in-0:
+          destination: order-created
+          group: order-service
+        publishShipped-out-0:
+          destination: order-shipped
+        orderToInvoice-in-0:
+          destination: order-created
+        orderToInvoice-out-0:
+          destination: invoice-generated</code></pre>
+
+<p>Konwencja: <code>{beanName}-in-0</code> / <code>-out-0</code> (indeks gdy wiele wejść/wyjść). <code>group</code> — consumer group Kafka; bez grupy każda instancja dostaje kopię (broadcast).</p>
+
+<h3>Reactive (Flux)</h3>
+
+<pre><code>@Bean
+public Function&lt;Flux&lt;OrderCreated&gt;, Flux&lt;OrderProcessed&gt;&gt; processOrders() {
+  return flux -&gt; flux
+      .map(orderProcessor::process)
+      .onErrorContinue((e, o) -&gt; log.warn("skip {}", o, e));
+}</code></pre>
+
+<p>Flux — backpressure i batching; wymaga reaktywnego bindera. Dla prostych eventów wystarczy <code>Consumer&lt;T&gt;</code>.</p>
+
+<hr>
+
+<h2 id="kafka">3. Binder Kafka — konfiguracja</h2>
+
+<pre><code>spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+          auto-create-topics: false   # prod: topic z góry (partycje, retention)
+        bindings:
+          handleOrderCreated-in-0:
+            consumer:
+              ack-mode: manual
+              enable-dlq: true
+              dlq-name: order-created.dlq
+      bindings:
+        handleOrderCreated-in-0:
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000</code></pre>
+
+<table>
+  <thead><tr><th>Ustawienie</th><th>Efekt</th></tr></thead>
+  <tbody>
+    <tr><td><code>destination</code></td><td>Nazwa topicu Kafka</td></tr>
+    <tr><td><code>group</code></td><td><code>group.id</code> — skalowanie horyzontalne konsumentów</td></tr>
+    <tr><td><code>content-type</code></td><td><code>application/json</code> — serializacja Jackson</td></tr>
+    <tr><td><code>partition-key-expression</code></td><td>Klucz partycji — np. <code>headers['tenantId']</code></td></tr>
+    <tr><td><code>consumer.concurrency</code></td><td>Wątki na binding (≤ liczba partycji topicu)</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> <code>concurrency=10</code> na topic z 3 partycjami — 7 wątków bez pracy. Partycje = górny limit równoległości w jednej grupie.</div>
+
+<h3>vs <code>@KafkaListener</code></h3>
+
+<table>
+  <thead><tr><th></th><th>Spring Cloud Stream</th><th>Spring Kafka</th></tr></thead>
+  <tbody>
+    <tr><td>Abstrakcja</td><td>Binder — zamiana brokera</td><td>Bezpośrednio Kafka</td></tr>
+    <tr><td>Konfiguracja</td><td><code>spring.cloud.stream.*</code></td><td><code>spring.kafka.*</code></td></tr>
+    <tr><td>Fine-tuning</td><td>Ograniczony do właściwości bindera</td><td>Pełny <code>ConsumerFactory</code>, interceptory</td></tr>
+    <tr><td>Testy</td><td>Test binder, Contract</td><td><code>@EmbeddedKafka</code>, Testcontainers</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="naglowki">4. Nagłówki, tenant, idempotencja</h2>
+
+<p>Payload w JSON + metadane w nagłówkach:</p>
+
+<pre><code>@Bean
+Consumer&lt;Message&lt;OrderCreated&gt;&gt; handleWithHeaders() {
+  return message -&gt; {
+    String tenant = message.getHeaders().get("X-Tenant-Id", String.class);
+  String correlationId = message.getHeaders().get("correlationId", String.class);
+    TenantContext.set(tenant);
+    try {
+      process(message.getPayload());
+    } finally {
+      TenantContext.clear();
+    }
+  };
+}</code></pre>
+
+<p>Propagacja z HTTP → Kafka przy publikacji:</p>
+
+<pre><code>@Bean
+Supplier&lt;Message&lt;OrderCreated&gt;&gt; emitOrder() {
+  return () -&gt; MessageBuilder
+      .withPayload(buildOrder())
+      .setHeader("X-Tenant-Id", TenantContext.get())
+      .setHeader("correlationId", MDC.get("correlationId"))
+      .build();
+}</code></pre>
+
+<p><strong>Idempotencja:</strong> consumer może dostać tę samą wiadomość ponownie (at-least-once). Sprawdź <code>eventId</code> w DB / Redis przed side-effectem. Nagłówek <code>idempotency-key</code> to konwencja, nie magia brokera.</p>
+
+<p><strong>Ordering:</strong> kolejność tylko w obrębie jednej partycji. Ten sam <code>partition-key</code> (np. <code>orderId</code>) → ta sama partycja.</p>
+
+<hr>
+
+<h2 id="bledy-handler" class="must-know">5. Błędy, retry, DLQ</h2>
+
+<p>Domyślnie: wyjątek w <code>Consumer</code> → retry (wg <code>max-attempts</code>) → opcjonalnie DLQ (dead-letter topic).</p>
+
+<pre><code>spring.cloud.stream.kafka.bindings.handleOrderCreated-in-0.consumer:
+  enable-dlq: true
+  dlq-name: order-created.dlq
+  auto-commit-on-error: false</code></pre>
+
+<div class="flow-box">Wiadomość → consumer (błąd)
+    → retry 1..N
+    → DLQ topic (order-created.dlq)
+    → alert / ręczna analiza / osobny consumer naprawczy</div>
+
+<p><strong>Poison message</strong> — zawsze pada na deserializacji lub logice: bez DLQ blokuje partycję (lagi rosną). Włącz DLQ na prod.</p>
+
+<p><strong>Retry a idempotencja:</strong> retry + brak idempotencji = podwójne przetworzenie. Projektuj consumer jako idempotentny albo używaj transakcji outbox.</p>
+
+<p>Ręczna obsługa:</p>
+
+<pre><code>@Bean
+Consumer&lt;OrderCreated&gt; safeConsumer() {
+  return event -&gt; {
+    try {
+      process(event);
+    } catch (TransientException e) {
+      throw e;  // retry
+    } catch (PermanentException e) {
+      dlqPublisher.send(event);  // nie retry — logika biznesowa
+    }
+  };
+}</code></pre>
+
+<hr>
+
+<h2 id="testy">6. Testy</h2>
+
+<table>
+  <thead><tr><th>Metoda</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Testcontainers Kafka</strong></td><td>IT z prawdziwym brokerem — najbliżej prod</td></tr>
+    <tr><td><strong><code>spring-cloud-stream-test-binder</code></strong></td><td>Unit — wiadomości w pamięci, bez Dockera</td></tr>
+    <tr><td><strong>Spring Cloud Contract</strong></td><td>Kontrakt messaging producer ↔ consumer</td></tr>
+    <tr><td><strong><code>InputDestination</code> / <code>OutputDestination</code></strong></td><td>Wstrzyknięcie wiadomości w <code>@SpringBootTest</code></td></tr>
+  </tbody>
+</table>
+
+<pre><code>@Autowired InputDestination input;
+@Autowired OutputDestination output;
+
+@Test
+void consumesAndProduces() {
+  input.send(MessageBuilder.withPayload(order).build(), "handleOrderCreated-in-0");
+  // asercja side-effectów + ewentualnie output.receive(0, "publishShipped-out-0")
+}</code></pre>
+
+<p>Test binder nie łapie problemów serializacji JSON vs Avro, ACL Kafka, partycji — na to Testcontainers.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong>Brak <code>group</code> na consumerze.</strong> Każda instancja czyta wszystko — duplikaty i brak load balancingu.</li>
+  <li><strong>Więcej instancji niż partycji.</strong> Nadmiarowe konsumenty stoją bezczynnie — planuj partycje przy tworzeniu topicu.</li>
+  <li><strong>Stary model <code>@EnableBinding</code>.</strong> Deprecated — migracja na funkcje + YAML bindings.</li>
+  <li><strong>Deserializacja bez <code>content-type</code>.</strong> <code>SerializationException</code> — ustaw <code>application/json</code> i zgodne DTO.</li>
+  <li><strong>Duży payload w Kafka.</strong> Limit domyślnie ~1 MB — obrazy/PDF do S3, w evencie tylko referencja.</li>
+  <li><strong>Brak DLQ na prod.</strong> Jedna zła wiadomość = lag całej partycji.</li>
+  <li><strong>Retry na błąd permanentny.</strong> Nieskończone ponawianie — idź od razu do DLQ.</li>
+  <li><strong>Tenant tylko w payloadzie.</strong> Łatwo zapomnieć w publisherze — nagłówek + interceptor spójny z HTTP/Feign.</li>
+  <li><strong>Transakcja DB + publish bez outbox.</strong> Commit DB i send do Kafka nie są atomowe — wzorzec outbox lub transactional messaging.</li>
+  <li><strong>SCS „bo mikroserwisy” przy 2 wiadomościach dziennie.</strong> Overhead operacyjny brokera — czasem wystarczy tabela outbox + scheduler.</li>
+</ol>
+
+</body>
+</html>
