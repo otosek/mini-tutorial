@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfluxDB — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #22acf0;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #e0f4fe; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>InfluxDB — mini-tutorial</h1>
+<p class="meta">Line protocol · Flux · buckets · retention · Telegraf · Grafana · cardinality<br>
+Format: HTML offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty TSDB</a></li>
+    <li><a href="#wersje">Wersje i ekosystem</a></li>
+    <li><a href="#model">Model danych i line protocol</a></li>
+    <li><a href="#retention">Retention i downsampling</a></li>
+    <li><a href="#zapis">Zapis danych</a></li>
+    <li><a href="#odczyt">Odczyt i agregacje (Flux)</a></li>
+    <li><a href="#stack">Telegraf · Grafana · alerting</a></li>
+    <li><a href="#integracja">Integracja w aplikacji</a></li>
+    <li><a href="#porownanie">InfluxDB vs inne narzędzia</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty TSDB</h2>
+
+<p><strong>InfluxDB</strong> — baza szeregów czasowych (time-series database). Optymalizowana pod ciągły strumień punktów z timestampem: metryki serwerów, IoT, APM, logi liczbowe. Nie zastępuje Postgresa jako źródła prawdy o encjach biznesowych.</p>
+
+<table>
+  <thead><tr><th>Kiedy InfluxDB</th><th>Kiedy coś innego</th></tr></thead>
+  <tbody>
+    <tr><td>Wysoka częstotliwość zapisu metryk (tysiące punktów/s)</td><td>Transakcje, relacje, ACID → Postgres</td></tr>
+    <tr><td>Agregacje w oknach czasowych (średnia/min/max per 5 min)</td><td>Full-text search → Elasticsearch</td></tr>
+    <tr><td>Retencja z automatycznym wygaszaniem starych danych</td><td>Pull model + service discovery → Prometheus</td></tr>
+    <tr><td>Dashboardy operacyjne (Grafana)</td><td>Jedna liczba „uptime” bez historii → cache / Redis</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Seria czasowa (time series)</strong>
+  <p>Unikalna kombinacja <strong>measurement</strong> + <strong>tagów</strong> — wszystkie punkty tej serii mają ten sam zestaw tagów. Wysoka cardinality tagów = wiele serii = większy koszt pamięci i indeksów.</p>
+</div>
+
+<p><strong>Pułapka:</strong> InfluxDB nie jest „Postgres z timestampem”. Brak JOINów w stylu SQL (w 2.x Flux), brak transakcji wielowierszowych — projektuj pod write-heavy + time-range queries.</p>
+
+<hr>
+
+<h2 id="wersje" class="must-know">Część 1 — Wersje i ekosystem</h2>
+
+<p>Na rynku spotkasz trzy generacje API. W prod często nadal 1.x lub 2.x; 3.x rośnie w chmurze i nowych wdrożeniach.</p>
+
+<table>
+  <thead><tr><th>Wersja</th><th>Model</th><th>Język zapytań</th><th>Uwagi</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1.x</strong></td><td>database → retention policy</td><td><strong>InfluxQL</strong> (SQL-like)</td><td>Legacy; Telegraf/Grafana nadal wspierają</td></tr>
+    <tr><td><strong>2.x</strong></td><td>org → bucket</td><td><strong>Flux</strong> (+ InfluxQL przez compat API)</td><td>UI, tokeny API, tasks — standard tutorialu</td></tr>
+    <tr><td><strong>3.x / Cloud Serverless</strong></td><td>bucket, IOx storage</td><td><strong>SQL</strong> (+ Flight SQL)</td><td>Parquet, lepsze analityka; migracja z 2.x planowana</td></tr>
+  </tbody>
+</table>
+
+<h3>InfluxDB 2.x — hierarchia</h3>
+
+<table>
+  <thead><tr><th>Pojęcie</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Organization</strong></td><td>Tenant logiczny — users, buckets, dashboards</td></tr>
+    <tr><td><strong>Bucket</strong></td><td>Kontener danych (odpowiednik „database + RP” z 1.x)</td></tr>
+    <tr><td><strong>Token</strong></td><td>API auth — scope read/write na bucket</td></tr>
+    <tr><td><strong>Task</strong></td><td>Zaplanowany Flux — downsampling, alerty</td></tr>
+  </tbody>
+</table>
+
+<pre><code># Uruchomienie lokalne (Docker)
+docker run -d --name influxdb2 \
+  -p 8086:8086 \
+  -v influxdb2-data:/var/lib/influxdb2 \
+  influxdb:2</code></pre>
+
+<p>Setup wizard na <code>http://localhost:8086</code>: org, bucket, admin token — zapisz token w sekretach, nie w repo.</p>
+
+<hr>
+
+<h2 id="model" class="must-know">Część 2 — Model danych i line protocol</h2>
+
+<p>Wszystkie wersje przyjmują dane przez <strong>line protocol</strong> — tekstowy format, jeden punkt = jedna linia.</p>
+
+<pre><code>&lt;measurement&gt;,&lt;tag_key&gt;=&lt;tag_value&gt; &lt;field_key&gt;=&lt;value&gt; &lt;timestamp&gt;
+
+cpu,host=server01,region=eu-west usage=0.64,idle=0.36 1704067200000000000</code></pre>
+
+<table>
+  <thead><tr><th>Element</th><th>Reguła</th><th>Przykład</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Measurement</strong></td><td>Nazwa tabeli logicznej</td><td><code>cpu</code>, <code>http_request</code></td></tr>
+    <tr><td><strong>Tags</strong></td><td>Metadane indeksowane — <strong>string</strong>, niska cardinality</td><td><code>host</code>, <code>region</code>, <code>status</code></td></tr>
+    <tr><td><strong>Fields</strong></td><td>Wartości liczbowe / bool — <strong>nie indeksowane</strong></td><td><code>usage=0.64</code>, <code>ok=true</code></td></tr>
+    <tr><td><strong>Timestamp</strong></td><td>Domyślnie nanosekundy; opcjonalny przy write API</td><td>Unix ns lub ms (zależy od API)</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Tags vs fields — najważniejsza decyzja projektowa</strong>
+  <p>Tag = kolumna, po której <strong>filtrowasz i grupujesz</strong> (host, service, env). Field = liczba, którą <strong>agregujesz</strong> (latency, bytes). User ID, request ID, URL → zwykle <strong>field</strong> lub osobny log store — nie tag.</p>
+</div>
+
+<div class="keyword">
+  <strong>Cardinality</strong>
+  <p>Liczba unikalnych kombinacji tagów. 10 hostów × 5 regionów = 50 serii — OK. 1M user_id jako tag = katastrofa pamięciowa. Pułapka: „wrzucę wszystko w tagi, bo Grafana łatwo grupuje”.</p>
+</div>
+
+<h3>Mapowanie na Flux / storage 2.x</h3>
+<p>W bucketu dane trafiają do tabeli <code>_measurement</code> z kolumnami tagów i <code>_field</code> / <code>_value</code>. Jeden punkt z dwoma fields w LP = dwie wiersze w storage.</p>
+
+<hr>
+
+<h2 id="retention">Część 3 — Retention i downsampling</h2>
+
+<p><strong>Retention policy</strong> — jak długo dane żyją w buckecie. Po TTL punkt jest usuwany (nie „archiwizowany” domyślnie). W 2.x ustawiasz przy tworzeniu bucketu lub przez API.</p>
+
+<pre><code># Bucket z retencją 30 dni (CLI influx 2.x)
+influx bucket create -n metrics_raw -o myorg -r 30d
+
+# Bucket na dane zagregowane — 1 rok
+influx bucket create -n metrics_1h -o myorg -r 365d</code></pre>
+
+<h3>Downsampling (tasks)</h3>
+<p>Typowy wzorzec: raw 7d (pełna granularność) → agregat 5m/1h w drugim buckecie na rok. Task Flux uruchamiany co minutę:</p>
+
+<pre><code>option task = {
+  name: "downsample_cpu_5m",
+  every: 1m,
+}
+
+from(bucket: "metrics_raw")
+  |&gt; range(start: -task.every)
+  |&gt; filter(fn: (r) =&gt; r._measurement == "cpu")
+  |&gt; aggregateWindow(every: 5m, fn: mean, createEmpty: false)
+  |&gt; to(bucket: "metrics_5m", org: "myorg")</code></pre>
+
+<p><strong>Pułapka:</strong> downsampling bez <code>createEmpty: false</code> może generować puste okna; agreguj tylko potrzebne measurements — task na cały bucket kosztuje CPU.</p>
+
+<hr>
+
+<h2 id="zapis">Część 4 — Zapis danych</h2>
+
+<h3>CLI i HTTP API (2.x)</h3>
+<pre><code># Plik LP
+cpu,host=a usage=0.5 1704067200000000000
+cpu,host=b usage=0.8 1704067200000000000
+
+influx write -b metrics_raw -o myorg -f points.lp --precision ns
+
+# HTTP (curl)
+curl -X POST "http://localhost:8086/api/v2/write?org=myorg&amp;bucket=metrics_raw&amp;precision=ns" \
+  --header "Authorization: Token YOUR_TOKEN" \
+  --data-binary "cpu,host=a usage=0.5"</code></pre>
+
+<h3>Java — klient 2.x</h3>
+<pre><code>// Maven: com.influxdb:influxdb-client-java (wersja ≈ serwer)
+InfluxDBClient client = InfluxDBClientFactory.create(
+    "http://localhost:8086",
+  "YOUR_TOKEN",
+  "myorg",
+  "metrics_raw");
+
+try (WriteApi writeApi = client.makeWriteApi()) {
+  Point point = Point.measurement("cpu")
+      .addTag("host", "server01")
+      .addField("usage", 0.64)
+      .time(Instant.now(), WritePrecision.NS);
+  writeApi.writePoint(point);
+}
+client.close();</code></pre>
+
+<p><code>makeWriteApi()</code> — batching asynchroniczny; przy shutdown zamknij klienta, żeby nie stracić bufora. Dla synchronicznego: <code>client.getWriteApiBlocking().writePoint(...)</code>.</p>
+
+<h3>Batch write</h3>
+<pre><code>List&lt;Point&gt; batch = List.of(
+    Point.measurement("cpu").addTag("host", "a").addField("usage", 0.5),
+    Point.measurement("cpu").addTag("host", "b").addField("usage", 0.8)
+);
+writeApi.writePoints(batch);</code></pre>
+
+<hr>
+
+<h2 id="odczyt" class="must-know">Część 5 — Odczyt i agregacje (Flux)</h2>
+
+<p><strong>Flux</strong> — funkcjonalny pipeline (2.x). Każde zapytanie zaczyna od źródła i zakresu czasu. W UI: Data Explorer → skrypt Flux.</p>
+
+<pre><code>from(bucket: "metrics_raw")
+  |&gt; range(start: -1h)
+  |&gt; filter(fn: (r) =&gt; r._measurement == "cpu")
+  |&gt; filter(fn: (r) =&gt; r._field == "usage")
+  |&gt; filter(fn: (r) =&gt; r.host == "server01")
+  |&gt; aggregateWindow(every: 1m, fn: mean, createEmpty: false)
+  |&gt; yield(name: "mean")</code></pre>
+
+<table>
+  <thead><tr><th>Funkcja Flux</th><th>Co robi</th></tr></thead>
+  <tbody>
+    <tr><td><code>from(bucket:)</code></td><td>Źródło danych</td></tr>
+    <tr><td><code>range(start:, stop:)</code></td><td>Filtr czasu — <strong>zawsze wymagany</strong> w praktyce</td></tr>
+    <tr><td><code>filter(fn:)</code></td><td>Warunek na kolumny (<code>r.host</code>, <code>r._value</code>)</td></tr>
+    <tr><td><code>aggregateWindow</code></td><td>Okna czasowe: mean, sum, max, count</td></tr>
+    <tr><td><code>group(columns:)</code></td><td>Grupowanie przed agregacją (per host)</td></tr>
+    <tr><td><code>last()</code> / <code>max()</code></td><td>Redukcja w grupie</td></tr>
+    <tr><td><code>to(bucket:)</code></td><td>Zapis wyniku (task / ETL)</td></tr>
+  </tbody>
+</table>
+
+<h3>InfluxQL (1.x i compat 2.x)</h3>
+<pre><code>SELECT mean("usage") FROM "cpu"
+WHERE time &gt; now() - 1h AND "host" = 'server01'
+GROUP BY time(1m) fill(none)</code></pre>
+
+<p>InfluxQL jest znajome z SQL, ale Flux daje pełną moc pipeline (join streamów, pivot). W 2.x preferuj Flux dla tasks i nowych kodów; InfluxQL tylko przy legacy.</p>
+
+<h3>Java — query Flux</h3>
+<pre><code>String flux = """
+  from(bucket: \"metrics_raw\")
+    |&gt; range(start: -1h)
+    |&gt; filter(fn: (r) =&gt; r._measurement == \"cpu\")
+    |&gt; last()
+""";
+
+List&lt;FluxTable&gt; tables = client.getQueryApi().query(flux, "myorg");
+for (FluxTable table : tables) {
+  for (FluxRecord record : table.getRecords()) {
+    System.out.println(record.getTime() + " " + record.getValue());
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="stack">Część 6 — Telegraf · Grafana · alerting</h2>
+
+<div class="flow-box">Host / kontener / aplikacja
+    → <strong>Telegraf</strong> (zbiera metryki, output influxdb_v2)
+    → <strong>InfluxDB</strong> (bucket)
+    → <strong>Grafana</strong> (datasource InfluxDB — Flux lub InfluxQL)</div>
+
+<p><strong>Telegraf</strong> — agent z pluginami (cpu, mem, disk, nginx, prometheus scrape). Konfiguracja <code>outputs.influxdb_v2</code> z URL, token, bucket, org.</p>
+
+<pre><code>[[outputs.influxdb_v2]]
+  urls = ["http://influxdb:8086"]
+  token = "$INFLUX_TOKEN"
+  organization = "myorg"
+  bucket = "metrics_raw"</code></pre>
+
+<p><strong>Grafana:</strong> datasource typu InfluxDB — w 2.x wybierz Flux, podaj org i token. Dashboardy: time series, stat, heatmap. Zapytania z <code>$__interval</code> dla auto-window.</p>
+
+<p><strong>Alerting (2.x):</strong> check Flux + notification endpoint (Slack, PagerDuty). Alternatywa: alerty w Grafana na datasource InfluxDB — jeden punkt prawdy dla dashboardów i alertów.</p>
+
+<hr>
+
+<h2 id="integracja">Część 7 — Integracja w aplikacji</h2>
+
+<table>
+  <thead><tr><th>Ścieżka</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Micrometer + registry Influx</strong></td><td>Spring Boot — standardowe metryki JVM, HTTP, custom counters</td></tr>
+    <tr><td><strong>influxdb-client-java</strong></td><td>Własne punkty, batch, precyzyjny model LP</td></tr>
+    <tr><td><strong>OpenTelemetry → collector → Influx</strong></td><td>Unified telemetry (metryki + traces export)</td></tr>
+    <tr><td><strong>Telegraf sidecar</strong></td><td>Bez zmian w kodzie — scrape Prometheus endpoint aplikacji</td></tr>
+  </tbody>
+</table>
+
+<pre><code># application.yml (Spring Boot 3 + Micrometer)
+management.influx.metrics.export.enabled=true
+management.influx.metrics.export.uri=http://localhost:8086
+management.influx.metrics.export.org=myorg
+management.influx.metrics.export.bucket=metrics_raw
+management.influx.metrics.export.token=${INFLUX_TOKEN}</code></pre>
+
+<p>Metryki aplikacji idą do tego samego bucketu co infrastruktura — ujednolicone dashboardy. Custom: <code>@Timed</code>, <code>Counter.builder("orders.created").register(registry)</code>.</p>
+
+<p><strong>Pułapka:</strong> nie loguj każdego requestu jako osobny punkt Influx z unikalnym tagiem — to cardinality bomb. Agreguj w aplikacji lub użyj histogramów Micrometer.</p>
+
+<hr>
+
+<h2 id="porownanie">InfluxDB vs inne narzędzia</h2>
+
+<table>
+  <thead><tr><th></th><th>InfluxDB</th><th>Prometheus</th><th>Postgres</th><th>Elasticsearch</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Model zapisu</strong></td><td>Push (LP, API)</td><td>Pull (scrape)</td><td>INSERT row</td><td>Index document</td></tr>
+    <tr><td><strong>Retencja</strong></td><td>Natywna per bucket</td><td>Natywna TSDB</td><td>Manual / partycje</td><td>ILM policy</td></tr>
+    <tr><td><strong>Query</strong></td><td>Flux / InfluxQL / SQL(3)</td><td>PromQL</td><td>SQL</td><td>DSL / SQL</td></tr>
+    <tr><td><strong>Cardinality</strong></td><td>Wrażliwy na tagi</td><td>Wrażliwy na labels</td><td>Normalny B-tree</td><td>Mapping dependent</td></tr>
+    <tr><td><strong>Typowy use case</strong></td><td>IoT, custom metrics pipeline</td><td>K8s monitoring stack</td><td>OLTP + raporty</td><td>Logi, search</td></tr>
+  </tbody>
+</table>
+
+<p>Wiele stacków: Prometheus do K8s + Influx do biznesowych metryk z aplikacji + Grafana na oba datasources.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ul>
+  <li><strong>User ID / session ID jako tag</strong> — eksplozja cardinality; użyj field lub innego store.</li>
+  <li><strong>Wysokie-cardinality tag „na wszystko”</strong> — każdy unikalny URL, order_id, trace_id w tagach.</li>
+  <li><strong>Brak retention</strong> — bucket bez TTL → dysk rośnie bez końca; ustaw przy tworzeniu.</li>
+  <li><strong>Query bez <code>range()</code> w Flux</strong> — skan całego bucketu, timeout lub OOM na prod.</li>
+  <li><strong>Mieszanie precision timestamp</strong> — ns vs ms vs s w LP bez <code>precision</code> w API → złe daty na wykresach.</li>
+  <li><strong>Field jako string z liczbą</strong> — LP nie ma typów jak SQL; konsekwentnie float/int dla agregacji.</li>
+  <li><strong>Zapisywanie wszystkiego w jednym measurement</strong> — trudne filtrowanie; rozdziel domeny (cpu, http, queue).</li>
+  <li><strong>Async WriteApi bez flush przy shutdown</strong> — utrata ostatniego batcha przy restart poda.</li>
+  <li><strong>Token admin w aplikacji</strong> — token write-only na jeden bucket, rotacja w sekretach.</li>
+  <li><strong>Downsampling na żywym raw bez drugiego bucketu</strong> — nadpisanie granularności bez kopii zapasowej.</li>
+</ul>
+
+</body>
+</html>
