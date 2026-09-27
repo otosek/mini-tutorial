@@ -123,7 +123,7 @@
     <li><a href="#r4">Styl pisania</a></li>
     <li><a href="#r5">HTML i CSS — szablon</a></li>
     <li><a href="#r6">Komponenty UI</a></li>
-    <li><a href="#r7">Pytania rekrutacyjne</a></li>
+    <li><a href="#r7">Ciekawostki</a></li>
     <li><a href="#r8">Index i katalog</a></li>
     <li><a href="#r9">Checklist przed zapisem</a></li>
     <li><a href="#r10">Prompt dla LLM</a></li>
@@ -155,12 +155,12 @@
 <ol>
   <li><strong>Link wstecz (.back)</strong> — przed wszystkim innym w body; bez tego tutorial jest niekompletny</li>
   <li><strong>Nagłówek H1</strong> — temat krótko</li>
-  <li><strong>Meta (.meta)</strong> — 1–2 linie: co obejmuje + „Format: HTML…” + ewent. „Bez pytań”</li>
+  <li><strong>Meta (.meta)</strong> — 1–2 linie: co obejmuje + „Format: HTML…” + ewent. „Bez sekcji ciekawostek”</li>
   <li><strong>Spis treści (.toc)</strong> — linki kotwic <code>#sekcja</code></li>
   <li><strong>Część 0 / Fundamenty</strong> — „co to jest”, jedno zdanie podsumowujące</li>
   <li><strong>3–7 części merytorycznych (H2)</strong> — rdzeń tematu; 2–3 z klasą <code>must-know</code></li>
   <li><strong>Typowe błędy</strong> — lista 8–10 punktów (H2)</li>
-  <li><strong>Opcjonalnie: Pytania rekrutacyjne</strong> — tylko gdy user prosi</li>
+  <li><strong>Opcjonalnie: Ciekawostki</strong> — w wariantach pełnych/krótkich; w średnim zwykle pomijasz</li>
 </ol>
 
 <p>Między większymi H2 używaj <code>&lt;hr&gt;</code>.</p>
@@ -172,9 +172,9 @@
 <table>
   <thead><tr><th>Wariant</th><th>Rozmiar</th><th>Kiedy</th></tr></thead>
   <tbody>
-    <tr><td><strong>Pełny</strong></td><td>~450–550 linii HTML, 40 pytań</td><td>Hibernate, React, K8s, OAuth… — user chce rekrutację</td></tr>
-    <tr><td><strong>Średni</strong></td><td>~350–450 linii, bez pytań</td><td>DDD, architektura, Java 8–25, Postgres, AWS</td></tr>
-    <tr><td><strong>Krótki</strong></td><td>~200–280 linii, 10–15 pytań max</td><td>NIST hasła, bardzo wąski temat</td></tr>
+    <tr><td><strong>Pełny</strong></td><td>~450–550 linii HTML, ~40 ciekawostek</td><td>Hibernate, React, K8s, OAuth — szeroki temat core</td></tr>
+    <tr><td><strong>Średni</strong></td><td>~350–450 linii, bez ciekawostek</td><td>DDD, architektura, Java 8–25, Postgres, AWS</td></tr>
+    <tr><td><strong>Krótki</strong></td><td>~200–280 linii, 10–15 ciekawostek max</td><td>NIST hasła, bardzo wąski temat</td></tr>
   </tbody>
 </table>
 
@@ -256,8 +256,8 @@
     <tr><td><code>.keyword</code> / <code>.concept-card</code> / <code>.svc</code></td><td>Jedno pojęcie = tytuł + krótki opis (hasła DDD, usługi AWS)</td></tr>
     <tr><td><code>table</code></td><td>Porównania, operatory, wersje Java, mapowanie stack→AWS</td></tr>
     <tr><td><code>pre &gt; code</code></td><td>SQL, Java, TS, bash, diagramy ASCII</td></tr>
-    <tr><td><code>.qa-item</code></td><td>Pytanie rekrutacyjne + krótka odpowiedź (1–3 zdania)</td></tr>
-    <tr><td><code>.level-tag</code></td><td>Junior / Senior / Pułapki — nad grupą pytań</td></tr>
+    <tr><td><code>.qa-item</code></td><td>Ciekawostka: krótkie pytanie/fakt + odpowiedź (1–3 zdania)</td></tr>
+    <tr><td><code>.level-tag</code></td><td>Junior / Senior / Pułapki — nad grupą ciekawostek</td></tr>
     <tr><td><code>.must-know</code> na H2</td><td>2–3 najważniejsze sekcje tematu</td></tr>
     <tr><td><code>.map-box</code> / <code>.flow-box</code></td><td>Diagram przepływu, architektura w jednym bloku</td></tr>
     <tr><td><code>.lib-tag</code> / <code>.ver-lts</code></td><td>Etykiety bibliotek / wersji LTS</td></tr>
@@ -266,16 +266,17 @@
 
 <hr>
 
-<h2 id="r7">7. Pytania rekrutacyjne (tylko na życzenie)</h2>
+<h2 id="r7">7. Ciekawostki</h2>
 
-<p>User <strong>explicite</strong> prosi → dodaj sekcję H2 „Pytania rekrutacyjne — krótkie odpowiedzi”.</p>
+<p>Sekcja to <strong>nie</strong> pytania rekrutacyjne — luźne fakty i pułapki do powtórki tematu.</p>
 
 <ul>
-  <li><strong>40 pytań</strong> — standard pełnego tutoriala</li>
+  <li>H2: <strong>Ciekawostki — krótkie odpowiedzi</strong>, kotwica <code>#ciekawostki</code></li>
+  <li><strong>~40 pozycji</strong> — standard pełnego tutoriala</li>
   <li><strong>3 poziomy:</strong> Junior/Mid (15), Mid/Senior (15), Pułapki (10)</li>
   <li>Format <code>.qa-item</code>: <code>&lt;strong&gt;N. Pytanie?&lt;/strong&gt;</code> + <code>&lt;p&gt;Krótka odpowiedź.&lt;/p&gt;</code></li>
   <li>Odpowiedź: <strong>1–3 zdania</strong>, bez lania wody</li>
-  <li>User pisze „bez pytań” / „krótko” → <strong>pomiń</strong> całą sekcję; wpisz w meta „Bez pytań rekrutacyjnych”</li>
+  <li>Wariant średni / user „krótko” → <strong>pomiń</strong> sekcję; wpisz w meta „Bez sekcji ciekawostek”</li>
 </ul>
 
 <hr>
@@ -326,7 +327,7 @@ Wymagania:
   &lt;p class="back"&gt;&lt;a href="../index.html"&gt;← Spis tutoriali&lt;/a&gt;&lt;/p&gt;
   + CSS .back / .back a
 - struktura: back link, meta, spis treści, fundamenty, 4–6 sekcji merytorycznych,
-  typowe błędy (8–10), {pytania: 40 / bez pytań}
+  typowe błędy (8–10), {ciekawostki: ~40 / bez ciekawostek}
 - styl jak tutorials/hibernate/hibernate-mini-tutorial.html (wielkość średnia)
 - zaktualizuj tutorials/index.html (licznik + karta)
 
@@ -334,7 +335,7 @@ Nie twórz plików markdown ani README unless asked.</code></pre>
 
 <hr>
 
-<p class="meta"><strong>Referencje wzorcowe:</strong> pełny z pytaniami → <code>hibernate-mini-tutorial.html</code>; średni bez pytań → <code>ddd-mini-tutorial.html</code>, <code>postgresql-mini-tutorial.html</code>; stack 3-w-1 → <code>react-stack-mini-tutorial.html</code>.</p>
+<p class="meta"><strong>Referencje wzorcowe:</strong> pełny z ciekawostkami → <code>hibernate-mini-tutorial.html</code>; średni bez ciekawostek → <code>ddd-mini-tutorial.html</code>, <code>postgresql-mini-tutorial.html</code>; stack 3-w-1 → <code>react-stack-mini-tutorial.html</code>.</p>
 
 </body>
 </html>

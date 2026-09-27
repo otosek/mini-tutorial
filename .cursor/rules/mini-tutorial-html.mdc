@@ -27,12 +27,12 @@ alwaysApply: false
 
 0. **Link wstecz (`.back`)** — przed wszystkim innym w body
 1. **H1** — temat krótko
-2. **Meta (`.meta`)** — 1–2 linie: co obejmuje + „Format: HTML…” + ewent. „Bez pytań”
+2. **Meta (`.meta`)** — 1–2 linie: co obejmuje + „Format: HTML…” + ewent. „Bez sekcji ciekawostek”
 3. **Spis treści (`.toc`)** — linki kotwic `#sekcja`
 4. **Część 0 / Fundamenty** — „co to jest”, jedno zdanie podsumowujące
 5. **3–7 części merytorycznych (H2)** — rdzeń tematu; 2–3 z klasą `must-know`
 6. **Typowe błędy** — lista 8–10 punktów (H2)
-7. **Opcjonalnie: Pytania rekrutacyjne** — tylko gdy user prosi
+7. **Opcjonalnie: Ciekawostki** — w wariantach pełnych/krótkich (patrz niżej); w średnim zwykle pomijasz
 
 Między większymi H2 używaj `<hr>`.
 
@@ -40,9 +40,9 @@ Między większymi H2 używaj `<hr>`.
 
 | Wariant | Rozmiar | Kiedy |
 |---------|---------|-------|
-| **Pełny** | ~450–550 linii HTML, 40 pytań | Hibernate, React, K8s, OAuth — user chce rekrutację |
-| **Średni** | ~350–450 linii, bez pytań | DDD, architektura, Java 8–25, Postgres, AWS |
-| **Krótki** | ~200–280 linii, 10–15 pytań max | NIST hasła, bardzo wąski temat |
+| **Pełny** | ~450–550 linii HTML, ~40 ciekawostek | Hibernate, React, K8s, OAuth — szeroki temat core |
+| **Średni** | ~350–450 linii, bez ciekawostek | DDD, architektura, Java 8–25, Postgres, AWS |
+| **Krótki** | ~200–280 linii, 10–15 ciekawostek max | NIST hasła, bardzo wąski temat |
 
 - Opis pojęcia: **2–4 zdania**, potem przykład kodu/SQL/diagram
 - Tabele: preferowane zamiast długich akapitów porównawczych
@@ -78,21 +78,22 @@ W blokach `<pre>` escapuj HTML: `<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`.
 | `.keyword` / `.concept-card` / `.svc` | Jedno pojęcie = tytuł + krótki opis |
 | `table` | Porównania, operatory, wersje, mapowania |
 | `pre > code` | SQL, Java, TS, bash, diagramy ASCII |
-| `.qa-item` | Pytanie rekrutacyjne + krótka odpowiedź (1–3 zdania) |
-| `.level-tag` | Junior / Senior / Pułapki — nad grupą pytań |
+| `.qa-item` | Ciekawostka: krótkie pytanie/fakt + odpowiedź (1–3 zdania) |
+| `.level-tag` | Junior / Senior / Pułapki — nad grupą ciekawostek |
 | `.must-know` na H2 | 2–3 najważniejsze sekcje tematu |
 | `.map-box` / `.flow-box` | Diagram przepływu, architektura |
 | `.lib-tag` / `.ver-lts` | Etykiety bibliotek / wersji LTS |
 
-## Pytania rekrutacyjne (tylko na życzenie)
+## Ciekawostki
 
-User **explicite** prosi → dodaj sekcję H2 „Pytania rekrutacyjne — krótkie odpowiedzi”.
+Sekcja to **nie** pytania rekrutacyjne — luźne fakty i pułapki do powtórki tematu.
 
-- **40 pytań** — standard pełnego tutoriala
+- H2: **`Ciekawostki — krótkie odpowiedzi`**, kotwica **`#ciekawostki`**
+- **~40 pozycji** — standard pełnego tutoriala
 - **3 poziomy:** Junior/Mid (15), Mid/Senior (15), Pułapki (10)
 - Format `.qa-item`: `<strong>N. Pytanie?</strong>` + `<p>Krótka odpowiedź.</p>`
 - Odpowiedź: **1–3 zdania**
-- User pisze „bez pytań” / „krótko” → **pomiń** sekcję; wpisz w meta „Bez pytań rekrutacyjnych”
+- Wariant średni / user „krótko” → **pomiń** sekcję; wpisz w meta „Bez sekcji ciekawostek”
 
 ## Aktualizacja index.html
 
