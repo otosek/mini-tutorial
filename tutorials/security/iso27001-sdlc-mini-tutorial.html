@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ISO 27001 a wytwarzanie API — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0369a1;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .iso-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+      background: #e0f2fe;
+      color: #075985;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f0f9ff; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .map-box {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      border-radius: 0 6px 6px 0;
+      padding: 0.6rem 0.9rem;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .check {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .check li {
+      position: relative;
+      padding-left: 1.6rem;
+      margin: 0.45rem 0;
+    }
+
+    .check li::before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>ISO 27001 a codzienna praca przy API</h1>
+<p class="meta">ISMS · kontrolki A.8 (2022) · SDLC · OWASP API Top 10 · Twelve-Factor · CI/CD · code review<br>
+Format: samodzielny HTML, offline · fokus: backend / REST / OpenAPI · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty ISO 27001</a></li>
+    <li><a href="#kontrolki">Kontrolki A.8 dla developera</a></li>
+    <li><a href="#sdlc">Mapa SDLC — od ticketu do prod</a></li>
+    <li><a href="#analiza">Analiza i wymagania</a></li>
+    <li><a href="#kod">Kodowanie API</a></li>
+    <li><a href="#review">Review, merge, zmiany</a></li>
+    <li><a href="#testy">Testy bezpieczeństwa</a></li>
+    <li><a href="#owasp-api">OWASP API Security Top 10</a></li>
+    <li><a href="#twelve">Twelve-Factor a zgodność</a></li>
+    <li><a href="#cicd">Pipeline CI/CD</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">0. Fundamenty — co to znaczy dla Ciebie</h2>
+
+<p><strong>ISO/IEC 27001</strong> to norma na system zarządzania bezpieczeństwem informacji (ISMS). Organizacja nie „certyfikuje kodu” — certyfikuje <em>proces</em>: polityki, role, ryzyko, dowody audytowe. Ty jako programista API dostarczasz <strong>implementację kontrolek</strong> i <strong>ślad w repozytorium / pipeline</strong>, który audytor może prześledzić.</p>
+
+<div class="keyword">
+  <strong>Pojęcia, które usłyszysz na co dzień</strong>
+  <p><strong>SoA</strong> (Statement of Applicability) — lista kontrolek z Załącznika A: które obowiązują, jak są spełnione, uzasadnienie wyłączeń. Jeśli A.8.28 jest „Applicable”, secure coding nie jest opcjonalny.<br>
+  <strong>Risk treatment</strong> — ticket z nowym endpointem powinien mieć ocenę ryzyka (dane osobowe? płatności? integracja zewnętrzna?).<br>
+  <strong>Dowód (evidence)</strong> — zielony pipeline, log merge z approval, skan CVE, wpis w changelogu deployu.</p>
+</div>
+
+<p><strong>Jedno zdanie:</strong> norma wymaga, żeby każda zmiana w API była przewidywalna, autoryzowana, przetestowana i audytowalna — a Ty implementujesz to w ticketach, PR-ach i jobach CI.</p>
+
+<hr>
+
+<h2 id="kontrolki">1. Kontrolki A.8 (2022) — mapa na wytwarzanie</h2>
+
+<p>Załącznik A grupy <strong>A.8 — Rozwój</strong> to Twój główny „kontrakt” z security/compliance. Reszta normy (dostęp fizyczny, HR) dotyczy Ciebie pośrednio; poniższe — bezpośrednio.</p>
+
+<table>
+  <thead>
+    <tr><th>Kontrolka</th><th>Temat</th><th>Co robisz w praktyce (API)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span class="iso-tag">A.8.25</span></td><td>Secure SDLC</td><td>Definition of Done z security; threat modeling przy większych feature’ach; security w backlogu</td></tr>
+    <tr><td><span class="iso-tag">A.8.26</span></td><td>Wymagania bezpieczeństwa aplikacji</td><td>User stories: klasy danych, authN/authZ, retencja, logowanie bez PII w plain text</td></tr>
+    <tr><td><span class="iso-tag">A.8.27</span></td><td>Bezpieczna architektura</td><td>Defense in depth, least privilege IAM, segmentacja, brak „boga API” bez granic</td></tr>
+    <tr><td><span class="iso-tag">A.8.28</span></td><td>Secure coding</td><td>Parametryzacja SQL, walidacja wejścia, brak sekretów w repo, bezpieczne domyślne błędy</td></tr>
+    <tr><td><span class="iso-tag">A.8.29</span></td><td>Security testing</td><td>Testy integracyjne authZ, SAST/DAST w CI, contract tests, okresowe pentesty</td></tr>
+    <tr><td><span class="iso-tag">A.8.31</span></td><td>Separacja środowisk</td><td>Dev/stage/prod — inne creds, brak prod DB z laptopa, feature flags zamiast „prod-only hacków”</td></tr>
+    <tr><td><span class="iso-tag">A.8.32</span></td><td>Zarządzanie zmianami</td><td>PR + review + ticket; semver / changelog; rollback plan; brak deployu z main bez gate’ów</td></tr>
+    <tr><td><span class="iso-tag">A.8.33</span></td><td>Dane testowe</td><td>Syntetyczne / zanonimizowane dane; zakaz kopii prod bez procesu</td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> „Mamy ISO, więc security robi zespół GRC” — audytor pyta <em>Ciebie</em>, skąd wiesz, że endpoint <code>DELETE /users/{id}</code> nie pozwala na BOLA. Kontrolka bez implementacji = finding.</div>
+
+<hr>
+
+<h2 id="sdlc" class="must-know">2. Mapa SDLC — Twój tydzień w projekcie z ISO</h2>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.86rem;line-height:1.55">Backlog / refinement
+  → klasy danych, AC bezpieczeństwa, zależności (A.8.26)
+Analiza / design API (OpenAPI)
+  → auth, rate limit, model błędów (A.8.27)
+Implementacja + unit/integration tests (A.8.28, A.8.29)
+PR → CI (SAST, deps, testy) → code review (A.8.32)
+Merge → artefakt (SBOM) → deploy stage → smoke / DAST
+Change approval → prod (A.8.31, A.8.32)
+Monitoring, logi, incydenty (dowód operacyjny ISMS)</pre>
+</div>
+
+<p>Frontend schodzi na drugi plan: i tak walidujesz <strong>kontrakt API</strong> — to serwer musi egzekwować autoryzację, limity i spójność danych. UI może być złośliwy; API nie może ufać klientowi.</p>
+
+<hr>
+
+<h2 id="analiza">3. Analiza i wymagania — zanim napiszesz kod</h2>
+
+<h3>3.1 Refinement ticketu</h3>
+<ul class="check">
+  <li>Jakie dane przetwarza endpoint (public / internal / confidential / special category)?</li>
+  <li>Kto może wywołać operację (rola, scope OAuth, tenant)?</li>
+  <li>Czy jest idempotencja / rate limiting / audyt (kto, kiedy, co)?</li>
+  <li>Czy integracja zewnętrzna wymaga allowlist URL (SSRF)?</li>
+  <li>Czy zmiana łamie kontrakt — wersjonowanie API (<code>/v2</code>, nagłówki)?</li>
+</ul>
+
+<h3>3.2 Threat modeling (lekki format STRIDE dla API)</h3>
+<table>
+  <thead><tr><th>STRIDE</th><th>Pytanie przy REST</th></tr></thead>
+  <tbody>
+    <tr><td>Spoofing</td><td>Czy token / mTLS jednoznacznie identyfikuje klienta?</td></tr>
+    <tr><td>Tampering</td><td>Czy body i parametry są walidowane i podpisane tam, gdzie trzeba?</td></tr>
+    <tr><td>Repudiation</td><td>Czy mutacje mają correlation-id i audit log?</td></tr>
+    <tr><td>Information disclosure</td><td>Czy 404 vs 403 nie wycieka istnienia zasobu? Stack trace tylko w dev?</td></tr>
+    <tr><td>DoS</td><td>Limity rozmiaru payload, timeout, pagination max?</td></tr>
+    <tr><td>Elevation</td><td>Czy <code>{id}</code> w URL jest sprawdzany względem tożsamości (BOLA)?</td></tr>
+  </tbody>
+</table>
+
+<p>Output analizy zapisz w ticketu lub ADR — to **evidence** dla A.8.25/A.8.26.</p>
+
+<hr>
+
+<h2 id="kod" class="must-know">4. Kodowanie API — secure coding w praktyce</h2>
+
+<h3>4.1 Wejście i wyjście</h3>
+<pre><code>// DOBRZE — walidacja DTO + jawna polityka błędów (Spring)
+@PostMapping("/orders")
+public OrderResponse create(@Valid @RequestBody CreateOrderRequest req,
+                            @AuthenticationPrincipal Jwt jwt) {
+  var tenantId = tenantResolver.from(jwt);
+  return orderService.create(tenantId, req); // serwis sprawdza ownership
+}
+
+// ŹLE — ID z URL bez sprawdzenia właściciela (BOLA / API1)
+@GetMapping("/orders/{orderId}")
+public Order get(@PathVariable UUID orderId) {
+  return orderRepo.findById(orderId).orElseThrow(); // każdy zna UUID → cudze zamówienie
+}</code></pre>
+
+<h3>4.2 Sekrety i konfiguracja (ISO + Twelve-Factor III)</h3>
+<ul>
+  <li>Zero kluczy API, connection stringów i JWT signing keys w Git — nawet w „tymczasowych” branchach.</li>
+  <li>Vault / Secrets Manager / sealed secrets w K8s; lokalnie <code>.env</code> w <code>.gitignore</code>.</li>
+  <li>Logi: maskowanie tokenów, numerów kart, PESEL; structured logging z <code>trace_id</code>.</li>
+</ul>
+
+<h3>4.3 Zależności (A.8.28 + supply chain)</h3>
+<p>Lockfile obowiązkowy (<code>pom.xml</code> + lock, Gradle lockfile). Każdy upgrade biblioteki = PR z wynikiem skanu CVE. Pułapka: „tylko patch Springa” bez uruchomienia testów integracyjnych auth.</p>
+
+<h3>4.4 OpenAPI jako kontrakt</h3>
+<p>Spec trzymany w repo, reviewowany jak kod. W CI: breaking-change detection (np. openapi-diff). Dokumentacja nie może obiecywać słabszego auth niż implementacja.</p>
+
+<hr>
+
+<h2 id="review">5. Code review, merge i zarządzanie zmianami</h2>
+
+<p>Kontrolka <strong>A.8.32</strong> wymaga kontrolowanych zmian — w Git flow oznacza to **branch protection** i sensowny review, nie formalny „LGTM”.</p>
+
+<h3>5.1 Kolejność (spójna z code review w Java)</h3>
+<ol>
+  <li>CI zielone: build, testy, SAST, skan zależności, ewentualnie OpenAPI diff.</li>
+  <li>Diff vs ticket / AC — czy scope nie wprowadza nieudokumentowanego API?</li>
+  <li>Warstwa bezpieczeństwa: authZ na każdej ścieżce mutacji, walidacja, brak wrażliwych danych w odpowiedzi.</li>
+  <li>Testy dowodzą zachowania (w tym negatywne: 401, 403, 422).</li>
+</ol>
+
+<h3>5.2 Merge</h3>
+<ul>
+  <li>Preferuj squash/merge z numerem ticketu — łatwy audit trail.</li>
+  <li>Dwa approvals dla krytycznych obszarów (auth, płatności, eksport danych) — często zapisane w polityce projektu.</li>
+  <li>Brak merge mimo czerwonego CI „bo tylko mała zmiana” — naruszenie change management.</li>
+</ul>
+
+<h3>5.3 Checklist reviewera (API)</h3>
+<ul class="check">
+  <li>Czy każdy endpoint ma auth (oprócz jawnych publicznych health)?</li>
+  <li>Czy błędy nie ujawniają stack trace / wewnętrznych ID?</li>
+  <li>Czy mass assignment niemożliwy (DTO bez nadmiarowych setterów)?</li>
+  <li>Czy nowe pola PII mają retencję / pseudonimizację?</li>
+  <li>Czy webhook / callback waliduje podpis i replay?</li>
+</ul>
+
+<hr>
+
+<h2 id="testy">6. Testy — dowód dla A.8.29</h2>
+
+<table>
+  <thead><tr><th>Typ</th><th>Co daje audytowi</th><th>Przykład dla API</th></tr></thead>
+  <tbody>
+    <tr><td>Unit</td><td>Logika walidacji, mappery</td><td>Validator odrzuca zbyt długi NIP</td></tr>
+    <tr><td>Integration (@WebMvcTest / Testcontainers)</td><td>Auth + persistence</td><td>Użytkownik A nie widzi zasobu B (403)</td></tr>
+    <tr><td>Contract (Spring Cloud Contract, Pact)</td><td>Stabilność konsumentów</td><td>Producer nie usuwa pola bez wersji</td></tr>
+    <tr><td>Security (OWASP ZAP baseline, API fuzz)</td><td>Automatyczny DAST</td><td>Job na środowisku stage po deploy</td></tr>
+    <tr><td>Load / rate limit</td><td>Odporność (DoS)</td><td>429 po przekroczeniu quota</td></tr>
+  </tbody>
+</table>
+
+<pre><code>// Przykład testu authZ — dowód przeciw BOLA
+@Test
+void getOrder_forbiddenWhenNotOwner() {
+  var token = jwtFor(userA);
+  mockMvc.perform(get("/orders/{id}", orderOwnedByUserB).header("Authorization", token))
+      .andExpect(status().isForbidden());
+}</code></pre>
+
+<p>Dane testowe: syntetyczne generatory (Faker) lub zanonimizowany dump — **A.8.33**. Kopiowanie prod na laptop bez zgody = poważne naruszenie.</p>
+
+<hr>
+
+<h2 id="owasp-api" class="must-know">7. OWASP API Security Top 10 (2023) — rdzeń techniczny</h2>
+
+<p>Audyt ISO często odwołuje się do uznanych ram (OWASP ASVS, Top 10). Dla backendu **API Top 10** jest ważniejszy niż klasyczny Top 10 web (XSS itd.). Mapowanie poniżej łączy ryzyko z Twoją codzienną pracą.</p>
+
+<table>
+  <thead>
+    <tr><th>ID</th><th>Ryzyko</th><th>Objaw w kodzie / API</th><th>Mitigacja (skrót)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>API1</strong></td><td>BOLA / IDOR</td><td><code>GET /users/{id}</code> bez sprawdzenia właściciela</td><td>AuthZ w serwisie domenowym; policy per zasób</td></tr>
+    <tr><td><strong>API2</strong></td><td>Broken Authentication</td><td>Słabe sesje, brak rotacji tokenów, API keys w query</td><td>OAuth2/OIDC, krótkie AT, refresh rotation, MFA dla admin</td></tr>
+    <tr><td><strong>API3</strong></td><td>Broken Object Property Level Auth</td><td>PATCH przyjmuje <code>role</code> / <code>balance</code> z klienta</td><td>DTO wejściowe vs wewnętrzne modele; whitelist pól</td></tr>
+    <tr><td><strong>API4</strong></td><td>Unrestricted Resource Consumption</td><td>Brak limitu paginacji, ciężkie zapytania</td><td>Rate limit, max <code>pageSize</code>, timeout, quota</td></tr>
+    <tr><td><strong>API5</strong></td><td>Broken Function Level Auth</td><td><code>/admin/*</code> chronione tylko „ukryciem” URL</td><td>Role/scopes na każdym handlerze; testy 403</td></tr>
+    <tr><td><strong>API6</strong></td><td>Unrestricted Access to Sensitive Flows</td><td>Brak step-up auth przy reset hasła / wypłacie</td><td>CAPTCHA, OTP, limity prób, fraud rules</td></tr>
+    <tr><td><strong>API7</strong></td><td>SSRF</td><td>Backend pobiera URL podany przez użytkownika</td><td>Allowlist hostów, blokada metadata IP, brak redirect follow</td></tr>
+    <tr><td><strong>API8</strong></td><td>Security Misconfiguration</td><td>Actuator public, CORS <code>*</code>, debug w prod</td><td>Hardening, IaC review, separate config profile</td></tr>
+    <tr><td><strong>API9</strong></td><td>Improper Inventory Management</td><td>Stare <code>/v1</code> bez auth, shadow API</td><td>Rejestr API, deprecation, gateway jako single entry</td></tr>
+    <tr><td><strong>API10</strong></td><td>Unsafe Consumption of APIs</td><td>Ślepe trust do webhooków zewnętrznych</td><td>Weryfikacja podpisu, timeout, schema validation</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>OWASP Top 10 (aplikacje web) — tylko to, co dotyka API</strong>
+  <p><strong>A01 Broken Access Control</strong> — pokrywa się z API1/API5.<br>
+  <strong>A02 Cryptographic Failures</strong> — TLS everywhere, alg JWT, nie loguj sekretów.<br>
+  <strong>A03 Injection</strong> — SQL/JPQL parametryzowane, walidacja JSON.<br>
+  <strong>A05 Security Misconfiguration</strong> — jak API8.<br>
+  <strong>A09 Security Logging Failures</strong> — audyt mutacji bez wycieku PII.<br>
+  XSS/CSRF — głównie frontend; przy czystym API + Bearer minimalny CSRF, ale BFF ze session cookies wraca do modelu WWW.</p>
+</div>
+
+<hr>
+
+<h2 id="twelve">8. Twelve-Factor App a wymagania ISO</h2>
+
+<p>12-Factor nie zastępuje ISO — ale **ułatwia dowodzenie** separacji środowisk, kontroli zmian i bezpiecznej konfiguracji. Skrót mapowania dla backendu:</p>
+
+<table>
+  <thead><tr><th>Faktor</th><th>ISO / bezpieczeństwo</th></tr></thead>
+  <tbody>
+    <tr><td>I Codebase</td><td>Jeden źródłowy artefakt → audytowalna linia od commit do deploy (A.8.32)</td></tr>
+    <tr><td>II Dependencies</td><td>SBOM, skan CVE — supply chain (A.8.28)</td></tr>
+    <tr><td>III Config</td><td>Sekrety poza repo (A.8.28, A.8.31)</td></tr>
+    <tr><td>IV Backing services</td><td>Prod DB ≠ dev; creds per env</td></tr>
+    <tr><td>V Build, release, run</td><td>Immutability — ten sam JAR/image na stage i prod</td></tr>
+    <tr><td>VI Processes</td><td>Stateless API — sesja w Redis/JWT, nie na dysku poda</td></tr>
+    <tr><td>XI Logs</td><td>stdout → central SIEM; retention zgodny z polityką</td></tr>
+    <tr><td>XII Admin processes</td><td>Migracje DB jako joby z approval, nie ręczne SQL na prod</td></tr>
+  </tbody>
+</table>
+
+<p>Szczegóły faktorów: tutorial <code>twelve-factor/twelve-factor-mini-tutorial.html</code> w tym repozytorium.</p>
+
+<hr>
+
+<h2 id="cicd" class="must-know">9. Pipeline CI/CD — brama zgodności</h2>
+
+<p>Bez automatyzacji ISO przy skali zespołu się rozpada. Minimalny **secure pipeline** dla serwisu API:</p>
+
+<div class="map-box">
+<pre style="margin:0;background:transparent;color:inherit;font-size:0.86rem;line-height:1.55">commit → lint/format → unit tests → build artefaktu
+      → SAST (Semgrep, CodeQL, Sonar)
+      → dependency scan (OWASP DC, Trivy, Snyk)
+      → SBOM (CycloneDX / Syft)
+      → deploy STAGE (osobne creds)
+      → integration + contract tests
+      → DAST/API scan (ZAP, schemat OpenAPI)
+      → manual / automated approval → PROD
+      → smoke + monitoring alert</pre>
+</div>
+
+<h3>9.1 Joby, które audytor lubi zobaczyć</h3>
+<ul>
+  <li><strong>Branch protection</strong> — wymagany status check, brak push na <code>main</code>.</li>
+  <li><strong>Podpis artefaktu</strong> (cosign, Sigstore) — integralność supply chain.</li>
+  <li><strong>Infrastructure as Code</strong> — Terraform/K8s manifesty w PR z review.</li>
+  <li><strong>Environment secrets</strong> — GitHub Environments z approverami na prod.</li>
+  <li><strong>Retention logów pipeline</strong> — zgodnie z polityką (np. 1 rok).</li>
+</ul>
+
+<pre><code># Fragment GitHub Actions — gate na CVE (przykład)
+- name: Dependency check
+  run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7</code></pre>
+
+<h3>9.2 Deploy a A.8.31</h3>
+<p>Ten sam pipeline promuje build; **różni się tylko config** (factor III). Zakaz: ręczna podmiana pliku JAR na serwerze bez ticketu. Rollback = poprzedni immutable image z rejestru, nie „hotfix na serwerze”.</p>
+
+<hr>
+
+<h2 id="bledy">10. Typowe błędy (ISO + API)</h2>
+
+<ol>
+  <li><strong>Security jako osobny sprint</strong> — bez DoD w każdym tickecie; audyt znajduje luki w rutynowych feature’ach.</li>
+  <li><strong>AuthN bez AuthZ</strong> — „jest JWT” ale brak sprawdzenia właściciela zasobu (API1).</li>
+  <li><strong>Prod data na dev</strong> — naruszenie A.8.33 i RODO naraz.</li>
+  <li><strong>Sekrety w historii Git</strong> — rotacja klucza bez usunięcia z historii = finding do zamknięcia dowodem.</li>
+  <li><strong>CI tylko „compile”</strong> — brak testów auth i skanu zależności; change management bez technicznej bramki.</li>
+  <li><strong>Logging wszystkiego</strong> — body requestu z hasłem w Kibanie; sprzeczne z minimalizacją danych.</li>
+  <li><strong>OpenAPI nieaktualne</strong> — dokumentacja obiecuje publiczny endpoint; implementacja inna (API9).</li>
+  <li><strong>Wyłączanie testów „tymczasowo”</strong> na release — brak dowodu regresji.</li>
+  <li><strong>Microservice bez centralnego policy</strong> — każdy zespół inaczej interpretuje role (API5).</li>
+  <li><strong>Ignorowanie rate limitów</strong> na kosztownych operacjach (raporty, export CSV) — API4 i incydent DoS.</li>
+</ol>
+
+<p><strong>Powiązane tutoriali w repo:</strong> OAuth (<code>auth/oauth2-oidc-mini-tutorial.html</code>), code review (<code>java/code-review-mini-tutorial.html</code>), REST/OpenAPI (<code>architecture/rest-openapi-mini-tutorial.html</code>), bezpieczeństwo WWW (<code>security/www-security-mini-tutorial.html</code> — SSRF, gdy API woła zewnętrzne URL).</p>
+
+</body>
+</html>
