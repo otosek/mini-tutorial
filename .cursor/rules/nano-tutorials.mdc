@@ -27,6 +27,6 @@ Nie twórz plików markdown ani README, chyba że użytkownik wyraźnie poprosi.
 
 ## Referencje wzorcowe
 
-- Pełny z pytaniami rekrutacyjnymi: `tutorials/hibernate/hibernate-mini-tutorial.html`
-- Średni bez pytań: `tutorials/architecture/ddd-mini-tutorial.html`, `tutorials/postgresql/postgresql-mini-tutorial.html`
+- Pełny z ciekawostkami: `tutorials/hibernate/hibernate-mini-tutorial.html`
+- Średni bez ciekawostek: `tutorials/architecture/ddd-mini-tutorial.html`, `tutorials/postgresql/postgresql-mini-tutorial.html`
 - Stack 3-w-1: `tutorials/react/react-stack-mini-tutorial.html`
