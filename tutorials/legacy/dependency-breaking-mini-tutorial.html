@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legacy — 24 techniki przełamywania zależności</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #b45309;
+      --star: #ca8a04;
+      --code-bg: #f4f4f5;
+      --before: #7f1d1d;
+      --after: #14532d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.08rem; margin-top: 1.75rem; color: #92400e; }
+
+    p { margin: 0.75rem 0; }
+    ul { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.88rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .technique {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1.25rem 0;
+    }
+
+    .technique h3 { margin-top: 0; }
+
+    .technique dt {
+      font-weight: 600;
+      margin-top: 0.65rem;
+      color: var(--text);
+    }
+
+    .technique dd { margin: 0.25rem 0 0.75rem; color: var(--muted); font-size: 0.94rem; }
+
+    .code-label {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.15em 0.5em;
+      border-radius: 4px;
+      margin: 0.75rem 0 0.35rem;
+    }
+
+    .label-before { background: #fee2e2; color: var(--before); }
+    .label-after { background: #dcfce7; color: var(--after); }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      margin: 0.35rem 0 0.5rem;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Legacy — 24 techniki przełamywania zależności</h1>
+<p class="meta">Michael Feathers, <em>Working Effectively with Legacy Code</em> · Java · testy bez pełnego monolitu<br>
+Format: samodzielny HTML offline · Bez sekcji ciekawostek</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundament">Fundament: seams i zależności</a></li>
+    <li><a href="#t01">1. Adapt Parameter</a></li>
+    <li><a href="#t02">2. Break Out Method Object</a></li>
+    <li><a href="#t03">3. Definition Text Replacement</a></li>
+    <li><a href="#t04">4. Encapsulate Global References</a></li>
+    <li><a href="#t05">5. Expose Static Method</a></li>
+    <li><a href="#t06">6. Extract and Override Factory Method</a></li>
+    <li><a href="#t07">7. Extract and Override Getter</a></li>
+    <li><a href="#t08">8. Extract and Override Call</a></li>
+    <li><a href="#t09">9. Extract Interface</a></li>
+    <li><a href="#t10">10. Introduce Implementer</a></li>
+    <li><a href="#t11">11. Introduce Instance Estimator</a></li>
+    <li><a href="#t12">12. Pass Mock Object</a></li>
+    <li><a href="#t13">13. Link Substitution</a></li>
+    <li><a href="#t14">14. Parameterize Constructor</a></li>
+    <li><a href="#t15">15. Parameterize Method</a></li>
+    <li><a href="#t16">16. Prick Create</a></li>
+    <li><a href="#t17">17. Pull Up Dependency</a></li>
+    <li><a href="#t18">18. Push Down Dependency</a></li>
+    <li><a href="#t19">19. Replace Function with Function Pointer</a></li>
+    <li><a href="#t20">20. Replace Global Reference with Getter</a></li>
+    <li><a href="#t21">21. Subclass and Override Method</a></li>
+    <li><a href="#t22">22. Supersede Instance Variable</a></li>
+    <li><a href="#t23">23. Template Method</a></li>
+    <li><a href="#t24">24. Text Redirection</a></li>
+    <li><a href="#mapa">Mapa: kiedy którą technikę</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundament" class="must-know">Fundament: seams i zależności</h2>
+<p><strong>Legacy code</strong> to kod bez testów (Feathers) — nie wiek pliku. Zanim przepiszesz monolit na moduły lub mikroserwisy, musisz <strong>przełamać zależności</strong>: baza, pliki, <code>new</code> w środku metody, statyki, sieć. Każda technika poniżej tworzy <strong>seam</strong> (szew): miejsce, gdzie w teście podstawiasz inną implementację bez zmiany zachowania produkcyjnego.</p>
+<p>Workflow: (1) napisz test charakterystyczny lub docelowy, (2) wybierz technikę zależnie od rodzaju coupling, (3) minimalna refaktoryzacja pod seam, (4) dopiero potem większa architektura (Extract Interface → moduł Maven, itd.).</p>
+
+<hr>
+
+<h2 id="techniki-1-8">Techniki 1–8</h2>
+
+<section class="technique" id="t01">
+  <h3>1. Adapt Parameter (Dostosuj parametr)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Zmieniasz sygnaturę <em>wywoływanej</em> metody (dodajesz parametr), żeby przekazać zależność z zewnątrz zamiast tworzyć ją wewnątrz callee.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Gdy nie możesz zmienić klasy testowanej, ale możesz zmienić metodę pomocniczą lub legacy util, z którego korzysta — typowy przypadek w starym pakiecie <code>*.util.*</code>.</dd>
+  </dl>
+  <span class="code-label label-before">Przed (legacy)</span>
+  <pre><code>public final class LegacyPricingUtil {
+  public static Money discount(Order order) {
+    TaxService tax = new TaxService(); // JDBC + cache Redis
+    return order.subtotal().minus(tax.rateFor(order.region()));
+  }
+}</code></pre>
+  <span class="code-label label-after">Po (refaktoryzacja / test)</span>
+  <pre><code>public final class LegacyPricingUtil {
+  public static Money discount(Order order, TaxService tax) {
+    return order.subtotal().minus(tax.rateFor(order.region()));
+  }
+}
+
+// test
+@Test void discount_uses_injected_tax() {
+  TaxService fake = region -&gt; new BigDecimal("0.08");
+  Money result = LegacyPricingUtil.discount(orderPl(), fake);
+  assertThat(result).isEqualTo(Money.of("92.00"));
+}</code></pre>
+</section>
+
+<section class="technique" id="t02">
+  <h3>2. Break Out Method Object (Wydziel obiekt-metodę)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Długa metoda z wieloma polami tymczasowymi staje się klasą (Method Object); zależności wchodzą przez konstruktor obiektu-metody.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Metoda 200+ linii w serwisie monolitu — nie da się sensownie nadpisać fragmentu; wydzielenie daje jeden punkt wstrzykiwania mocków.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class SettlementService {
+  void settleBatch(List&lt;Invoice&gt; invoices) {
+    Connection c = DbPool.get(); // static
+    // ... 80 linii SQL, pętle, warunki ...
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class BatchSettlement {
+  private final Connection conn;
+  BatchSettlement(Connection conn) { this.conn = conn; }
+  void run(List&lt;Invoice&gt; invoices) { /* ta sama logika */ }
+}
+
+class SettlementService {
+  void settleBatch(List&lt;Invoice&gt; invoices) {
+    new BatchSettlement(DbPool.get()).run(invoices);
+  }
+}
+
+// test: BatchSettlement z H2 in-memory Connection</code></pre>
+</section>
+
+<section class="technique" id="t03">
+  <h3>3. Definition Text Replacement (Zamiana tekstu definicji)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>W C/C++ Feathers podmienia makra/preprocesor; w Javie odpowiednik to <strong>testowe definicje</strong> (properties, stałe kompilacji w osobnym module) zamiast hardcoded stringów w kodzie.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Legacy czyta ścieżki, URL-e lub nazwy tabel z literałów w kodzie — bez możliwości uruchomienia produkcyjnej bazy w teście.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class ReportExporter {
+  void export() {
+    Path out = Path.of("/var/monolith/reports/daily.csv");
+    Files.writeString(out, buildCsv());
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class ReportExporter {
+  private static final String OUT =
+      System.getProperty("report.dir", "/var/monolith/reports") + "/daily.csv";
+
+  void export() {
+    Files.writeString(Path.of(OUT), buildCsv());
+  }
+}
+
+// test JVM: -Dreport.dir=/tmp/test-reports
+// lub @BeforeAll System.setProperty + @AfterAll clear</code></pre>
+</section>
+
+<section class="technique" id="t04">
+  <h3>4. Encapsulate Global References (Enkapsuluj odwołania globalne)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Bezpośredni dostęp do singletonów/statyków owijasz cienką klasą fasady, którą można zastąpić w teście.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd><code>ApplicationContextHolder.getBean()</code>, <code>SecurityContextHolder</code>, własne <code>Registry.getInstance()</code> — rozproszone po setkach klas.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class OrderNotifier {
+  void send(Order o) {
+    MailSender mail = ApplicationContextHolder.getBean(MailSender.class);
+    mail.send(o.customerEmail(), "OK", body(o));
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>interface BeanLookup { &lt;T&gt; T get(Class&lt;T&gt; type); }
+
+class SpringBeanLookup implements BeanLookup {
+  public &lt;T&gt; T get(Class&lt;T&gt; type) {
+    return ApplicationContextHolder.getBean(type);
+  }
+}
+
+class OrderNotifier {
+  private final BeanLookup beans;
+  OrderNotifier(BeanLookup beans) { this.beans = beans; }
+  void send(Order o) {
+    beans.get(MailSender.class).send(o.customerEmail(), "OK", body(o));
+  }
+}</code></pre>
+</section>
+
+<section class="technique" id="t05">
+  <h3>5. Expose Static Method (Ujawnij metodę statyczną)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Logika ukryta w prywatnej metodie instancyjnej staje się <code>public static</code> (lub package-private static), żeby testować ją bez całego obiektu i jego zależności.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Czysta funkcja (walidacja, kalkulacja) w środku klasy z 15 zależnościami w konstruktorze.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class PolicyEngine {
+  private final RuleRepository rules;
+  Decision evaluate(Application app) {
+    return applyRules(app, rules.loadFor(app.product()));
+  }
+  private Decision applyRules(Application app, List&lt;Rule&gt; rs) { /* ... */ }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class PolicyEngine {
+  static Decision applyRules(Application app, List&lt;Rule&gt; rs) { /* ... */ }
+  Decision evaluate(Application app) {
+    return applyRules(app, rules.loadFor(app.product()));
+  }
+}
+
+@Test void applyRules_rejects_underage() {
+  assertThat(PolicyEngine.applyRules(minorApp(), rules))
+      .isEqualTo(Decision.REJECT);
+}</code></pre>
+</section>
+
+<section class="technique" id="t06">
+  <h3>6. Extract and Override Factory Method (Wydziel i nadpisz metodę fabryki)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd><code>new ProblematicType()</code> ląduje w protected metodzie fabrykującej; w teście podklasa nadpisuje fabrykę i zwraca stub.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Klasa sama tworzy collaboratorów (parser pliku, klient HTTP) i nie możesz jeszcze wstrzyknąć konstruktora w całym monolicie.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class ImportJob {
+  void run(Path file) {
+    CsvParser parser = new CsvParser();
+    parser.parse(file, this::handleRow);
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class ImportJob {
+  void run(Path file) { createParser().parse(file, this::handleRow); }
+  protected CsvParser createParser() { return new CsvParser(); }
+}
+
+class ImportJobTest extends ImportJob {
+  CsvParser fake;
+  @Override protected CsvParser createParser() { return fake; }
+}</code></pre>
+</section>
+
+<section class="technique" id="t07">
+  <h3>7. Extract and Override Getter (Wydziel i nadpisz getter)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Dostęp do pola-zależności przechodzi przez <code>protected</code> getter; testowa podklasa zwraca mock.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Pole inicjalizowane inline (<code>private Mailer mailer = new SmtpMailer()</code>) — konstruktor używany w 400 miejscach.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class BillingFacade {
+  private final PaymentGateway gateway = new BraintreeGateway();
+  Receipt charge(Invoice i) { return gateway.charge(i); }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class BillingFacade {
+  Receipt charge(Invoice i) { return getGateway().charge(i); }
+  protected PaymentGateway getGateway() { return new BraintreeGateway(); }
+}
+
+class BillingFacadeTest extends BillingFacade {
+  PaymentGateway mock = mock(PaymentGateway.class);
+  @Override protected PaymentGateway getGateway() { return mock; }
+}</code></pre>
+</section>
+
+<section class="technique" id="t08">
+  <h3>8. Extract and Override Call (Wydziel i nadpisz wywołanie)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Pojedyncze „niemożliwe” wywołanie (np. <code>System.currentTimeMillis()</code>, wysyłka) wydzielasz do protected metody i nadpisujesz w teście.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Determinizm czasu, losowości lub I/O w środku algorytmu — bez pełnej parametryzacji całej metody publicznej.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class TokenIssuer {
+  String issue(User u) {
+    long exp = System.currentTimeMillis() + 3600_000;
+    return sign(u.id(), exp);
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class TokenIssuer {
+  String issue(User u) { return sign(u.id(), nowMillis() + 3600_000); }
+  protected long nowMillis() { return System.currentTimeMillis(); }
+}
+
+class FixedClockIssuer extends TokenIssuer {
+  @Override protected long nowMillis() { return 1_700_000_000_000L; }
+}</code></pre>
+</section>
+
+<hr>
+
+<h2 id="techniki-9-16">Techniki 9–16</h2>
+
+<section class="technique" id="t09">
+  <h3>9. Extract Interface (Wydziel interfejs)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Wycinasz interfejs z konkretnej klasy legacy i typujesz pole lub parametr interfejsem — produkcja zostaje przy starej implementacji.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Pierwszy krok przed modularyzacją monolitu: port w domenie, adapter w infrastrukturze (hexagonal).</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class ShipmentService {
+  private final LegacyFedExClient fedEx = new LegacyFedExClient();
+  void ship(Package p) { fedEx.book(p); }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>interface CarrierClient { void book(Package p); }
+
+class LegacyFedExClient implements CarrierClient { /* SOAP */ }
+
+class ShipmentService {
+  private final CarrierClient carrier;
+  ShipmentService(CarrierClient carrier) { this.carrier = carrier; }
+  void ship(Package p) { carrier.book(p); }
+}</code></pre>
+</section>
+
+<section class="technique" id="t10">
+  <h3>10. Introduce Implementer (Wprowadź implementatora)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Interfejs już istnieje, ale klasa nadal sama wybiera implementację; wydzielasz osobną klasę-producenta (implementer), którą podmieniasz w teście.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Switch <code>if (env.equals("PROD"))</code> wybierający adapter — coupling do środowiska w jednym miejscu.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class AuditWriter {
+  void write(Event e) {
+    AuditStore store = "PROD".equals(env())
+        ? new DbAuditStore() : new NoOpAuditStore();
+    store.append(e);
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>interface AuditStoreImplementer { AuditStore create(); }
+
+class AuditWriter {
+  private final AuditStoreImplementer implementer;
+  AuditWriter(AuditStoreImplementer impl) { this.implementer = impl; }
+  void write(Event e) { implementer.create().append(e); }
+}
+
+// test: () -&gt; mockStore</code></pre>
+</section>
+
+<section class="technique" id="t11">
+  <h3>11. Introduce Instance Estimator (Wprowadź estymator instancji)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Dodajesz metodę (lub hook), która <strong>szacuje lub zlicza</strong> ile obiektów danego typu powstanie przy wywołaniu — bez pełnego wykonania side effectów.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Charakteryzacja legacy: „czy ta metoda tworzy po cichu 500 obiektów DAO?” zanim podłączysz prawdziwą bazę.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class CatalogSync {
+  void refresh(List&lt;Sku&gt; skus) {
+    for (Sku s : skus) {
+      new ProductDao().upsert(s); // każde upsert = nowe DAO
+    }
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class CatalogSync {
+  int estimateDaoCreations(List&lt;Sku&gt; skus) {
+    return skus.size(); // po refaktorze: jeden dao, tu tylko model
+  }
+  void refresh(List&lt;Sku&gt; skus, ProductDao dao) {
+    for (Sku s : skus) dao.upsert(s);
+  }
+}
+
+@Test void refresh_does_not_create_dao_per_row() {
+  assertThat(sync.estimateDaoCreations(listOf(100))).isEqualTo(1);
+}</code></pre>
+</section>
+
+<section class="technique" id="t12">
+  <h3>12. Pass Mock Object (Przekaż obiekt-mock)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Metoda publiczna przyjmuje collaboratora jako argument; produkcja przekazuje prawdziwy obiekt, test — mock/fake (Feathers: najprostszy seam).</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Nowy kod obok legacy lub metoda już ma zbyt długą listę parametrów — akceptujesz jawne przekazanie zależności zamiast lookupu.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class CommissionCalculator {
+  Money forSalesperson(String id, YearMonth ym) {
+    SalesLedger ledger = new SalesLedger(); // JDBC
+    return ledger.total(id, ym).multiply(rate(id));
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class CommissionCalculator {
+  Money forSalesperson(String id, YearMonth ym, SalesLedger ledger) {
+    return ledger.total(id, ym).multiply(rate(id));
+  }
+}
+
+@Test void commission() {
+  SalesLedger ledger = mock(SalesLedger.class);
+  when(ledger.total("A", ym)).thenReturn(Money.of("1000"));
+  assertThat(calc.forSalesperson("A", ym, ledger)).isEqualTo(Money.of("50"));
+}</code></pre>
+</section>
+
+<section class="technique" id="t13">
+  <h3>13. Link Substitution (Podstawienie linku)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Referencja (link) do obiektu w polu lub rejestrze jest podmieniana na inny obiekt tego samego typu (lub podtypu) w teście — bez zmiany kodu wywołującego.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Service locator z setterem, mapa handlerów, łańcuch odpowiedzialności — jeden element wymieniasz na fake.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class Pipeline {
+  private Handler head = new ValidateHandler(new PersistHandler(null));
+  void process(Request r) { head.handle(r); }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class Pipeline {
+  Handler head = new ValidateHandler(new PersistHandler(null));
+  void setHead(Handler h) { this.head = h; } // seam testowy
+  void process(Request r) { head.handle(r); }
+}
+
+@Test void process() {
+  Pipeline p = new Pipeline();
+  Handler spy = spy(new ValidateHandler(mock(PersistHandler.class)));
+  p.setHead(spy);
+  p.process(req);
+  verify(spy).handle(req);
+}</code></pre>
+</section>
+
+<section class="technique" id="t14">
+  <h3>14. Parameterize Constructor (Parametryzuj konstruktor)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Zależności wchodzą przez konstruktor zamiast <code>new</code> wewnątrz klasy — klasyczne DI umożliwiające test jednostkowy.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Refaktoryzacja modułu monolitu pod Spring / ręczny composition root; każde <code>new Repository()</code> w serwisie.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class CustomerService {
+  Customer find(UUID id) {
+    return new JdbcCustomerRepository().findById(id);
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class CustomerService {
+  private final CustomerRepository repo;
+  CustomerService(CustomerRepository repo) { this.repo = repo; }
+  Customer find(UUID id) { return repo.findById(id); }
+}
+
+@Test void find() {
+  var repo = mock(CustomerRepository.class);
+  when(repo.findById(id)).thenReturn(customer);
+  assertThat(new CustomerService(repo).find(id)).isSameAs(customer);
+}</code></pre>
+</section>
+
+<section class="technique" id="t15">
+  <h3>15. Parameterize Method (Parametryzuj metodę)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Zależność przekazujesz jako argument metody biznesowej (nie konstruktora), gdy tylko część wywołań potrzebuje innej implementacji.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Publiczne API już stabilne; nie chcesz ruszać fabryk Springa, ale jedna metoda musi być testowalna.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class StatementGenerator {
+  Pdf generate(Account a) {
+    ExchangeRates rates = new EcbRatesClient().fetch();
+    return render(a, rates);
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class StatementGenerator {
+  Pdf generate(Account a, ExchangeRates rates) {
+    return render(a, rates);
+  }
+  Pdf generate(Account a) {
+    return generate(a, new EcbRatesClient().fetch());
+  }
+}
+
+@Test void generate_uses_passed_rates() {
+  ExchangeRates fixed = (from, to) -&gt; BigDecimal.ONE;
+  assertThat(gen.generate(account, fixed).pages()).isEqualTo(1);
+}</code></pre>
+</section>
+
+<section class="technique" id="t16">
+  <h3>16. Prick Create („Ukłucie” tworzenia)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Celowo „pękasz” punkt tworzenia obiektu (np. wyjątek w konstruktorze testowym), żeby zobaczyć <strong>skąd</strong> w stack trace leci <code>new</code> — mapa coupling przed refaktoryzacją.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Nie wiesz, ile miejsc tworzy dany typ w gigantycznym module; przygotowujesz Parameterize Constructor / Extract Interface.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>// rozproszone: new SmsGateway() w 12 klasach
+class AlertService {
+  void ping(User u) { new SmsGateway().send(u.phone(), "ALERT"); }
+}</code></pre>
+  <span class="code-label label-after">Po (test diagnostyczny + seam)</span>
+  <pre><code>class PrickSmsGateway extends SmsGateway {
+  PrickSmsGateway() { throw new IllegalStateException("PRICK: creation site"); }
+}
+
+// tymczasowo w kodzie prod (branch): new PrickSmsGateway() → uruchom test integracyjny
+// stack trace wskaże wszystkie ścieżki; potem:
+class AlertService {
+  AlertService(SmsGateway sms) { this.sms = sms; }
+}</code></pre>
+</section>
+
+<hr>
+
+<h2 id="techniki-17-24">Techniki 17–24</h2>
+
+<section class="technique" id="t17">
+  <h3>17. Pull Up Dependency (Podciągnij zależność)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Wspólną zależność z podklas przenosisz do klasy bazowej (pole + konstruktor protected), żeby testowa podklasa bazowa miała jeden punkt podstawienia.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Hierarchia <code>AbstractBatchJob</code> z duplikowanym <code>new JobRepository()</code> w każdej podklasie.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class NightlyJob extends Job {
+  void run() { new JobRepository().markDone("nightly"); }
+}
+class HourlyJob extends Job {
+  void run() { new JobRepository().markDone("hourly"); }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>abstract class Job {
+  protected final JobRepository repo;
+  protected Job(JobRepository repo) { this.repo = repo; }
+}
+class NightlyJob extends Job {
+  void run() { repo.markDone("nightly"); }
+}
+
+@Test void nightly() { new NightlyJob(fakeRepo).run(); /* ... */ }</code></pre>
+</section>
+
+<section class="technique" id="t18">
+  <h3>18. Push Down Dependency (Spchnij zależność)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Zależność używana tylko w jednej podklasie zostaje usunięta z klasy bazowej i trafia do tej podklasy — mniejszy coupling reszty hierarchii.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Baza w monolicie ma pole <code>PaymentGateway</code>, ale tylko <code>OnlineCheckout</code> z niego korzysta — testy innych podklas nie powinny go mockować.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>abstract class Checkout {
+  protected PaymentGateway gateway = new BraintreeGateway();
+}
+class OnlineCheckout extends Checkout { /* używa gateway */ }
+class InvoiceCheckout extends Checkout { /* gateway martwy */ }</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>abstract class Checkout { /* brak gateway */ }
+class OnlineCheckout extends Checkout {
+  private final PaymentGateway gateway;
+  OnlineCheckout(PaymentGateway g) { this.gateway = g; }
+}
+class InvoiceCheckout extends Checkout { /* czyste testy */ }</code></pre>
+</section>
+
+<section class="technique" id="t19">
+  <h3>19. Replace Function with Function Pointer (Zamień funkcję na wskaźnik funkcji)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>W Javie: zamiast sztywnego wywołania metody wstawiasz <code>FunctionalInterface</code> (<code>Supplier</code>, <code>Function</code>, własny callback), który można podmienić.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Legacy woła statyczną funkcję pomocniczą (<code>IdGenerator.next()</code>, hash) — trudna do stubowania bez PowerMock.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class IdempotencyGuard {
+  String key(Request r) {
+    return r.path() + ":" + UUID.randomUUID();
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class IdempotencyGuard {
+  private final Supplier&lt;UUID&gt; uuid;
+  IdempotencyGuard(Supplier&lt;UUID&gt; uuid) { this.uuid = uuid; }
+  String key(Request r) { return r.path() + ":" + uuid.get(); }
+}
+
+@Test void stable_key() {
+  var guard = new IdempotencyGuard(() -&gt; UUID.fromString("00000000-0000-0000-0000-000000000001"));
+  assertThat(guard.key(req)).endsWith("00000000-0000-0000-0000-000000000001");
+}</code></pre>
+</section>
+
+<section class="technique" id="t20">
+  <h3>20. Replace Global Reference with Getter (Zamień odwołanie globalne getterem)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Bezpośredni odczyt pola statycznego/globalnego zastępujesz metodą-instancją (lub statyczną) gettera, którą nadpisujesz w teście.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd><code>Config.FEATURE_X</code>, <code>public static DbConnection connection</code> — globalny stan blokujący równoległe testy.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class FeatureRouter {
+  Handler route(Request r) {
+    if (Config.FEATURE_NEW_FLOW) return new NewFlowHandler();
+    return new LegacyHandler();
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class FeatureRouter {
+  boolean newFlowEnabled() { return Config.FEATURE_NEW_FLOW; }
+  Handler route(Request r) {
+    return newFlowEnabled() ? new NewFlowHandler() : new LegacyHandler();
+  }
+}
+
+class TestRouter extends FeatureRouter {
+  boolean flag;
+  @Override boolean newFlowEnabled() { return flag; }
+}</code></pre>
+</section>
+
+<section class="technique" id="t21">
+  <h3>21. Subclass and Override Method (Podklasa i nadpisanie metody)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Testowa podklasa nadpisuje metodę produkcyjną, żeby wyłączyć side effect lub zwrócić stałą — bez modyfikacji kodu produkcyjnego poza <code>protected</code> widocznością.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Klasa <code>final</code> nie jest — szybki test przed większą refaktoryzacją; współgra z Extract and Override Call.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class ReportJob {
+  void execute() {
+    List&lt;Row&gt; data = loadFromWarehouse();
+    email(data);
+  }
+  private void email(List&lt;Row&gt; data) { /* SMTP */ }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class ReportJob {
+  void execute() { email(loadFromWarehouse()); }
+  protected void email(List&lt;Row&gt; data) { /* SMTP */ }
+}
+
+class ReportJobTest extends ReportJob {
+  List&lt;Row&gt; captured;
+  @Override protected void email(List&lt;Row&gt; data) { captured = data; }
+}</code></pre>
+</section>
+
+<section class="technique" id="t22">
+  <h3>22. Supersede Instance Variable (Zastąp pole instancji)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Po wydzieleniu interfejsu zamieniasz typ pola z klasy konkretnej na abstrakcję i przypisujesz implementację w konstruktorze lub setterze testowym.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Po Extract Interface — pole nadal ma typ <code>LegacyHttpClient</code> zamiast <code>HttpClient</code>.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class CrmSync {
+  private LegacyHttpClient client = new LegacyHttpClient();
+  void push(Contact c) { client.post("/contacts", c); }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>interface HttpClient { void post(String path, Object body); }
+
+class CrmSync {
+  private HttpClient client;
+  CrmSync(HttpClient client) { this.client = client; }
+  void push(Contact c) { client.post("/contacts", c); }
+}
+
+@Test void push() {
+  HttpClient mock = mock(HttpClient.class);
+  new CrmSync(mock).push(contact);
+  verify(mock).post("/contacts", contact);
+}</code></pre>
+</section>
+
+<section class="technique" id="t23">
+  <h3>23. Template Method (Metoda szablonowa)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Szkielet algorytmu zostaje w klasie bazowej; warianty (kroki zmienne) w metodach <code>protected abstract</code> / hookach — testujesz krok bez całego workflow.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Duplikacja sekwencji „pobierz → waliduj → zapisz” w wielu serwisach monolitu z różnym tylko „zapisz”.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class ImportCsvService {
+  void importFile(Path p) {
+    List&lt;Row&gt; rows = parse(p);
+    validate(rows);
+    jdbcBatchInsert(rows);
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>abstract class ImportTemplate {
+  final void importFile(Path p) {
+    List&lt;Row&gt; rows = parse(p);
+    validate(rows);
+    persist(rows);
+  }
+  protected abstract void persist(List&lt;Row&gt; rows);
+}
+
+class ImportCsvService extends ImportTemplate {
+  @Override protected void persist(List&lt;Row&gt; rows) { jdbcBatchInsert(rows); }
+}
+
+@Test void validate_only() {
+  var t = new ImportTemplate() {
+    @Override protected void persist(List&lt;Row&gt; r) { }
+  };
+  assertThrows(ValidationException.class, () -&gt; t.importFile(badFile));
+}</code></pre>
+</section>
+
+<section class="technique" id="t24">
+  <h3>24. Text Redirection (Przekierowanie tekstu)</h3>
+  <dl>
+    <dt>Co to jest (krótki opis)</dt>
+    <dd>Wejście/wyjście tekstowe (pliki konfiguracyjne, SQL skrypt, stdin/stdout) przekierowujesz na zasób testowy — odpowiednik Feathersa dla I/O tekstowego.</dd>
+    <dt>Kiedy i po co stosować</dt>
+    <dd>Legacy ładuje reguły z pliku na dysku lub wypisuje raport na <code>System.out</code> — bez mockowania całego frameworka.</dd>
+  </dl>
+  <span class="code-label label-before">Przed</span>
+  <pre><code>class RuleLoader {
+  List&lt;Rule&gt; load() throws IOException {
+    return parse(Files.readString(Path.of("/etc/monolith/rules.yaml")));
+  }
+}</code></pre>
+  <span class="code-label label-after">Po</span>
+  <pre><code>class RuleLoader {
+  List&lt;Rule&gt; load(Path rulesFile) throws IOException {
+    return parse(Files.readString(rulesFile));
+  }
+  List&lt;Rule&gt; load() throws IOException {
+    return load(Path.of("/etc/monolith/rules.yaml"));
+  }
+}
+
+@Test void load() throws Exception {
+  Path tmp = Files.writeString(tempFile, "rules: []\n");
+  assertThat(new RuleLoader().load(tmp)).isEmpty();
+}</code></pre>
+</section>
+
+<hr>
+
+<h2 id="mapa" class="must-know">Mapa: kiedy którą technikę</h2>
+<table>
+  <thead>
+    <tr><th>Problem w monolicie</th><th>Techniki (kolejność prób)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>new</code> w metodzie</td><td>Extract and Override Factory, Parameterize Constructor/Method, Pass Mock</td></tr>
+    <tr><td>Static / singleton</td><td>Encapsulate Global, Replace Global with Getter, Expose Static</td></tr>
+    <tr><td>Pliki / config / stdout</td><td>Text Redirection, Definition Text Replacement</td></tr>
+    <tr><td>Metoda-gigant</td><td>Break Out Method Object, Template Method</td></tr>
+    <tr><td>Hierarchia klas</td><td>Pull Up / Push Down Dependency, Subclass and Override</td></tr>
+    <tr><td>Przed modułami Maven</td><td>Extract Interface → Supersede Instance Variable → Introduce Implementer</td></tr>
+    <tr><td>Nie wiesz skąd coupling</td><td>Prick Create, Introduce Instance Estimator</td></tr>
+    <tr><td>Los / czas / ID</td><td>Extract and Override Call, Replace Function with Function Pointer</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="bledy" class="must-know">Typowe błędy</h2>
+<ul>
+  <li><strong>Big Bang DI</strong> — parametryzacja całego monolitu zamiast jednego seamu pod jeden test.</li>
+  <li><strong>PowerMock jako pierwszy wybór</strong> — maskuje design; preferuj Extract Interface lub override getter.</li>
+  <li><strong>Testy integracyjne zamiast unit</strong> — uruchamianie pełnego Springa + Oracle „bo tak było” nie zastępuje przełamania zależności.</li>
+  <li><strong>Public settery tylko dla testów</strong> — w produkcji każdy może podmienić zależność; lepszy konstruktor package-private + test w tym samym pakiecie lub seam protected.</li>
+  <li><strong>Extract Interface bez Supersede</strong> — interfejs istnieje, pole nadal trzyma klasę legacy.</li>
+  <li><strong>Subclass and Override na klasach final</strong> — w Javie wymaga usunięcia <code>final</code> (świadoma decyzja) lub innej techniki.</li>
+  <li><strong>Prick Create na produkcji</strong> — wyłącznie krótkotrwały branch diagnostyczny, nigdy deploy.</li>
+  <li><strong>Definition Text Replacement bez dokumentacji</strong> — magiczne <code>-D</code> w CI bez opisu w README zespołu (u was: w composition root / Helm values).</li>
+  <li><strong>Method Object bez limitu</strong> — wydzielasz cały serwis zamiast jednej metody; seam ginie w nowym bogactwie.</li>
+  <li><strong>Ignorowanie characterization tests</strong> — przed refaktoryzacją brak testu „zapisującego obecne zachowanie”; regresja przy migracji do nowej architektury.</li>
+</ul>
+
+</body>
+</html>
