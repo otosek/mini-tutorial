@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud Gateway — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6db33f;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef8e6; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      font-family: ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud Gateway</h1>
+<p class="meta">API Gateway w Springu · routing, filtry, OAuth2, rate limit, Resilience4j · WebFlux<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#kiedy">Kiedy tak / kiedy nie</a></li>
+    <li><a href="#routing">Routing</a></li>
+    <li><a href="#filtry">Filtry</a></li>
+    <li><a href="#bezpieczenstwo">Bezpieczeństwo</a></li>
+    <li><a href="#odpornosc">Odporność i limity</a></li>
+    <li><a href="#discovery">Discovery i K8s</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>Spring Cloud Gateway</strong> (SCG) to reverse proxy i API gateway dla mikroserwisów w ekosystemie Spring. Stoi na <strong>Spring WebFlux</strong> i <strong>Project Reactor</strong> (Netty) — model reaktywny, nie servletowy Tomcat.</p>
+
+<p>Jedno wejście HTTP(S) dla klientów (SPA, mobile, partnerzy). Gateway routuje żądanie do właściwego serwisu wewnętrznego, dodaje/usuwa nagłówki, waliduje JWT, limituje RPS, łączy się z circuit breakerem — zanim ruch trafi do Spring Boota za nim.</p>
+
+<div class="flow-box">Klient → Spring Cloud Gateway (predicates + filters)
+              │
+              ├─ /api/auth/**     → auth-service:8081
+              ├─ /api/orders/**   → order-service:8082
+              └─ /api/authors/**  → author-service:8083</div>
+
+<table>
+  <thead><tr><th>vs</th><th>Różnica</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Zuul 1</strong></td><td>Servlet, blocking — EOL; nie startuj nowego projektu na Zuul</td></tr>
+    <tr><td><strong>Nginx / Envoy / Kong</strong></td><td>Lżejsze, język konfiguracji inny; SCG gdy cały stack to Spring i chcesz filtry w Javie</td></tr>
+    <tr><td><strong>AWS API Gateway</strong></td><td>Managed, integracja z Cognito/Lambda; SCG na ECS/EKS/VM gdy logika routingu w kodzie</td></tr>
+    <tr><td><strong>Spring MVC + <code>@Controller</code></strong></td><td>To nie gateway — to aplikacja. SCG to osobny proces na porcie 8080/443</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Predykat + filtr</strong>
+  <p><em>Predicate</em> — czy trasa pasuje (Path, Method, Header, Cookie, After). <em>Filter</em> — co zrobić z żądaniem/odpowiedzią (StripPrefix, AddRequestHeader, Retry, CircuitBreaker). Trasa = lista predykatów (AND) + lista filtrów (kolejność ma znaczenie).</p>
+</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">1. Kiedy używać / kiedy nie</h2>
+
+<table>
+  <thead><tr><th>Bierz SCG</th><th>Olej SCG</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Wiele serwisów Spring Boot, jeden publiczny host (<code>api.example.com</code>)</td>
+      <td>Jeden monolit — wystarczy Spring Security + reverse proxy nginx</td>
+    </tr>
+    <tr>
+      <td>Centralna walidacja JWT / OAuth2 na brzegu</td>
+      <td>Publiczne API tylko przez AWS API Gateway + Lambda — SCG redundantny</td>
+    </tr>
+    <tr>
+      <td>Filtry w Javie (tenant z Host, correlation-id, custom auth)</td>
+      <td>Prosty path-based routing bez logiki — nginx/ALB tańszy operacyjnie</td>
+    </tr>
+    <tr>
+      <td>Integracja z Resilience4j, Micrometer, Spring Cloud Discovery</td>
+      <td>Team nie chce WebFlux — utrzymanie reaktywnego gateway wymaga znajomości Reactor</td>
+    </tr>
+    <tr>
+      <td>BFF (Backend for Frontend) — agregacja kilku wywołań w jednym filtrze</td>
+      <td>GraphQL gateway (Apollo Router) jako główny punkt wejścia — SCG tylko pod spodem</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> SCG nie zastępuje WAF, DDoS protection ani mTLS między serwisami. To warstwa aplikacyjna — przed nią i tak stawiasz CloudFront/ALB/nginx.</div>
+
+<hr>
+
+<h2 id="routing" class="must-know">2. Routing</h2>
+
+<p>Starter: <code>spring-cloud-starter-gateway</code> (wersja z BOM Spring Cloud, np. 2024.0.x przy Boot 3.4). <strong>Nie</strong> dodawaj <code>spring-boot-starter-web</code> — koliduje z WebFlux.</p>
+
+<pre><code>spring:
+  cloud:
+    gateway:
+      routes:
+        - id: authors
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/authors/**
+          filters:
+            - StripPrefix=1    # /api/authors/1 → /authors/1 na backendzie
+        - id: orders
+          uri: lb://order-service   # wymaga discovery (Eureka / K8s)
+          predicates:
+            - Path=/api/orders/**
+            - Method=GET,POST</code></pre>
+
+<p>Programowo — <code>RouteLocator</code> bean (wygodne przy testach i dynamicznym routingu):</p>
+
+<pre><code>@Bean
+RouteLocator routes(RouteLocatorBuilder b) {
+  return b.routes()
+      .route("authors", r -&gt; r
+          .path("/api/authors/**")
+          .filters(f -&gt; f.stripPrefix(1))
+          .uri("http://author-service:8082"))
+      .build();
+}</code></pre>
+
+<table>
+  <thead><tr><th>Predykat</th><th>Przykład</th></tr></thead>
+  <tbody>
+    <tr><td><code>Path</code></td><td><code>/api/**</code>, ant-style</td></tr>
+    <tr><td><code>Method</code></td><td><code>GET,POST</code></td></tr>
+    <tr><td><code>Header</code></td><td><code>X-Api-Version, v2</code></td></tr>
+    <tr><td><code>Host</code></td><td><code>*.tenant.app.com</code> — multi-tenancy po subdomenie</td></tr>
+    <tr><td><code>Query</code></td><td><code>version, beta</code></td></tr>
+    <tr><td><code>Weight</code></td><td>Canary — 90% na v1, 10% na v2</td></tr>
+  </tbody>
+</table>
+
+<p><strong>StripPrefix vs RewritePath:</strong> <code>StripPrefix=1</code> usuwa pierwszy segment ścieżki. <code>RewritePath=/api/(?&lt;segment&gt;.*), /$\{segment}</code> — pełna kontrola regexem. Błędny prefix = 404 na backendzie mimo „zielonego” gateway.</p>
+
+<hr>
+
+<h2 id="filtry">3. Filtry — wbudowane i własne</h2>
+
+<p><strong>GatewayFilter</strong> — na trasę. <strong>GlobalFilter</strong> — na każde żądanie (kolejność przez <code>getOrder()</code>, niższa liczba = wcześniej).</p>
+
+<pre><code>@Component
+class CorrelationIdFilter implements GlobalFilter, Ordered {
+  @Override
+  public Mono&lt;Void&gt; filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    String id = exchange.getRequest().getHeaders()
+        .getFirst("X-Correlation-Id");
+    if (id == null) id = UUID.randomUUID().toString();
+    String finalId = id;
+    ServerHttpRequest req = exchange.getRequest().mutate()
+        .header("X-Correlation-Id", finalId)
+        .build();
+    exchange.getResponse().getHeaders().add("X-Correlation-Id", finalId);
+    return chain.filter(exchange.mutate().request(req).build());
+  }
+  @Override public int getOrder() { return -1; }
+}</code></pre>
+
+<table>
+  <thead><tr><th>Filtr</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><code>AddRequestHeader</code> / <code>RemoveRequestHeader</code></td><td>Nagłówki wewnętrzne; usuń <code>X-Tenant-Id</code> z internetu</td></tr>
+    <tr><td><code>Retry</code></td><td>Ponów przy 502/503 (ostrożnie z POST)</td></tr>
+    <tr><td><code>RequestRateLimiter</code></td><td>Token bucket (Redis — <code>spring-boot-starter-data-redis-reactive</code>)</td></tr>
+    <tr><td><code>CircuitBreaker</code></td><td>Resilience4j — fallback URI albo forward</td></tr>
+    <tr><td><code>RequestSize</code></td><td>Odrzuć zbyt duży body</td></tr>
+    <tr><td><code>RedirectTo</code></td><td>HTTP 302 — migracje URL</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>GlobalFilter a bezpieczeństwo nagłówków</strong>
+  <p>Klient nie może ustawiać zaufanych nagłówków (<code>X-Tenant-Id</code>, <code>X-User-Id</code>). Gateway je <em>usuwa</em> na wejściu i ustawia po walidacji JWT — inaczej podmiana tenanta.</p>
+</div>
+
+<hr>
+
+<h2 id="bezpieczenstwo" class="must-know">4. Bezpieczeństwo</h2>
+
+<p>Typowy układ: <code>spring-boot-starter-oauth2-resource-server</code> na gateway + JWT z Cognito/Keycloak. Mikroserwisy za gatewayem ufają nagłówkom wewnętrznym <em>tylko</em> w sieci prywatnej (mTLS / security group) albo weryfikują JWT ponownie.</p>
+
+<pre><code>@Configuration
+@EnableWebFluxSecurity
+class SecurityConfig {
+  @Bean
+  SecurityWebFilterChain springSecurity(ServerHttpSecurity http) {
+    return http
+        .csrf(ServerHttpSecurity.CsrfSpec::disable)
+        .authorizeExchange(ex -&gt; ex
+            .pathMatchers("/actuator/health").permitAll()
+            .pathMatchers("/api/public/**").permitAll()
+            .anyExchange().authenticated())
+        .oauth2ResourceServer(o -&gt; o.jwt(Customizer.withDefaults()))
+        .build();
+  }
+}</code></pre>
+
+<p>Mapowanie claimów JWT na nagłówek dla downstream:</p>
+
+<pre><code>@Bean
+GlobalFilter jwtToHeaders() {
+  return (exchange, chain) -&gt; exchange.getPrincipal()
+      .cast(JwtAuthenticationToken.class)
+      .flatMap(auth -&gt; {
+        String sub = auth.getToken().getSubject();
+        var req = exchange.getRequest().mutate()
+            .header("X-User-Id", sub)
+            .build();
+        return chain.filter(exchange.mutate().request(req).build());
+      })
+      .switchIfEmpty(chain.filter(exchange));
+}</code></pre>
+
+<p><strong>CORS</strong> — konfiguruj na gateway (jeden punkt), nie powielaj na każdym serwisie:</p>
+
+<pre><code>spring.cloud.gateway.globalcors:
+  cors-configurations:
+    '[/**]':
+      allowedOrigins: "https://app.example.com"
+      allowedMethods: GET,POST,PUT,DELETE,OPTIONS
+      allowedHeaders: "*"
+      allowCredentials: true</code></pre>
+
+<div class="trap">Walidacja JWT na gateway + brak auth na serwisach w tej samej VPC = każdy kto trafi do portu serwisu omija gateway. Sieć musi blokować ruch z zewnątrz do portów aplikacji.</div>
+
+<hr>
+
+<h2 id="odpornosc">5. Odporność, timeouty, rate limit</h2>
+
+<p>Filtr <code>CircuitBreaker</code> wymaga Resilience4j (jak w tutorialu Resilience4j):</p>
+
+<pre><code>filters:
+  - name: CircuitBreaker
+    args:
+      name: orderServiceCb
+      fallbackUri: forward:/fallback/orders</code></pre>
+
+<p>Timeout HTTP do backendu — <code>spring.cloud.gateway.httpclient.connect-timeout</code> i <code>response-timeout</code> (Duration). Bez timeoutu wolny downstream zatyka połączenia Netty.</p>
+
+<p><strong>RequestRateLimiter</strong> — klucz per IP, per JWT <code>sub</code> albo per API key:</p>
+
+<pre><code>@Bean
+KeyResolver userKeyResolver() {
+  return exchange -&gt; exchange.getPrincipal()
+      .map(p -&gt; p.getName())
+      .defaultIfEmpty(
+          exchange.getRequest().getRemoteAddress().getAddress().getHostAddress());
+}</code></pre>
+
+<p>Redis jako magazyn tokenów — bez Redis filtr nie wstanie. Dla prostego rate limitu na edge czasem wystarczy AWS WAF / API Gateway usage plan.</p>
+
+<hr>
+
+<h2 id="discovery">6. Service discovery i Kubernetes</h2>
+
+<p><code>uri: lb://order-service</code> — Spring Cloud LoadBalancer wybiera instancję z rejestru (Eureka, Consul) albo z K8s (<code>spring-cloud-starter-kubernetes-client</code>).</p>
+
+<table>
+  <thead><tr><th>Środowisko</th><th>Praktyka</th></tr></thead>
+  <tbody>
+    <tr><td>Kubernetes</td><td>Ingress (nginx/ALB) → SCG Deployment → Service ClusterIP mikroserwisów; albo SCG jako Ingress Controller (rzadziej)</td></tr>
+    <tr><td>ECS / VM</td><td>SCG + Eureka/Consul albo statyczna lista URI w config</td></tr>
+    <tr><td>Lokalnie</td><td>Bez discovery — <code>http://localhost:808x</code> per route</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Actuator:</strong> <code>/actuator/gateway/routes</code> — lista tras (zabezpiecz w prod). <code>spring.cloud.gateway.discovery.locator.enabled=true</code> — auto-trasy z Eureka (<code>/service-id/**</code>) — wygodne na dev, na prod zwykle explicit routes.</p>
+
+<p>Metryki: Micrometer + <code>spring.cloud.gateway.metrics.enabled=true</code> — tagi <code>routeId</code>, status, latency. Trace: propagacja przez <code>Observation</code> / OpenTelemetry — jeden trace przez gateway i downstream.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong><code>spring-boot-starter-web</code> + Gateway.</strong> Dwa konteksty servlet + reactive — konflikt beanów, dziwne 404. Tylko WebFlux.</li>
+  <li><strong>StripPrefix źle policzony.</strong> Backend oczekuje <code>/authors</code>, gateway wysyła <code>/api/authors</code> — 404. Sprawdź <code>/actuator/gateway/routes</code>.</li>
+  <li><strong>Blokujący kod w filtrze.</strong> <code>jdbcTemplate.query</code> na wątku Netty blokuje event loop. Użyj reaktywnego klienta albo <code>subscribeOn(boundedElastic)</code>.</li>
+  <li><strong>Brak timeoutu response.</strong> Jedna wisząca instancja backendu trzyma połączenia — wyczerpanie pooli.</li>
+  <li><strong>Retry na POST z side-effectem.</strong> Podwójne zamówienie. Retry tylko na GET/HEAD albo z idempotency key.</li>
+  <li><strong>Zaufanie nagłówkom z klienta.</strong> <code>X-Tenant-Id</code> ustawione w Postmanie — eskalacja uprawnień. Usuń na wejściu, ustaw po JWT.</li>
+  <li><strong>CORS na każdym serwisie inaczej.</strong> Preflight pada na gateway — jedna globalna konfiguracja CORS.</li>
+  <li><strong>Circuit breaker bez fallback.</strong> Open = 503 bez treści; zdefiniuj <code>fallbackUri</code> lub cached response.</li>
+  <li><strong>Logowanie pełnego body.</strong> PII i hasła w logach gateway — filtr <code>ModifyRequestBody</code> tylko gdy trzeba, z redakcją.</li>
+  <li><strong>SCG jako jedyny load balancer bez health check.</strong> Routujesz na martwą instancję — włącz LB health probe albo K8s readiness.</li>
+</ol>
+
+</body>
+</html>

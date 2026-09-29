@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud Bus — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6db33f;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef8e6; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      font-family: ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud Bus</h1>
+<p class="meta">Broadcast zdarzeń przez Kafka/Rabbit · <code>/busrefresh</code> · Config + wiele instancji<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#kiedy">Kiedy tak / kiedy nie</a></li>
+    <li><a href="#setup">Konfiguracja</a></li>
+    <li><a href="#refresh">Bus refresh z Config</a></li>
+    <li><a href="#zdarzenia">Inne zdarzenia</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>Spring Cloud Bus</strong> to cienka warstwa nad brokerem wiadomości (Kafka lub RabbitMQ), która <strong>rozgłasza zdarzenia</strong> do wszystkich instancji aplikacji w klastrze. Najczęstszy use case: po zmianie configu w Git jednym wywołaniem <code>/actuator/busrefresh</code> odświeżasz <code>@RefreshScope</code> beany na <em>wszystkich</em> replikach wszystkich serwisów — bez ręcznego POST na każdą instancję.</p>
+
+<div class="flow-box">Admin / pipeline
+    POST /actuator/busrefresh  (jedna instancja order-service)
+              │
+              ▼
+         topic: springCloudBus
+              │
+    ┌─────────┼─────────┬─────────────┐
+    ▼         ▼         ▼             ▼
+ order-1   order-2   author-1    author-2
+ refresh   refresh   refresh     refresh</div>
+
+<p>Bus nie zastępuje Config Server — tylko <em>propaguje sygnał</em> „przeładuj config z serwera”. Bez Config Server Bus może nadal rozsyłać custom eventy (<code>RemoteApplicationEvent</code>), ale to rzadki przypadek.</p>
+
+<div class="keyword">
+  <strong>Bus vs pojedynczy <code>/actuator/refresh</code></strong>
+  <p><code>refresh</code> — tylko ta JVM. <code>busrefresh</code> — publikuje zdarzenie na bus; każdy subskrybent wykonuje refresh lokalnie. Przy 20 replikach × 5 serwisów = 100 wywołań ręcznie vs jeden busrefresh.</p>
+</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">1. Kiedy używać / kiedy nie</h2>
+
+<table>
+  <thead><tr><th>Bierz Bus</th><th>Olej Bus</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Wiele replik wielu serwisów + Config Server + częsty refresh bez redeploy</td>
+      <td>K8s — zmiana ConfigMap + rolling restart (GitOps) wystarcza</td>
+    </tr>
+    <tr>
+      <td>Już masz Kafka/Rabbit na Stream — ten sam broker na bus</td>
+      <td>Jedna instancja na serwis — zwykły <code>/actuator/refresh</code></td>
+    </tr>
+    <tr>
+      <td>Chcesz webhook z Git → busrefresh po pushu do config repo</td>
+      <td>Config tylko w env vars / Parameter Store przy starcie — brak refresh w runtime</td>
+    </tr>
+    <tr>
+      <td>Broadcast custom eventów między serwisami (rzadkie)</td>
+      <td>Brak brokera — nie stawiaj Rabbita tylko dla Bus</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="trap">Na K8s w 2025+ częściej: Argo CD / Flux redeploy przy zmianie Secret — prostsze mentalnie niż Bus + refresh scope. Bus ma sens w VM/ECS bez GitOps albo gdy refresh musi być bez restartu poda.</div>
+
+<hr>
+
+<h2 id="setup" class="must-know">2. Konfiguracja</h2>
+
+<p>Starter (Kafka): <code>spring-cloud-starter-bus-kafka</code>. Rabbit: <code>spring-cloud-starter-bus-amqp</code>. Wymaga też Config Client jeśli chodzi o refresh configu.</p>
+
+<pre><code>spring:
+  cloud:
+    bus:
+      enabled: true
+      id: ${spring.application.name}:${server.port}  # unikalny per instancja
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,refresh,busrefresh,bus-env</code></pre>
+
+<p>Każda aplikacja subskrybuje topic exchange (Rabbit) lub topic Kafka (domyślnie <code>springCloudBus</code>). Id instancji musi być unikalne — duplikat = dziwne zachowanie subskrypcji.</p>
+
+<table>
+  <thead><tr><th>Endpoint</th><th>Działanie</th></tr></thead>
+  <tbody>
+    <tr><td><code>POST /actuator/busrefresh</code></td><td>Refresh config + <code>@RefreshScope</code> na wszystkich nodach</td></tr>
+    <tr><td><code>POST /actuator/busrefresh?name=order-service&amp;destination=**</code></td><td>Tylko wybrane aplikacje (filtr)</td></tr>
+    <tr><td><code>POST /actuator/busenv</code></td><td>Podobnie dla env (starsze / rzadziej)</td></tr>
+  </tbody>
+</table>
+
+<p>Zabezpiecz endpointy Actuator — <code>busrefresh</code> na otwartym porcie = każdy przeładowuje config. Spring Security + rola ADMIN lub wyłącz exposure na publicznym interfejsie.</p>
+
+<hr>
+
+<h2 id="refresh">3. Integracja z Config Server</h2>
+
+<div class="flow-box">1. Push do Git (config-repo): feature.newCheckout=true
+2. Config Server widzi nową wersję (webhook / polling)
+3. POST /actuator/busrefresh na dowolnej instancji (lub webhook z GitHub Actions)
+4. Wszystkie serwisy: pobierz config → odśwież @RefreshScope beany</div>
+
+<pre><code>@RefreshScope
+@ConfigurationProperties(prefix = "feature")
+public class FeatureFlags {
+  private boolean newCheckout;
+}</code></pre>
+
+<p>Bez <code>@RefreshScope</code> busrefresh przeładuje <code>Environment</code>, ale istniejące beany trzymają stare wartości — ten sam problem co przy pojedynczym refresh (patrz tutorial Config).</p>
+
+<p>Webhook z GitLab/GitHub na Config Server lub na jedną aplikację z busrefresh — typowy pipeline. Alternatywa: Spring Cloud Config Monitor + <code>/monitor</code> na serwerze configu (publikuje na bus po pushu).</p>
+
+<pre><code># config-server + bus
+spring:
+  cloud:
+    config:
+      server:
+        monitor:
+          github:
+            enabled: true</code></pre>
+
+<hr>
+
+<h2 id="zdarzenia">4. Własne zdarzenia (zaawansowane)</h2>
+
+<p>Możesz publikować własne <code>RemoteApplicationEvent</code> — inne serwisy z Bus je odbierają. Użyteczne do rzadkich sygnałów administracyjnych; do domeny biznesowej używaj Spring Cloud Stream, nie Bus.</p>
+
+<pre><code>public class CacheInvalidateEvent extends RemoteApplicationEvent {
+  public CacheInvalidateEvent(Object source, String originService, String destination) {
+    super(source, originService, destination);
+  }
+}</code></pre>
+
+<p>Destination <code>**</code> = broadcast. Konkretna nazwa serwisu = tylko ten konsument. Nie przeładowuj Bus dużymi payloadami — to sygnał, nie kolejka zadań.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong>Bus bez brokera.</strong> Aplikacja startuje, ale zdarzenia nie docierają — sprawdź Kafka/Rabbit i topic <code>springCloudBus</code>.</li>
+  <li><strong>Duplikat <code>spring.cloud.bus.id</code>.</strong> Dwie instancje z tym samym id — tylko jedna dostaje eventy.</li>
+  <li><strong><code>busrefresh</code> bez Config Client.</strong> Event leci, ale nie ma skąd pobrać nowego configu.</li>
+  <li><strong>Bean bez <code>@RefreshScope</code>.</strong> Bus zadziałał, wartość na ekranie stara — mylące przy debugowaniu.</li>
+  <li><strong>Actuator publiczny na internecie.</strong> Busrefresh bez auth — podatność operacyjna i bezpieczeństwa.</li>
+  <li><strong>Refresh DataSource przez Bus.</strong> Przeładowanie URL DB w locie — wyciek połączeń; rolling restart bezpieczniejszy.</li>
+  <li><strong>Bus + Stream ten sam broker, ten sam consumer group.</strong> Konflikt konfiguracji — osobne topici, osobne grupy.</li>
+  <li><strong>Oczekiwanie natychmiastowej spójności.</strong> Eventual delay brokera — kilka sekund do pełnego refreshu klastra.</li>
+  <li><strong>Bus na prod „bo było w tutorialu” przy GitOps K8s.</strong> Zbędna złożoność — YAGNI.</li>
+  <li><strong>Monitor webhook bez secreta.</strong> Każdy może triggerować refresh — weryfikuj podpis GitHub/GitLab.</li>
+</ol>
+
+<p class="meta">Zobacz też: <a href="spring-cloud-config-mini-tutorial.html">Spring Cloud Config</a> · <a href="spring-cloud-stack-mini-tutorial.html">mapa stacku</a></p>
+
+</body>
+</html>
