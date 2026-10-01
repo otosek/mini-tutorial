@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OWASP API Top 10 (2023) w Spring Boot — część 1</title>
+  <title>OWASP API Top 10 (2023) w Spring Boot — megatutorial</title>
   <style>
     :root {
       --bg: #fafafa;
@@ -169,20 +169,25 @@
 
 <h1>Implementacja OWASP Top 10 API (2023) w ekosystemie Spring Boot</h1>
 <p class="meta">
-  Spring Boot 3.x · Java 17/21 · Spring Security 6 · domena: faktury, e-commerce, bankowość<br>
-  Format: samodzielny HTML, offline · <strong>Część 1:</strong> API1–API3 (pełny szablon) · Bez sekcji ciekawostek<br>
-  Kolejne części: API4–API10 (planowane rozszerzenie tego pliku lub część 2)
+  Spring Boot 3.x · Java 17/21 · Spring Security 6 · domena: faktury, e-commerce, bankowość, integracje<br>
+  Format: samodzielny HTML, offline · pełne API1–API10 (2023) · Bez sekcji ciekawostek
 </p>
 
 <nav class="toc">
-  <strong>Spis treści — część 1</strong>
+  <strong>Spis treści</strong>
   <ol>
     <li><a href="#fundamenty">Fundamenty i mapa OWASP API:2023</a></li>
-    <li><a href="#api1">API1:2023 — Broken Object Level Authorization</a></li>
-    <li><a href="#api2">API2:2023 — Broken Authentication</a></li>
-    <li><a href="#api3">API3:2023 — Broken Object Property Level Authorization</a></li>
-    <li><a href="#bledy">Typowe błędy (część 1)</a></li>
-    <li class="muted-link">API4–API10 — w kolejnej części przewodnika</li>
+    <li><a href="#api1">API1 — Broken Object Level Authorization</a></li>
+    <li><a href="#api2">API2 — Broken Authentication</a></li>
+    <li><a href="#api3">API3 — Broken Object Property Level Authorization</a></li>
+    <li><a href="#api4">API4 — Unrestricted Resource Consumption</a></li>
+    <li><a href="#api5">API5 — Broken Function Level Authorization</a></li>
+    <li><a href="#api6">API6 — Unrestricted Access to Sensitive Business Flows</a></li>
+    <li><a href="#api7">API7 — Server Side Request Forgery (SSRF)</a></li>
+    <li><a href="#api8">API8 — Security Misconfiguration</a></li>
+    <li><a href="#api9">API9 — Improper Inventory Management</a></li>
+    <li><a href="#api10">API10 — Unsafe Consumption of APIs</a></li>
+    <li><a href="#bledy">Typowe błędy (cały Top 10)</a></li>
   </ol>
 </nav>
 
@@ -214,7 +219,7 @@
 </table>
 
 <p>
-  Poniżej każda podatność z części 1 ma ten sam układ: definicja → scenariusz ataku → antywzorzec →
+  Poniżej wszystkie dziesięć pozycji ma ten sam układ: definicja → scenariusz ataku → antywzorzec →
   architektura obrony → kod bezpieczny → test integracyjny MockMvc.
 </p>
 
@@ -758,21 +763,922 @@ class AccountBoplaIntegrationTest {
 
 <hr>
 
-<h2 id="bledy">Typowe błędy (część 1 — API1–API3)</h2>
-<ul>
-  <li>Poleganie na ukryciu ID w UI zamiast sprawdzania ownership po stronie serwera (BOLA).</li>
-  <li>Używanie globalnego <code>findById</code> w serwisie „wspólnym” dla admina i klienta bez rozgałęzienia polityki.</li>
-  <li>Mapowanie encji JPA bezpośrednio na JSON request/response (BOPLA + wyciek pól wewnętrznych).</li>
-  <li>Login endpoint omijający <code>AuthenticationManager</code> „tymczasowo” po migracji — zostaje na produkcji latami.</li>
-  <li>Długowieczne JWT bez rotacji refresh i bez revoke (skradziony token = długotrwały dostęp).</li>
-  <li>Brak rate limitu na <code>/login</code>, <code>/reset-password</code>, <code>/mfa/verify</code>.</li>
-  <li>Zwracanie 404 vs 403 losowo — utrudnia testy; ważniejsze: zwracanie 200 z cudzym obiektem (krytyczne).</li>
-  <li>PermissionEvaluator wykonujący ciężkie zapytania bez cache — ryzyko DoS, ale nie usprawiedliwia pominięcia BOLA.</li>
-  <li>Otwarte CORS + credentials przy API cookie-based bez CSRF — często łączy się z API2 (sesja).</li>
-  <li>Dokumentacja OpenAPI pokazująca mniej pól niż faktycznie akceptuje deserializer (rozjazd kontraktu).</li>
-</ul>
+<h2 id="api4">API4:2023 — Unrestricted Resource Consumption</h2>
 
-<p><em>Kontynuacja przewodnika: API4 (Unrestricted Resource Consumption), API5 (BFLA), API6 (business flows), API7 (SSRF), API8 (misconfiguration), API9 (inventory), API10 (unsafe consumption) — ten sam szablon sekcji.</em></p>
+<div class="def-box">
+  <strong>Krótka definicja:</strong>
+  API pozwala klientowi wymusić nadmierne zużycie CPU, pamięci, dysku lub licencji downstream
+  (np. ogromna paginacja, masowy export, upload wielu gigabajtów, kosztowne join-y bez limitu).
+  W Spring Boot atak nie wymaga exploit chain — wystarczy parametr query lub body, którego nikt nie ograniczył.
+</div>
+
+<h3>Historia i scenariusz ataku (jak do tego dochodzi?)</h3>
+<p>
+  Marketplace B2B dodaje <code>GET /api/products/search?q=…&amp;size=…</code> z domyślnym <code>size=20</code> w UI,
+  ale backend przyjmuje dowolne <code>size</code> z żądania. Równolegle powstaje <code>POST /api/reports/sales/export</code>
+  generujący CSV w pamięci — „na razie dla wewnętrznych użytkowników”.
+</p>
+<ol>
+  <li>Atakujący loguje się kontem trial i w Postmanie wysyła <code>size=500000</code> — Hibernate ładuje setki tysięcy encji.</li>
+  <li>Automatyzacja: 50 równoległych exportów CSV z zakresem „cała historia” — GC pause i OOMKill poda w K8s.</li>
+  <li>Upload <code>multipart</code> 2 GB „faktury” bez limitu w Tomcat — wyczerpanie dysku ephemeral.</li>
+  <li>GraphQL-style overfetching przez REST: <code>?include=orders,orders.items,orders.customer.history</code> jeśli zaimplementowano naiwnie.</li>
+</ol>
+
+<p class="pre-label bad">Antywzorzec — brak limitów zasobów</p>
+<pre><code>@GetMapping("/api/products/search")
+public Page&lt;ProductDto&gt; search(
+        @RequestParam String q,
+        @RequestParam(defaultValue = "20") int size,
+        Pageable pageable) {
+    // size z query nadpisuje Pageable — klient może podać size=1_000_000
+    return productRepository.searchByNameContaining(q, PageRequest.of(0, size));
+}
+
+@PostMapping(value = "/api/invoices/bulk-import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public BulkImportResult importCsv(@RequestParam("file") MultipartFile file) {
+    var allLines = file.getInputStream().readAllBytes(); // cały plik w RAM
+    return invoiceImportService.process(allLines);
+}</code></pre>
+
+<h3>Jak się zabezpieczyć (architektura i biblioteki w Springu)</h3>
+
+<div class="method-card">
+  <strong>1. Bucket4j / Spring Cloud Gateway rate limiting + limity per tenant</strong><br>
+  <span class="lib-tag">Bucket4j</span> <span class="lib-tag">Gateway</span>
+  Token bucket na IP, API key i organizationId — 429 zanim kosztowna logika się wykona.
+</div>
+
+<div class="method-card">
+  <strong>2. Walidacja paginacji (@Max) + twarde cap w serwisie + streaming export</strong><br>
+  <span class="lib-tag">Bean Validation</span>
+  <code>@Max(100)</code> na size; export przez <code>StreamingResponseBody</code> lub batch job (Spring Batch), nie <code>List</code> w pamięci.
+</div>
+
+<div class="method-card">
+  <strong>3. Resilience4j Bulkhead + TimeLimiter na kosztowne endpointy</strong><br>
+  <span class="lib-tag">Resilience4j</span>
+  Izolacja wątków i timeout zapobiegają domino przy spike; nie zastępuje limitów paginacji, ale ogranicza blast radius.
+</div>
+
+<div class="method-card">
+  <strong>4. Konfiguracja serwera: multipart max, connection timeout, query timeout JPA</strong><br>
+  <code>spring.servlet.multipart.max-file-size</code>, <code>@QueryHints</code> / statement timeout w Postgres.
+</div>
+
+<p class="pre-label good">Bezpieczna implementacja</p>
+<pre><code>public record SearchProductsQuery(
+    @NotBlank @Size(max = 200) String q,
+    @Min(0) int page,
+    @Min(1) @Max(100) int size
+) {}
+
+@RestController
+@RequestMapping("/api/products")
+public class ProductSearchController {
+
+    private final ProductSearchService searchService;
+
+    @GetMapping("/search")
+    @RateLimited(name = "product-search") // Bucket4j filter lub adnotacja AOP
+    public Page&lt;ProductSummary&gt; search(@Valid @ModelAttribute SearchProductsQuery query) {
+        return searchService.search(query);
+    }
+}
+
+@Service
+public class ProductSearchService {
+    private static final int HARD_CAP = 100;
+
+    public Page&lt;ProductSummary&gt; search(SearchProductsQuery q) {
+        int size = Math.min(q.size(), HARD_CAP);
+        return productRepository.searchSummary(q.q(), PageRequest.of(q.page(), size));
+    }
+}
+
+@Configuration
+public class MultipartLimitsConfig {
+    @Bean
+    MultipartConfigElement multipartConfig() {
+        var cfg = new MultipartConfigFactory();
+        cfg.setMaxFileSize(DataSize.ofMegabytes(10));
+        cfg.setMaxRequestSize(DataSize.ofMegabytes(12));
+        return cfg.createMultipartConfig();
+    }
+}</code></pre>
+
+<h3>Testy integracyjne (PoC / weryfikacja)</h3>
+<pre><code>@SpringBootTest
+@AutoConfigureMockMvc
+class ResourceConsumptionIntegrationTest {
+
+    @Autowired MockMvc mockMvc;
+
+    @Test
+    @WithMockUser
+    void shouldRejectOversizedPageRequest() throws Exception {
+        mockMvc.perform(get("/api/products/search")
+                .param("q", "laptop")
+                .param("page", "0")
+                .param("size", "999999"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser
+    void shouldReturn429WhenRateLimitExceeded() throws Exception {
+        // po wyczerpaniu bucketu w teście (np. @MockBean RateLimiter)
+        mockMvc.perform(get("/api/products/search").param("q", "x").param("size", "10"))
+            .andExpect(status().isTooManyRequests());
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="api5">API5:2023 — Broken Function Level Authorization (BFLA)</h2>
+
+<div class="def-box">
+  <strong>Krótka definicja:</strong>
+  BFLA to brak kontroli, czy użytkownik może wywołać daną <em>funkcję</em> API (endpoint administracyjny,
+  refund, zmiana roli), mimo że jest zalogowany. Różni się od BOLA: chodzi o typ operacji (np. <code>DELETE /users</code>),
+  nie o konkretny rekord — zwykły klient trafia na endpoint przeznaczony dla operatora backoffice.
+</div>
+
+<h3>Historia i scenariusz ataku (jak do tego dochodzi?)</h3>
+<p>
+  Monolit e-commerce ma wspólny prefix <code>/api/</code> dla sklepu i panelu admina. Zespół dodaje
+  <code>POST /api/orders/{id}/refund</code> zabezpieczony tylko przez „JWT wymagany”, bo „admin i tak używa innego frontu”.
+  Swagger UI na staging jest publiczny — lista endpointów wycieka do internetu.
+</p>
+<ol>
+  <li>Kupujący analizuje ruch aplikacji mobilnej w Burp — widzi <code>/api/orders/…</code>.</li>
+  <li>Próbuje <code>POST /api/orders/{wlasne-id}/refund</code> — 200 i zwrot środków (lub pending fraud).</li>
+  <li>Skanuje słownik ścieżek: <code>/api/admin/users</code>, <code>/api/internal/pricing</code> — brak 403, tylko 401 bez tokena.</li>
+  <li>Z tokenem zwykłego użytkownika wywołuje <code>PUT /api/admin/users/{id}/roles</code> — eskalacja uprawnień.</li>
+</ol>
+
+<p class="pre-label bad">Antywzorzec — tylko authenticated</p>
+<pre><code>@RestController
+@RequestMapping("/api")
+public class OrderAdminController {
+
+    private final RefundService refundService;
+
+    @PostMapping("/orders/{orderId}/refund")
+    public RefundResponse refund(@PathVariable UUID orderId,
+                                 @RequestBody RefundRequest body) {
+        // Brak @PreAuthorize — wystarczy dowolny JWT klienta sklepu
+        return refundService.issueFullRefund(orderId, body.reason());
+    }
+}
+
+@RestController
+@RequestMapping("/api/admin/users")
+public class UserAdminController {
+
+    @PutMapping("/{userId}/roles")
+    public UserDto setRoles(@PathVariable UUID userId,
+                            @RequestBody List&lt;String&gt; roles) {
+        return userAdminService.replaceRoles(userId, roles);
+    }
+}</code></pre>
+
+<h3>Jak się zabezpieczyć (architektura i biblioteki w Springu)</h3>
+
+<div class="method-card">
+  <strong>1. @PreAuthorize z rolami/uprawnieniami na każdym endpointcie admin</strong><br>
+  <span class="lib-tag">Spring Security</span>
+  <code>@PreAuthorize("hasAuthority('order:refund')")</code> — jawna macierz funkcji vs ról (RBAC).
+</div>
+
+<div class="method-card">
+  <strong>2. Osobny SecurityFilterChain / context path dla /api/admin/**</strong><br>
+  <span class="lib-tag">Spring Security</span>
+  Wyższy poziom uwierzytelnienia (MFA claim), inny issuer JWT, brak ekspozycji admin API na publicznym gateway.
+</div>
+
+<div class="method-card">
+  <strong>3. Spring Cloud Gateway — route predicate + scope OAuth2</strong><br>
+  <span class="lib-tag">Gateway</span>
+  Trasa admin wymaga scope <code>admin.refund</code> w tokenie — odrzucenie na edge zanim request trafi do monolitu.
+</div>
+
+<p class="pre-label good">Bezpieczna implementacja</p>
+<pre><code>@RestController
+@RequestMapping("/api/admin/orders")
+@PreAuthorize("hasRole('BACKOFFICE')")
+public class SecureRefundController {
+
+    private final RefundService refundService;
+
+    @PostMapping("/{orderId}/refund")
+    @PreAuthorize("hasAuthority('order:refund')")
+    public RefundResponse refund(@PathVariable UUID orderId,
+                                 @Valid @RequestBody RefundRequest body) {
+        return refundService.issueFullRefund(orderId, body.reason());
+    }
+}
+
+@Configuration
+@EnableMethodSecurity
+public class AdminApiSecurityConfig {
+
+    @Bean
+    @Order(1)
+    SecurityFilterChain adminChain(HttpSecurity http) throws Exception {
+        return http
+            .securityMatcher("/api/admin/**")
+            .authorizeHttpRequests(auth -&gt; auth.anyRequest().hasRole("BACKOFFICE"))
+            .oauth2ResourceServer(oauth -&gt; oauth.jwt(Customizer.withDefaults()))
+            .build();
+    }
+
+    @Bean
+    @Order(2)
+    SecurityFilterChain publicApiChain(HttpSecurity http) throws Exception {
+        return http
+            .securityMatcher("/api/**")
+            .authorizeHttpRequests(auth -&gt; auth
+                .requestMatchers(HttpMethod.GET, "/api/catalog/**").permitAll()
+                .anyRequest().authenticated())
+            .oauth2ResourceServer(oauth -&gt; oauth.jwt(Customizer.withDefaults()))
+            .build();
+    }
+}</code></pre>
+
+<h3>Testy integracyjne (PoC / weryfikacja)</h3>
+<pre><code>@SpringBootTest
+@AutoConfigureMockMvc
+class BflaIntegrationTest {
+
+    @Autowired MockMvc mockMvc;
+
+    @Test
+    @WithMockUser(authorities = "ROLE_CUSTOMER")
+    void customerCannotRefundOrder() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        mockMvc.perform(post("/api/admin/orders/{id}/refund", orderId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"test\"}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(authorities = {"ROLE_BACKOFFICE", "order:refund"})
+    void backofficeWithPermissionCanRefund() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        mockMvc.perform(post("/api/admin/orders/{id}/refund", orderId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"customer request\"}"))
+            .andExpect(status().is2xxSuccessful());
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="api6">API6:2023 — Unrestricted Access to Sensitive Business Flows</h2>
+
+<div class="def-box">
+  <strong>Krótka definicja:</strong>
+  Dotyczy operacji biznesowych o wysokiej wartości (rejestracja konta firmowego, przelew, checkout, reset hasła,
+  wypłata środków), do których bot może uzyskać dostęp bez tarcia (CAPTCHA, step-up MFA, limity prób, token workflow).
+  API technicznie „działa”, ale nie chroni procesu przed nadużyciem masowym lub automatyzacją fraudu.
+</div>
+
+<h3>Historia i scenariusz ataku (jak do tego dochodzi?)</h3>
+<p>
+  Bank wdraża <code>POST /api/transfers</code> z SCA tylko w aplikacji mobilnej (push), ale to samo API
+  jest dostępne z web bez dodatkowego kroku. Rejestracja kont merchant w SaaS fakturowym daje bonus kredytowy —
+  brak weryfikacji e-mail przed przyznaniem bonusu.
+</p>
+<ol>
+  <li>Botnet rejestruje 10 000 kont merchant — każde dostaje bonus; potem wypłata przez <code>/api/payout</code>.</li>
+  <li>Credential stuffing na <code>/api/password-reset/confirm</code> bez throttlingu — masowe przejęcia.</li>
+  <li>Atakujący powtarza <code>POST /api/checkout/apply-coupon</code> z różnymi kodami (business logic brute force).</li>
+  <li>API transferu: ten sam JWT wystarczy — brak nagłówka step-up / fresh auth (<code>amr</code>, <code>auth_time</code>).</li>
+</ol>
+
+<p class="pre-label bad">Antywzorzec — wrażliwy flow bez tarcia</p>
+<pre><code>@PostMapping("/api/transfers")
+public TransferResponse transfer(@RequestBody TransferRequest req) {
+    // Jedynie @PreAuthorize("isAuthenticated()") — brak step-up, limitu kwoty na sesję
+    return transferService.execute(req.fromAccount(), req.toIban(), req.amount());
+}
+
+@PostMapping("/api/merchants/register")
+public MerchantResponse register(@RequestBody RegisterMerchantRequest req) {
+    var merchant = merchantService.createWithWelcomeCredit(req); // +500 PLN od razu
+    return MerchantResponse.from(merchant);
+}</code></pre>
+
+<h3>Jak się zabezpieczyć (architektura i biblioteki w Springu)</h3>
+
+<div class="method-card">
+  <strong>1. Step-up authentication (OAuth2 acr/amr, krótki token „high assurance”)</strong><br>
+  <span class="lib-tag">Spring Security</span>
+  Wymaganie claim <code>acr</code>=mfa lub <code>auth_time</code> &lt; 5 min dla transferów — odrzucenie starej sesji.
+</div>
+
+<div class="method-card">
+  <strong>2. reCAPTCHA Enterprise / Turnstile na rejestracji i reset hasła</strong><br>
+  Weryfikacja tokena po stronie serwera przed mutacją stanu; integracja jako filtr lub serwis przed handlerem.
+</div>
+
+<div class="method-card">
+  <strong>3. Workflow token jednorazowy (nonce) dla wieloetapowych flow</strong><br>
+  Po kroku 1 API zwraca <code>flowToken</code> powiązany z sesją; krok 2 wymaga poprawnego HMAC/timeboxed tokena — utrudnia skryptowanie całego flow.
+</div>
+
+<div class="method-card">
+  <strong>4. Bucket4j na endpointach wrażliwych + reguły antyfraud w serwisie</strong><br>
+  Limity na merchantId, IP, device fingerprint (nagłówek z aplikacji mobilnej).
+</div>
+
+<p class="pre-label good">Bezpieczna implementacja</p>
+<pre><code>@PostMapping("/api/transfers")
+@PreAuthorize("hasAuthority('transfer:initiate') and @stepUpAuth.isFresh(authentication, 300)")
+public TransferResponse transfer(@Valid @RequestBody TransferRequest req) {
+    transferPolicy.verifyDailyLimit(req.fromAccount(), req.amount());
+    return transferService.execute(req);
+}
+
+@Component("stepUpAuth")
+public class StepUpAuthorization {
+    public boolean isFresh(Authentication auth, int maxAgeSeconds) {
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            var issued = jwtAuth.getToken().getIssuedAt();
+            var acr = jwtAuth.getToken().getClaimAsString("acr");
+            return "mfa".equals(acr)
+                &amp;&amp; issued != null
+                &amp;&amp; issued.isAfter(Instant.now().minusSeconds(maxAgeSeconds));
+        }
+        return false;
+    }
+}
+
+@PostMapping("/api/merchants/register")
+public ResponseEntity&lt;MerchantResponse&gt; register(
+        @Valid @RequestBody RegisterMerchantRequest req,
+        @RequestHeader("X-Captcha-Token") String captchaToken) {
+    captchaVerifier.verify(captchaToken, "merchant_register");
+    var pending = merchantService.createPendingVerification(req);
+    return ResponseEntity.accepted().body(MerchantResponse.pending(pending.id()));
+}</code></pre>
+
+<h3>Testy integracyjne (PoC / weryfikacja)</h3>
+<pre><code>@SpringBootTest
+@AutoConfigureMockMvc
+class SensitiveFlowIntegrationTest {
+
+    @Autowired MockMvc mockMvc;
+
+    @Test
+    @WithMockUser(authorities = "transfer:initiate")
+    void transferWithoutFreshMfaIsForbidden() throws Exception {
+        mockMvc.perform(post("/api/transfers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"fromAccount":"acc-1","toIban":"PL61109010140000071219812874","amount":100.00}
+                    """))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void registerWithoutCaptchaReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/merchants/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"companyName\":\"Fake Sp. z o.o.\",\"email\":\"a@b.pl\"}"))
+            .andExpect(status().isBadRequest());
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="api7">API7:2023 — Server Side Request Forgery (SSRF)</h2>
+
+<div class="def-box">
+  <strong>Krótka definicja:</strong>
+  API pobiera zasób z URL dostarczonego przez klienta (webhook, import, „podgląd faktury z linku”)
+  i wykonuje żądanie HTTP z serwera aplikacji. Atakujący wskazuje <code>http://169.254.169.254/</code> (metadata chmury),
+  wewnętrzny Redis lub admin panel — omijając firewall klienta.
+</div>
+
+<h3>Historia i scenariusz ataku (jak do tego dochodzi?)</h3>
+<p>
+  System fakturowy pozwala klientowi skonfigurować <code>callbackUrl</code> dla powiadomień o płatności.
+  Developer używa <code>RestTemplate.getForObject(userUrl, String.class)</code> do „testu połączenia” z panelu.
+</p>
+<ol>
+  <li>Atakujący ustawia callback na <code>http://127.0.0.1:8080/actuator/env</code>.</li>
+  <li>Klika „Test webhook” — serwer pobiera wewnętrzny endpoint i zwraca fragment odpowiedzi w błędzie/sukcesie.</li>
+  <li>W AWS: URL metadata <code>169.254.169.254/latest/meta-data/iam/security-credentials/…</code>.</li>
+  <li>Obchód filtra: <code>http://[::ffff:169.254.169.254]/</code>, redirect 302 na wewnętrzny host, DNS rebinding.</li>
+</ol>
+
+<p class="pre-label bad">Antywzorzec — surowy URL użytkownika</p>
+<pre><code>@PostMapping("/api/webhooks/test")
+public WebhookTestResult testWebhook(@RequestBody WebhookTestRequest req) {
+    var url = req.callbackUrl(); // https://evil.com lub http://169.254.169.254
+    var body = restTemplate.getForObject(url, String.class);
+    return new WebhookTestResult(true, body.substring(0, Math.min(200, body.length())));
+}
+
+@PostMapping("/api/invoices/fetch-external")
+public InvoiceDto importFromUrl(@RequestParam String sourceUrl) {
+    byte[] pdf = restTemplate.getForObject(sourceUrl, byte[].class);
+    return invoiceParser.parse(pdf);
+}</code></pre>
+
+<h3>Jak się zabezpieczyć (architektura i biblioteki w Springu)</h3>
+
+<div class="method-card">
+  <strong>1. Allowlista schematów/hostów + blokada IP prywatnych (custom RestClient)</strong><br>
+  <span class="lib-tag">Spring 6 RestClient</span>
+  Parsowanie URI, resolve DNS, odrzucenie RFC1918, link-local, metadata — przed wysłaniem żądania.
+</div>
+
+<div class="method-card">
+  <strong>2. Wyjście przez dedykowany proxy egress z polityką sieciową</strong><br>
+  W K8s NetworkPolicy — aplikacja nie łączy się z metadata; tylko znane hosty partnerów.
+</div>
+
+<div class="method-card">
+  <strong>3. Brak follow redirects / limit rozmiaru odpowiedzi / timeout</strong><br>
+  Zapobiega redirect-based SSRF i exfiltracji dużych plików z wewnętrznej sieci.
+</div>
+
+<p class="pre-label good">Bezpieczna implementacja</p>
+<pre><code>@Service
+public class SafeOutboundHttpClient {
+
+    private static final Set&lt;String&gt; ALLOWED_HOSTS = Set.of(
+        "api.partner-bank.pl", "hooks.stripe.com");
+
+    private final RestClient restClient;
+
+    public String fetchAllowed(String userUrl) {
+        URI uri = validateAndNormalize(userUrl);
+        return restClient.get()
+            .uri(uri)
+            .retrieve()
+            .body(String.class);
+    }
+
+    URI validateAndNormalize(String raw) {
+        URI uri = URI.create(raw);
+        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+            throw new IllegalArgumentException("Only HTTPS allowed");
+        }
+        String host = Objects.requireNonNull(uri.getHost()).toLowerCase(Locale.ROOT);
+        if (!ALLOWED_HOSTS.contains(host)) {
+            throw new IllegalArgumentException("Host not allowed");
+        }
+        // resolve + reject private IPs (InetAddress.getAllByName)
+        return uri;
+    }
+}
+
+@RestController
+@RequestMapping("/api/webhooks")
+public class WebhookController {
+
+    private final SafeOutboundHttpClient outbound;
+
+    @PostMapping("/test")
+    @PreAuthorize("hasAuthority('webhook:configure')")
+    public WebhookTestResult test(@Valid @RequestBody WebhookTestRequest req) {
+        var snippet = outbound.fetchAllowed(req.callbackUrl());
+        return WebhookTestResult.ok(snippet.length());
+    }
+}</code></pre>
+
+<h3>Testy integracyjne (PoC / weryfikacja)</h3>
+<pre><code>@SpringBootTest
+@AutoConfigureMockMvc
+class SsrfIntegrationTest {
+
+    @Autowired MockMvc mockMvc;
+
+    @Test
+    @WithMockUser(authorities = "webhook:configure")
+    void shouldRejectMetadataUrl() throws Exception {
+        mockMvc.perform(post("/api/webhooks/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"callbackUrl":"http://169.254.169.254/latest/meta-data/"}
+                    """))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(authorities = "webhook:configure")
+    void shouldRejectDisallowedHost() throws Exception {
+        mockMvc.perform(post("/api/webhooks/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"callbackUrl":"https://attacker.example/callback"}
+                    """))
+            .andExpect(status().isBadRequest());
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="api8">API8:2023 — Security Misconfiguration</h2>
+
+<div class="def-box">
+  <strong>Krótka definicja:</strong>
+  Niebezpieczna lub domyślna konfiguracja: publiczny actuator, verbose errors ze stack trace,
+  CORS <code>*</code> z credentials, wyłączone CSRF tam gdzie sesje cookie, debug logujący tokeny,
+  brak security headers. W Spring Boot 3.x większość to wybory w <code>application.yml</code> i <code>SecurityFilterChain</code>.
+</div>
+
+<h3>Historia i scenariusz ataku (jak do tego dochodzi?)</h3>
+<p>
+  Zespół włącza <code>management.endpoints.web.exposure.include=*</code> „żeby Prometheus działał od razu”.
+  Profil <code>dev</code> z <code>server.error.include-stacktrace=always</code> trafia na produkcję przez błąd CI.
+  CORS ustawiony na <code>allowedOrigins("*")</code> przy cookie session dla panelu admina.
+</p>
+<ol>
+  <li>Skaner znajduje <code>/actuator/env</code> z wpisami <code>SPRING_DATASOURCE_PASSWORD</code>.</li>
+  <li><code>/actuator/heapdump</code> — pobranie pamięci z sekretami w stringach.</li>
+  <li>Błąd 500 zwraca pełny stack trace i zapytanie SQL — ułatwia SQLi/injection w innym miejscu.</li>
+  <li>Swagger UI na prod bez auth — mapa całego API (powiązane z API9).</li>
+</ol>
+
+<p class="pre-label bad">Antywzorzec — konfiguracja dev na prod</p>
+<pre><code># application.yml (commitnięte „tymczasowo”)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+server:
+  error:
+    include-message: always
+    include-stacktrace: always
+
+@Configuration
+public class CorsConfig {
+    @Bean
+    WebMvcConfigurer cors() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**").allowedOrigins("*").allowCredentials(true);
+            }
+        };
+    }
+}</code></pre>
+
+<h3>Jak się zabezpieczyć (architektura i biblioteki w Springu)</h3>
+
+<div class="method-card">
+  <strong>1. Spring Boot Actuator — exposure minimal + osobny port/management auth</strong><br>
+  Tylko <code>health</code>, <code>prometheus</code> na wewnętrznym interfejsie; reszta wyłączona lub za mTLS.
+</div>
+
+<div class="method-card">
+  <strong>2. SecurityFilterChain: headers (HSTS, CSP, frameOptions), deny-by-default</strong><br>
+  <span class="lib-tag">Spring Security</span>
+  <code>headers</code> customizer, wyłączenie <code>csrf</code> tylko dla stateless JWT API — nie dla cookie admin.
+</div>
+
+<div class="method-card">
+  <strong>3. Profile-driven config + Spring Cloud Config validation</strong><br>
+  Osobne <code>application-prod.yml</code>; test architektury (ArchUnit) sprawdzający brak <code>include: "*"</code> w prod.
+</div>
+
+<p class="pre-label good">Bezpieczna implementacja</p>
+<pre><code>@Configuration
+@EnableWebSecurity
+public class ProductionSecurityConfig {
+
+    @Bean
+    SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+        return http
+            .csrf(csrf -&gt; csrf.ignoringRequestMatchers("/api/**")) // tylko jeśli JWT, nie cookie admin
+            .headers(headers -&gt; headers
+                .contentSecurityPolicy(csp -&gt; csp.policyDirectives("default-src 'none'"))
+                .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
+                .httpStrictTransportSecurity(hsts -&gt; hsts.includeSubDomains(true).preload(true)))
+            .authorizeHttpRequests(auth -&gt; auth
+                .requestMatchers("/actuator/health", "/actuator/prometheus").hasRole("MONITORING")
+                .requestMatchers("/actuator/**").denyAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").hasRole("DEVELOPER")
+                .anyRequest().authenticated())
+            .oauth2ResourceServer(oauth -&gt; oauth.jwt(Customizer.withDefaults()))
+            .exceptionHandling(ex -&gt; ex.authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint()))
+            .build();
+    }
+}
+
+# application-prod.yml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+server:
+  error:
+    include-stacktrace: never
+    include-message: never</code></pre>
+
+<h3>Testy integracyjne (PoC / weryfikacja)</h3>
+<pre><code>@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("prod")
+class MisconfigurationIntegrationTest {
+
+    @Autowired MockMvc mockMvc;
+
+    @Test
+    void actuatorEnvShouldBeDenied() throws Exception {
+        mockMvc.perform(get("/actuator/env"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void errorResponseShouldNotLeakStackTrace() throws Exception {
+        mockMvc.perform(get("/api/trigger-test-error"))
+            .andExpect(status().is5xxServerError())
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("at com.example"))));
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="api9">API9:2023 — Improper Inventory Management</h2>
+
+<div class="def-box">
+  <strong>Krótka definicja:</strong>
+  Organizacja nie wie, które API są wystawione: stare wersje (<code>/api/v1</code>), endpointy debug,
+  shadow API z feature branchy, brak deprecacji, rozjazd między dokumentacją a rzeczywistością.
+  Atakujący odkrywa zapomniane ścieżki bez patchy bezpieczeństwa (słabsza auth niż w v2).
+</div>
+
+<h3>Historia i scenariusz ataku (jak do tego dochodzi?)</h3>
+<p>
+  Po migracji na OAuth2 stary kontroler <code>/api/v1/users/export</code> nadal działa z API-key w query.
+  Ingress w K8s routuje też <code>/internal/</code> z mikroserwisu zapomnianego podczas splitu monolitu.
+  Springdoc generuje docs tylko dla „publicznego” pakietu — admin kontrolery w <code>.internal</code> i tak są w classpath.
+</p>
+<ol>
+  <li>Skan passive proxy (Burp) + wordlisty: <code>/api/v1/</code>, <code>/swagger-ui.html</code>, <code>/api/internal/</code>.</li>
+  <li>Znaleziony export CSV bez paginacji i z legacy auth — masowy wyciek PII.</li>
+  <li>Stary endpoint <code>POST /api/v1/auth/login</code> bez rate limit (API2) — pivot.</li>
+  <li>Porównanie OpenAPI z rzeczywistym routingiem Gateway — luki w inventory.</li>
+</ol>
+
+<p class="pre-label bad">Antywzorzec — zombie API</p>
+<pre><code>@RestController
+@RequestMapping("/api/v1/users")
+@Deprecated // tylko adnotacja — nadal aktywny, bez sunset header
+public class LegacyUserExportController {
+
+    @GetMapping("/export")
+    public List&lt;UserExportRow&gt; exportAll(@RequestParam String apiKey) {
+        if (!legacyApiKeyStore.isValid(apiKey)) throw new UnauthorizedException();
+        return userRepository.findAll().stream().map(UserExportRow::from).toList();
+    }
+}
+
+// Brak wpisu w springdoc — ale endpoint istnieje w runtime</code></pre>
+
+<h3>Jak się zabezpieczyć (architektura i biblioteki w Springu)</h3>
+
+<div class="method-card">
+  <strong>1. Springdoc OpenAPI — pełna dokumentacja + grupy + CI diff</strong><br>
+  <span class="lib-tag">Springdoc</span>
+  Generuj <code>/v3/api-docs</code> z wszystkich kontrolerów; w pipeline porównuj z poprzednią wersją (breaking change detection).
+</div>
+
+<div class="method-card">
+  <strong>2. Wersjonowanie i sunset: @Deprecated + filtr nagłówka Sunset / API-Version</strong><br>
+  Gateway odrzuca wygasłe wersje; logowanie użycia v1 przed wyłączeniem.
+</div>
+
+<div class="method-card">
+  <strong>3. Centralny rejestr tras (Gateway) jako source of truth</strong><br>
+  <span class="lib-tag">Spring Cloud Gateway</span>
+  Tylko zarejestrowane trasy trafiają na internet; „internal” wyłącznie w mesh/VPN.
+</div>
+
+<p class="pre-label good">Bezpieczna implementacja</p>
+<pre><code>@Configuration
+public class OpenApiInventoryConfig {
+
+    @Bean
+    GroupedOpenApi publicApi() {
+        return GroupedOpenApi.builder()
+            .group("public-v2")
+            .pathsToMatch("/api/v2/**")
+            .build();
+    }
+
+    @Bean
+    GroupedOpenApi legacyApi() {
+        return GroupedOpenApi.builder()
+            .group("deprecated-v1")
+            .pathsToMatch("/api/v1/**")
+            .build();
+    }
+}
+
+@Component
+public class ApiVersionSunsetFilter extends OncePerRequestFilter {
+
+    private static final Instant V1_SUNSET = Instant.parse("2026-06-01T00:00:00Z");
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res,
+                                    FilterChain chain) throws ServletException, IOException {
+        if (req.getRequestURI().startsWith("/api/v1/")) {
+            res.setHeader("Sunset", V1_SUNSET.toString());
+            res.setHeader("Deprecation", "true");
+            if (Instant.now().isAfter(V1_SUNSET)) {
+                res.sendError(HttpServletResponse.SC_GONE, "API v1 retired");
+                return;
+            }
+        }
+        chain.doFilter(req, res);
+    }
+}</code></pre>
+
+<h3>Testy integracyjne (PoC / weryfikacja)</h3>
+<pre><code>@SpringBootTest
+@AutoConfigureMockMvc
+class ApiInventoryIntegrationTest {
+
+    @Autowired MockMvc mockMvc;
+
+    @Test
+    void legacyV1AfterSunsetReturns410() throws Exception {
+        mockMvc.perform(get("/api/v1/users/export").param("apiKey", "test"))
+            .andExpect(status().isGone());
+    }
+
+    @Test
+    void openApiDocumentListsDeprecatedGroup() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/deprecated-v1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.paths['/api/v1/users/export']").exists());
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="api10">API10:2023 — Unsafe Consumption of APIs</h2>
+
+<div class="def-box">
+  <strong>Krótka definicja:</strong>
+  Twoje API ufają odpowiedziom zewnętrznych usług (płatności, KYC, geokoding, LLM) bez walidacji,
+  timeoutów i izolacji. Kompromitacja lub błąd partnera (lub MITM przy słabym TLS) prowadzi do deserializacji
+  złośliwych danych, SSRF po indirekcie lub błędnych decyzji biznesowych (np. fałszywe „paid”).
+</div>
+
+<h3>Historia i scenariusz ataku (jak do tego dochodzi?)</h3>
+<p>
+  Serwis płatności wywołuje <code>PaymentGatewayClient</code> i mapuje JSON bezpośrednio na encję
+  <code>PaymentStatus</code> z polem <code>amount</code> i <code>status=CAPTURED</code>.
+  Brak weryfikacji podpisu webhooka HMAC — atakujący wysyła własny POST na <code>/api/webhooks/payment</code>.
+</p>
+<ol>
+  <li>Fałszywy webhook: <code>{"orderId":"…","status":"CAPTURED"}</code> — zamówienie oznaczone opłacone bez płatności.</li>
+  <li>Odpowiedź API KYC z ogromnym JSON — DoS deserializacji Jackson.</li>
+  <li>Partner zwraca redirect URL — aplikacja follow bez walidacji (SSRF pośredni).</li>
+  <li>Brak circuit breaker — kaskada timeoutów w całym klastrze (powiązane z API4).</li>
+</ol>
+
+<p class="pre-label bad">Antywzorzec — ślepe zaufanie do JSON</p>
+<pre><code>@Service
+public class PaymentWebhookHandler {
+
+    @Transactional
+    public void handle(String rawBody) {
+        var event = objectMapper.readValue(rawBody, PaymentGatewayEvent.class);
+        if ("CAPTURED".equals(event.status())) {
+            orderService.markPaid(event.orderId()); // brak weryfikacji podpisu i idempotency
+        }
+    }
+}
+
+@FeignClient(name = "kyc", url = "${kyc.url}")
+public interface KycClient {
+    @GetMapping("/verify/{pesel}")
+    KycFullProfile getProfile(@PathVariable String pesel); // duży DTO, brak limitu
+}</code></pre>
+
+<h3>Jak się zabezpieczyć (architektura i biblioteki w Springu)</h3>
+
+<div class="method-card">
+  <strong>1. Weryfikacja podpisu webhook (HMAC-SHA256) + idempotency key</strong><br>
+  <span class="lib-tag">Spring Security</span>
+  Porównanie stałym czasem (<code>MessageDigest.isEqual</code>); odrzucenie duplikatów z Redis/DB.
+</div>
+
+<div class="method-card">
+  <strong>2. Resilience4j CircuitBreaker, TimeLimiter, Retry z jitter</strong><br>
+  <span class="lib-tag">Resilience4j</span>
+  Ogranicza propagację awarii partnera; retry tylko na idempotent GET.
+</div>
+
+<div class="method-card">
+  <strong>3. Wąskie DTO + Bean Validation na odpowiedzi (manual lub wrapper)</strong><br>
+  <span class="lib-tag">Jackson</span> <span class="lib-tag">Bean Validation</span>
+  Mapuj na record z <code>@NotNull @Positive</code>; ignoruj nieznane pola; limit rozmiaru body w RestClient.
+</div>
+
+<p class="pre-label good">Bezpieczna implementacja</p>
+<pre><code>@RestController
+@RequestMapping("/api/webhooks/payment")
+public class SecurePaymentWebhookController {
+
+    private final PaymentWebhookVerifier verifier;
+    private final PaymentWebhookHandler handler;
+
+    @PostMapping
+    public ResponseEntity&lt;Void&gt; receive(
+            @RequestBody byte[] rawBody,
+            @RequestHeader("X-Signature") String signature) {
+        verifier.verifyHmac(rawBody, signature);
+        handler.handleVerified(rawBody);
+        return ResponseEntity.accepted().build();
+    }
+}
+
+@Component
+public class PaymentWebhookVerifier {
+    private final byte[] webhookSecret;
+
+    public void verifyHmac(byte[] body, String signatureHeader) {
+        var expected = "sha256=" + Hex.encodeHexString(
+            new HmacUtils(HmacAlgorithms.HMAC_SHA_256, webhookSecret).hmac(body));
+        if (!MessageDigest.isEqual(expected.getBytes(), signatureHeader.getBytes())) {
+            throw new BadCredentialsException("Invalid webhook signature");
+        }
+    }
+}
+
+@Service
+public class ExternalKycService {
+
+    private final RestClient restClient;
+
+    @CircuitBreaker(name = "kyc")
+    @TimeLimiter(name = "kyc")
+    public KycDecision fetchDecision(String pesel) {
+        var profile = restClient.get()
+            .uri("/verify/{pesel}", pesel)
+            .retrieve()
+            .body(KycDecision.class);
+        return Objects.requireNonNull(profile);
+    }
+}</code></pre>
+
+<h3>Testy integracyjne (PoC / weryfikacja)</h3>
+<pre><code>@SpringBootTest
+@AutoConfigureMockMvc
+class UnsafeConsumptionIntegrationTest {
+
+    @Autowired MockMvc mockMvc;
+
+    @Test
+    void webhookWithInvalidSignatureReturns401() throws Exception {
+        mockMvc.perform(post("/api/webhooks/payment")
+                .header("X-Signature", "sha256=deadbeef")
+                .content("{\"orderId\":\"o-1\",\"status\":\"CAPTURED\"}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void webhookWithValidSignatureIsAccepted() throws Exception {
+        byte[] body = "{\"orderId\":\"o-1\",\"status\":\"CAPTURED\"}".getBytes();
+        String sig = testWebhookSigner.sign(body);
+        mockMvc.perform(post("/api/webhooks/payment")
+                .header("X-Signature", sig)
+                .content(body))
+            .andExpect(status().isAccepted());
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy (cały OWASP API Top 10 w Spring Boot)</h2>
+<ul>
+  <li>Poleganie na ukryciu ID w UI zamiast ownership w serwisie (API1 BOLA).</li>
+  <li>Wspólny <code>findById</code> dla klienta i admina bez osobnej polityki (API1/API5).</li>
+  <li>Encja JPA jako body request/response — mass assignment i wyciek pól (API3).</li>
+  <li>Login omijający <code>AuthenticationManager</code>; JWT bez rotacji (API2).</li>
+  <li>Brak rate limitu na auth i wrażliwe flow (API2/API4/API6).</li>
+  <li>Endpoint admin chroniony tylko przez <code>authenticated()</code> (API5 BFLA).</li>
+  <li>Transfer/checkout bez step-up MFA i limitów biznesowych (API6).</li>
+  <li><code>RestTemplate</code> z URL od użytkownika bez allowlisty IP/host (API7 SSRF).</li>
+  <li>Actuator <code>include: "*"</code>, stack trace na prod, CORS <code>*</code> + credentials (API8).</li>
+  <li>Living legacy <code>/api/v1</code> bez sunset i bez inventory w Gateway (API9).</li>
+  <li>Webhooki płatności bez HMAC; Feign bez timeoutów i circuit breaker (API10).</li>
+</ul>
 
 </body>
 </html>
