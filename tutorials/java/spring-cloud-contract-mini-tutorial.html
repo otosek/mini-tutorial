@@ -95,7 +95,7 @@
       margin: 1.5rem 0 2rem;
     }
 
-    .toc ol { margin: 0.5rem 0 0; }
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
     .toc a { color: var(--accent); text-decoration: none; }
     .toc a:hover { text-decoration: underline; }
 
@@ -147,15 +147,19 @@
 <p class="back"><a href="../index.html">← Spis tutoriali</a></p>
 
 <h1>Spring Cloud Contract</h1>
-<p class="meta">Testy kontraktowe (CDC) · stuby WireMock · verifier producenta · kiedy stosować / kiedy nie<br>
-Format: HTML, offline · 12 ciekawostek</p>
+<p class="meta">Co to jest SCC · CDC · Maven/Gradle · kontrakty YAML/Groovy · producer &amp; consumer · messaging<br>
+Format: HTML, offline · 12 ciekawostek · wiele przykładów kodu</p>
 
 <nav class="toc">
   <strong>Spis treści</strong>
   <ol>
-    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#fundamenty">Fundamenty — co to jest</a></li>
     <li><a href="#jak-dziala">Jak działa</a></li>
-    <li><a href="#przyklad">Przykład</a></li>
+    <li><a href="#setup">Zależności (Maven / Gradle)</a></li>
+    <li><a href="#kontrakty">Przykłady kontraktów HTTP</a></li>
+    <li><a href="#producer">Producer — verifier i klasa bazowa</a></li>
+    <li><a href="#consumer">Consumer — Stub Runner</a></li>
+    <li><a href="#messaging">Messaging (Kafka / Stream)</a></li>
     <li><a href="#kiedy">Kiedy stosować / kiedy nie</a></li>
     <li><a href="#bledy">Typowe błędy</a></li>
     <li><a href="#ciekawostki">Ciekawostki</a></li>
@@ -209,9 +213,63 @@ Format: HTML, offline · 12 ciekawostek</p>
 
 <hr>
 
-<h2 id="przyklad">Część 2 — Przykład</h2>
+<h2 id="setup">Zależności — Maven i Gradle</h2>
 
-<pre><code>request:
+<h3>Producer (author-service)</h3>
+<pre><code>&lt;!-- pom.xml — wersja z BOM Spring Cloud --&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-starter-contract-verifier&lt;/artifactId&gt;
+  &lt;scope&gt;test&lt;/scope&gt;
+&lt;/dependency&gt;
+
+&lt;plugin&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-contract-maven-plugin&lt;/artifactId&gt;
+  &lt;extensions&gt;true&lt;/extensions&gt;
+  &lt;configuration&gt;
+    &lt;baseClassForTests&gt;com.acme.author.contract.BaseContractTest&lt;/baseClassForTests&gt;
+  &lt;/configuration&gt;
+  &lt;executions&gt;
+    &lt;execution&gt;
+      &lt;goals&gt;&lt;goal&gt;generateTests&lt;/goal&gt;&lt;/goals&gt;
+    &lt;/execution&gt;
+  &lt;/executions&gt;
+&lt;/plugin&gt;</code></pre>
+
+<pre><code>// Gradle (Kotlin DSL) — producer
+plugins { id("org.springframework.cloud.contract") version "4.2.0" }
+dependencies {
+  testImplementation("org.springframework.cloud:spring-cloud-starter-contract-verifier")
+}
+contracts {
+  testFramework.set(org.springframework.cloud.contract.verifier.config.TestFramework.JUNIT5)
+  baseClassForTests.set("com.acme.author.contract.BaseContractTest")
+}</code></pre>
+
+<h3>Consumer (order-service)</h3>
+<pre><code>&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-starter-contract-stub-runner&lt;/artifactId&gt;
+  &lt;scope&gt;test&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+
+<p>Struktura katalogów (producer):</p>
+<pre><code>src/test/resources/contracts/
+  checkout-bff/
+    shouldReturnAuthorWhenExists.groovy
+    should404WhenAuthorMissing.yaml
+  internal-admin/
+    shouldListAuthors.yaml</code></pre>
+
+<hr>
+
+<h2 id="kontrakty" class="must-know">Przykłady kontraktów HTTP</h2>
+
+<h3>GET — happy path (YAML)</h3>
+<p>Plik: <code>contracts/checkout-bff/shouldReturnAuthorWhenExists.yaml</code></p>
+<pre><code>name: shouldReturnAuthorWhenExists
+request:
   method: GET
   url: /authors/1
   headers:
@@ -224,30 +282,227 @@ response:
     id: 1
     name: Lem</code></pre>
 
-<p>Po stronie konsumenta testujesz klienta HTTP, nie WireMock ręcznie:</p>
+<h3>GET — 404 i query params</h3>
+<pre><code>name: should404WhenAuthorMissing
+request:
+  method: GET
+  url: /authors/404
+response:
+  status: 404
+  body:
+    code: AUTHOR_NOT_FOUND
+    message: $(consumer(anyNonBlankString()), producer('brak autora'))</code></pre>
 
-<pre><code>@SpringBootTest
-@AutoConfigureStubRunner(
-    ids = "com.ex:author-service:+:stubs:8081",
-    stubsMode = StubRunnerProperties.StubsMode.LOCAL)
-class AuthorClientIT {
-  @Autowired AuthorClient client;
+<pre><code>name: shouldSearchByName
+request:
+  method: GET
+  url: /authors?name=Lem
+response:
+  status: 200
+  body:
+    content:
+      - id: $(consumer(1), producer(anyNumber()))
+        name: Lem</code></pre>
 
-  @Test void fetchesAuthor() {
-    assertThat(client.get(1L).name()).isEqualTo("Lem");
+<h3>POST — body request + 201</h3>
+<pre><code>name: shouldCreateAuthor
+request:
+  method: POST
+  url: /authors
+  headers:
+    Content-Type: application/json
+  body:
+    name: Lem
+response:
+  status: 201
+  headers:
+    Location: $(consumer(regex('/authors/[0-9]+')), producer('/authors/42'))
+  body:
+    id: $(consumer(42), producer(anyNumber()))
+    name: Lem</code></pre>
+
+<h3>Groovy DSL — ten sam kontrakt, więcej kontroli</h3>
+<pre><code>// contracts/checkout-bff/shouldReturnAuthorWhenExists.groovy
+import org.springframework.cloud.contract.spec.Contract
+
+Contract.make {
+  name 'shouldReturnAuthorWhenExists'
+  request {
+    method GET()
+    url '/authors/1'
+    headers { accept(applicationJson()) }
+  }
+  response {
+    status OK()
+    headers { contentType(applicationJson()) }
+    body(
+      id: fromRequest().path(2),
+      name: 'Lem'
+    )
+    bodyMatchers {
+      jsonPath('$.id', byRegex('[0-9]+'))
+      jsonPath('$.name', byEquality())
+    }
   }
 }</code></pre>
 
-<p><strong>Dynamiczne wartości</strong> — osobno co widzi stub (konsument) i co asercja producenta:</p>
-
+<h3>Dynamiczne wartości — consumer vs producer</h3>
 <pre><code>id: $(consumer(regex('[0-9]+')), producer(1))
-name: $(consumer('Lem'), producer(regex(nonBlank())))</code></pre>
+name: $(consumer('Lem'), producer(regex(nonBlank())))
+createdAt: $(consumer('2024-01-01T00:00:00Z'), producer(iso8601WithOffset()))</code></pre>
 
-<p>Albo echo z requestu: <code>fromRequest().path(1)</code> (segment <code>/authors/{id}</code>). Bez tego stub zwraca zawsze <code>1</code>, a test producenta pęka przy UUID z bazy.</p>
+<p><strong>Echo z URL:</strong> <code>fromRequest().path(2)</code> dla <code>/authors/{id}</code> — stub zwraca id z requestu, verifier nie wymusza stałej <code>1</code>.</p>
 
 <hr>
 
-<h2 id="kiedy" class="must-know">Część 3 — Kiedy stosować / kiedy nie</h2>
+<h2 id="producer">Producer — verifier i klasa bazowa</h2>
+
+<p>Plugin generuje klasy typu <code>ContractVerifierTest</code> (RestAssured). Ty dostarczasz <strong>klasę bazową</strong> — kontekst Spring i dane testowe.</p>
+
+<pre><code>@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+public abstract class BaseContractTest {
+
+  @Autowired protected AuthorRepository repository;
+
+  @BeforeEach
+  void seed() {
+    repository.deleteAll();
+    repository.save(new Author(1L, "Lem"));
+  }
+}</code></pre>
+
+<p>Wariant lżejszy — tylko warstwa web (szybsze testy kontraktu):</p>
+
+<pre><code>@ExtendWith(SpringExtension.class)
+@WebMvcTest(AuthorController.class)
+public abstract class BaseContractTest {
+
+  @Autowired MockMvc mockMvc;
+  @MockBean AuthorService authorService;
+
+  @BeforeEach
+  void stubService() {
+    when(authorService.find(1L)).thenReturn(new AuthorDto(1L, "Lem"));
+  }
+}</code></pre>
+
+<p>Wygenerowany test (uproszczony — nie edytuj ręcznie):</p>
+
+<pre><code>// target/generated-test-sources/.../shouldReturnAuthorWhenExistsTest.java
+@Test
+void validate_shouldReturnAuthorWhenExists() {
+  given()
+      .header("Accept", "application/json")
+    .when()
+      .get("/authors/1")
+    .then()
+      .statusCode(200)
+      .body("id", equalTo(1))
+      .body("name", equalTo("Lem"));
+}</code></pre>
+
+<p>Publikacja stubów (Maven): plugin w fazie <code>verify</code> buduje <code>author-service-1.0.0-stubs.jar</code> i wypycha do Nexus/Artifactory razem z artefaktem aplikacji.</p>
+
+<hr>
+
+<h2 id="consumer">Consumer — Stub Runner</h2>
+
+<p>Testujesz <strong>własnego klienta HTTP</strong> (RestTemplate, WebClient, Feign), nie mapowania WireMock ręcznie.</p>
+
+<pre><code>@SpringBootTest
+@AutoConfigureStubRunner(
+    ids = "com.acme:author-service:1.0.0:stubs:8081",
+    stubsMode = StubRunnerProperties.StubsMode.REMOTE,
+    repositoryUrl = "https://nexus.acme/repository/maven-releases")
+class AuthorClientContractIT {
+
+  @Autowired AuthorClient client;
+
+  @Test void fetchesAuthor() {
+    Author a = client.getById(1L);
+    assertThat(a.name()).isEqualTo("Lem");
+  }
+
+  @Test void missingAuthor() {
+    assertThatThrownBy(() -&gt; client.getById(404L))
+        .isInstanceOf(AuthorNotFoundException.class);
+  }
+}</code></pre>
+
+<p>WebClient z adresem stubu (gdy nie używasz discovery):</p>
+
+<pre><code>@TestConfiguration
+static class StubTarget {
+  @Bean
+  @Primary
+  WebClient authorWebClient(@Value("${stubrunner.runningstubs.author-service.port}") int port) {
+    return WebClient.builder()
+        .baseUrl("http://localhost:" + port)
+        .build();
+  }
+}</code></pre>
+
+<p><strong>Feign:</strong> ustaw <code>url</code> na port ze Stub Runner albo użyj <code>@AutoConfigureStubRunner</code> z <code>stubsPerConsumer()</code> gdy wiele producerów.</p>
+
+<table>
+  <thead><tr><th>stubsMode</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><code>REMOTE</code></td><td>CI konsumenta — ściąga JAR z repo</td></tr>
+    <tr><td><code>LOCAL</code></td><td>Dev — <code>mvn install</code> stubów u producenta</td></tr>
+    <tr><td><code>CLASSPATH</code></td><td>Monorepo — stub JAR jako zależność testowa</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="messaging">Messaging (Kafka / Spring Cloud Stream)</h2>
+
+<pre><code>// contracts/order-service/shouldEmitOrderCreated.groovy
+Contract.make {
+  label 'order_created'
+  input {
+    triggeredBy('placeOrder()')
+  }
+  outputMessage {
+    sentTo('orderCreated-out-0')
+    body([
+      orderId: $(consumer(anyUuid()), producer('11111111-1111-1111-1111-111111111111')),
+      amount: 99.00
+    ])
+    headers {
+      header('contentType', applicationJson())
+    }
+  }
+}</code></pre>
+
+<p>Producer — klasa bazowa z triggerem:</p>
+
+<pre><code>public abstract class MessagingContractBase {
+  @Autowired OrderService orderService;
+
+  public void placeOrder() {
+    orderService.place(new PlaceOrderCommand("SKU-1", 1));
+  }
+}</code></pre>
+
+<p>Consumer — Stub Runner wstrzykuje wiadomość; testujesz listener:</p>
+
+<pre><code>@SpringBootTest
+@AutoConfigureStubRunner(ids = "com.acme:order-service:1.0.0:stubs:0")
+class OrderCreatedListenerIT {
+  @Autowired TestOrderSink sink;
+
+  @Test void handlesEvent() {
+    await().atMost(5, SECONDS).untilAsserted(() -&gt;
+        assertThat(sink.received()).extracting(OrderEvent::amount).contains(99.00));
+  }
+}</code></pre>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">Kiedy stosować / kiedy nie</h2>
+
+<p><strong>Scenariusze „tak”:</strong> order-service woła author-service po REST; checkout startuje przed gotowym API autorów — piszesz kontrakt GET <code>/authors/{id}</code>, instalujesz stuby; zmiana pola w JSON bez wersji API łamie CI u producenta zanim wdrożysz. <strong>Scenariusze „nie”:</strong> jeden moduł w monolicie — wystarczy test integracyjny; publiczne API dla setek partnerów — OpenAPI + polityka wersji, SCC tylko dla wybranych integracji wewnętrznych.</p>
 
 <table>
   <thead><tr><th>Stosuj</th><th>Nie stosuj</th></tr></thead>
