@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArchUnit — testy architektury w Javie</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #ea580c;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .lib-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: #fff7ed;
+      color: #c2410c;
+      padding: 0.15em 0.5em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>ArchUnit</h1>
+<p class="meta">Testy architektury w JUnit 5 — warstwy, pakiety, Spring, DDD, freeze, slice<br>
+Format: samodzielny HTML, offline · Bez sekcji ciekawostek · <span class="lib-tag">ArchUnit 1.3+</span></p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#setup">Zależności i import</a></li>
+    <li><a href="#api">API reguł — klasy, metody, pola</a></li>
+    <li><a href="#warstwy">Warstwy i zależności pakietów</a></li>
+    <li><a href="#spring">Spring Boot i REST</a></li>
+    <li><a href="#ddd">DDD, hexagonal, slice</a></li>
+    <li><a href="#freeze">Freeze i ArchTests</a></li>
+    <li><a href="#custom">Predykaty i reguły własne</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Fundamenty</h2>
+<p><strong>ArchUnit</strong> sprawdza reguły architektury na bytecode — tak jak JUnit sprawdza zachowanie. Łamiesz konwencję pakietów albo warstw → test pada w CI, zanim kod trafi na main.</p>
+
+<div class="flow-box">
+<pre><code>  Kod źródłowy  →  kompilacja  →  .class
+                                        ↓
+                              ClassFileImporter (ArchUnit)
+                                        ↓
+                              JavaClasses + reguły (should)
+                                        ↓
+                              AssertionError z opisem naruszenia</code></pre>
+</div>
+
+<p>Reguła ma postać: <strong>elementy</strong> (noClasses, classes, methods…) + <strong>warunek</strong> (resideIn…, dependOn…) + <strong>asercja</strong> (should…, because…).</p>
+
+<hr>
+
+<h2 id="setup">Zależności i import</h2>
+
+<h3>Maven / Gradle</h3>
+<pre><code>&lt;!-- Maven: test scope --&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;com.tngtech.archunit&lt;/groupId&gt;
+  &lt;artifactId&gt;archunit-junit5&lt;/artifactId&gt;
+  &lt;version&gt;1.3.0&lt;/version&gt;
+  &lt;scope&gt;test&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+
+<pre><code>// Gradle (Kotlin DSL)
+testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")</code></pre>
+
+<h3>Import klas do analizy</h3>
+<pre><code>import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
+
+JavaClasses production = new ClassFileImporter()
+    .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+    .importPackages("com.acme.shop");
+
+JavaClasses allIncludingTests = new ClassFileImporter()
+    .importPackages("com.acme.shop");</code></pre>
+
+<p><strong>Po co <code>DO_NOT_INCLUDE_TESTS</code>:</strong> testy często łamią reguły produkcyjne (np. bezpośredni dostęp do repozytorium) — nie chcesz ich liczyć do reguł architektury aplikacji.</p>
+
+<h3>Minimalny test JUnit 5</h3>
+<pre><code>@AnalyzeClasses(packages = "com.acme.shop",
+    importOptions = ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+class ArchitectureTest {
+
+  @ArchTest
+  static final ArchRule no_joda_time =
+      noClasses().should().dependOnClassesThat()
+          .resideInAnyPackage("org.joda.time..");
+}</code></pre>
+
+<hr>
+
+<h2 id="api" class="must-know">API reguł — klasy, metody, pola</h2>
+<p>Poniżej gotowe wzorce — kopiuj i dopasuj pakiety do swojego projektu (<code>com.acme..</code>).</p>
+
+<h3>Nazewnictwo i modyfikatory</h3>
+<pre><code>ArchRule services_named = classes()
+    .that().resideInAPackage("..service..")
+    .and().areTopLevelClasses()
+    .should().haveSimpleNameEndingWith("Service")
+    .because("spójne nazewnictwo serwisów");
+
+ArchRule dto_immutable = classes()
+    .that().haveSimpleNameEndingWith("Dto")
+    .should().haveOnlyPrivateConstructors()
+    .andShould().haveOnlyFinalFields();
+
+ArchRule no_public_fields = noFields()
+    .that().areDeclaredInClassesThat().resideInAPackage("..domain..")
+    .should().bePublic();</code></pre>
+
+<h3>Adnotacje i dziedziczenie</h3>
+<pre><code>ArchRule controllers = classes()
+    .that().resideInAPackage("..web..")
+    .and().haveSimpleNameEndingWith("Controller")
+    .should().beAnnotatedWith(RestController.class);
+
+ArchRule repos_are_interfaces = classes()
+    .that().haveSimpleNameEndingWith("Repository")
+    .should().beInterfaces();
+
+ArchRule entities_extend_base = classes()
+    .that().areAnnotatedWith(Entity.class)
+    .should().beAssignableTo(AbstractEntity.class);</code></pre>
+
+<h3>Zależności między klasami</h3>
+<pre><code>ArchRule domain_pure = noClasses()
+    .that().resideInAPackage("..domain..")
+    .should().dependOnClassesThat()
+    .resideInAnyPackage("..infrastructure..", "..web..", "org.springframework..");
+
+ArchRule no_entity_in_web = noClasses()
+    .that().resideInAPackage("..web..")
+    .should().accessClassesThat().areAnnotatedWith(Entity.class);
+
+ArchRule util_no_spring = noClasses()
+    .that().resideInAPackage("..util..")
+    .should().dependOnClassesThat().resideInAnyPackage("org.springframework..");</code></pre>
+
+<h3>Metody i konstruktory</h3>
+<pre><code>ArchRule no_system_out = noMethods()
+    .should().callMethod(System.class, "out");
+
+ArchRule repository_methods = methods()
+    .that().areDeclaredInClassesThat().haveSimpleNameEndingWith("Repository")
+    .and().arePublic()
+    .should().haveNameMatching("find.*|save|delete.*");
+
+ArchRule rest_endpoints_are_mapped = methods()
+    .that().areDeclaredInClassesThat().areAnnotatedWith(RestController.class)
+    .and().arePublic()
+    .and().doNotHaveName("<init>")
+    .should().beAnnotatedWith(GetMapping.class)
+    .orShould().beAnnotatedWith(PostMapping.class)
+    .orShould().beAnnotatedWith(PutMapping.class)
+    .orShould().beAnnotatedWith(DeleteMapping.class)
+    .orShould().beAnnotatedWith(RequestMapping.class);</code></pre>
+
+<h3>Pola i wstrzykiwanie</h3>
+<pre><code>ArchRule no_field_injection = noFields()
+    .that().areDeclaredInClassesThat().resideOutsideOfPackage("..legacy..")
+    .should().beAnnotatedWith(Autowired.class);
+
+ArchRule logger_static_final = fields()
+    .that().haveRawType(Logger.class)
+    .should().bePrivate()
+    .andShould().beStatic()
+    .andShould().beFinal();</code></pre>
+
+<h3>Cykle w pakietach</h3>
+<pre><code>ArchRule no_cycles = slices()
+    .matching("com.acme.(*)..")
+    .should().beFreeOfCycles();</code></pre>
+
+<table>
+  <tr><th>Selektor</th><th>Typowy cel</th></tr>
+  <tr><td><code>noClasses()</code></td><td>Zakaz zależności / adnotacji</td></tr>
+  <tr><td><code>classes().that()…</code></td><td>Konwencje nazw, struktura</td></tr>
+  <tr><td><code>noMethods() / methods()</code></td><td>API, wywołania, widoczność</td></tr>
+  <tr><td><code>slices()</code></td><td>Moduły / feature packages bez cykli</td></tr>
+</table>
+
+<hr>
+
+<h2 id="warstwy" class="must-know">Warstwy i zależności pakietów</h2>
+<p>Najczęstszy scenariusz: kontroler → serwis → repozytorium, bez skrótów w dół.</p>
+
+<h3>layeredArchitecture (klasyczne warstwy)</h3>
+<pre><code>@ArchTest
+static final ArchRule layers = layeredArchitecture()
+    .consideringAllDependencies()
+    .layer("Controllers").definedBy("..web..", "..controller..")
+    .layer("Services").definedBy("..service..", "..application..")
+    .layer("Persistence").definedBy("..persistence..", "..repository..")
+    .layer("Domain").definedBy("..domain..")
+
+    .whereLayer("Controllers").mayNotBeAccessedByAnyLayer()
+    .whereLayer("Services").mayOnlyBeAccessedByLayers("Controllers")
+    .whereLayer("Persistence").mayOnlyBeAccessedByLayers("Services")
+    .whereLayer("Domain").mayOnlyBeAccessedByLayers("Services", "Persistence");</code></pre>
+
+<h3>Onion / ports &amp; adapters</h3>
+<pre><code>ArchRule onion = layeredArchitecture()
+    .consideringAllDependencies()
+    .layer("Domain").definedBy("..domain..")
+    .layer("Application").definedBy("..application..")
+    .layer("Adapters").definedBy("..adapter..", "..web..", "..persistence..")
+
+    .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Adapters")
+    .whereLayer("Application").mayOnlyBeAccessedByLayers("Adapters")
+    .whereLayer("Adapters").mayNotBeAccessedByAnyLayer();</code></pre>
+
+<h3>Moduły Maven (opcjonalnie)</h3>
+<pre><code>ArchRule api_no_impl = noClasses()
+    .that().resideInAPackage("..api..")
+    .should().dependOnClassesThat()
+    .resideInAnyPackage("..internal..", "..impl..");</code></pre>
+
+<hr>
+
+<h2 id="spring">Spring Boot i REST</h2>
+
+<h3>Adnotacje Spring — tylko we właściwych warstwach</h3>
+<pre><code>ArchRule spring_sterotypes = classes()
+    .that().areAnnotatedWith(Service.class)
+    .should().resideInAPackage("..service..")
+    .orShould().resideInAPackage("..application..");
+
+ArchRule no_rest_in_domain = noClasses()
+    .that().resideInAPackage("..domain..")
+    .should().beAnnotatedWith(RestController.class);
+
+ArchRule transactional_boundary = methods()
+    .that().areAnnotatedWith(Transactional.class)
+    .should().beDeclaredInClassesThat()
+    .resideInAnyPackage("..service..", "..application..");</code></pre>
+
+<h3>DTO vs encje</h3>
+<pre><code>ArchRule dto_no_jpa = noClasses()
+    .that().resideInAPackage("..dto..")
+    .should().beAnnotatedWith(Entity.class);
+
+ArchRule controllers_no_jpa_in_api = noClasses()
+    .that().areAnnotatedWith(RestController.class)
+    .should().dependOnClassesThat().areAnnotatedWith(Entity.class);</code></pre>
+
+<h3>Komponenty testowe (@SpringBootTest vs slice)</h3>
+<pre><code>// Reguła tylko na main — testy w osobnym imporcie lub wykluczone
+ArchRule configuration_location = classes()
+    .that().areAnnotatedWith(Configuration.class)
+    .should().resideInAnyPackage("..config..", "..infrastructure..");</code></pre>
+
+<hr>
+
+<h2 id="ddd">DDD, hexagonal, slice</h2>
+
+<h3>Agregaty i repozytoria</h3>
+<pre><code>ArchRule repo_only_for_aggregate = classes()
+    .that().haveSimpleNameEndingWith("Repository")
+    .should().haveSimpleNameMatching(".*(Order|Customer)Repository");
+
+ArchRule domain_events = classes()
+    .that().haveSimpleNameEndingWith("Event")
+    .and().resideInAPackage("..domain..")
+    .should().implement(Serializable.class); // lub własny DomainEvent</code></pre>
+
+<h3>Slice po feature (moduły pionowe)</h3>
+<pre><code>ArchRule order_feature = slices()
+    .matching("com.acme.order.(*)..")
+    .should().notDependOnEachOther();
+
+ArchRule catalog_independent = noClasses()
+    .that().resideInAPackage("com.acme.catalog..")
+    .should().dependOnClassesThat().resideInAPackage("com.acme.order..");</code></pre>
+
+<h3>Hexagonal — porty w domain, adaptery na zewnątrz</h3>
+<pre><code>ArchRule ports_in_domain = classes()
+    .that().haveSimpleNameEndingWith("Port")
+    .or().haveSimpleNameEndingWith("Repository") // port persystencji
+    .and().resideInAPackage("..domain..")
+    .should().beInterfaces();
+
+ArchRule domain_does_not_know_adapters = noClasses()
+    .that().resideInAPackage("..domain..")
+    .should().dependOnClassesThat().resideInAnyPackage("..adapter..", "..web..");
+
+ArchRule adapters_may_use_domain = classes()
+    .that().resideInAPackage("..adapter..")
+    .should().onlyDependOnClassesThat()
+    .resideInAnyPackage("..domain..", "..application..", "..adapter..",
+        "java..", "javax..", "jakarta..", "org.springframework..", "com.fasterxml..");</code></pre>
+
+<hr>
+
+<h2 id="freeze" class="must-know">Freeze i ArchTests</h2>
+<p><strong>Freeze</strong> zapisuje aktualne naruszenia do pliku — nowe łamania reguły padają, stare dług techniczny możesz migrować stopniowo.</p>
+
+<pre><code>import com.tngtech.archunit.library.freeze.FreezingArchRule;
+
+@ArchTest
+static final ArchRule freeze_layer_violations = FreezingArchRule.freeze(
+    layeredArchitecture()
+        .consideringAllDependencies()
+        // ... definicja warstw jak wyżej
+);
+
+// Plik: src/test/resources/archunit_store/...</code></pre>
+
+<h3>ArchTests — wspólne reguły w wielu modułach</h3>
+<pre><code>public class SharedArchitectureRules {
+  public static ArchRule noStandardStreams() {
+    return noClasses().should().accessClassesThat()
+        .belongToAnyOf(System.class, Runtime.class);
+  }
+}
+
+class ModuleAArchitectureTest {
+  @ArchTest static final ArchRule streams = SharedArchitectureRules.noStandardStreams();
+}</code></pre>
+
+<h3>Wiele reguł w jednej klasie</h3>
+<pre><code>@AnalyzeClasses(packages = "com.acme", importOptions = DO_NOT_INCLUDE_TESTS)
+class ShopArchitectureTest {
+
+  @ArchTest static final ArchRule r1 = /* ... */;
+  @ArchTest static final ArchRule r2 = /* ... */;
+
+  @ArchTest
+  void repositories_are_spring_data(JavaClasses classes) {
+    ArchRule rule = classes()
+        .that().haveSimpleNameEndingWith("Repository")
+        .should().beInterfaces();
+    rule.check(classes);
+  }
+}</code></pre>
+
+<hr>
+
+<h3>Import całego classpath (multi-moduł)</h3>
+<pre><code>JavaClasses all = new ClassFileImporter()
+    .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+    .importClasspath(); // wszystkie moduły na classpath testu
+
+ArchRule no_cross_module = noClasses()
+    .that().resideInAPackage("com.acme.billing..")
+    .should().dependOnClassesThat().resideInAPackage("com.acme.inventory.internal..")
+    .check(all);</code></pre>
+
+<h3>Wykluczenia i wyjątki</h3>
+<pre><code>@AnalyzeClasses(
+    packages = "com.acme",
+    importOptions = {
+        ImportOption.Predefined.DO_NOT_INCLUDE_TESTS,
+        ImportOption.Predefined.DO_NOT_INCLUDE_JARS
+    }
+)
+class WithOptionsTest { /* ... */ }
+
+ArchRule logging_ok = noClasses()
+    .that().doNotBelongToAnyOf(Slf4jMigration.class) // legacy wyjątek
+    .should().dependOnClassesThat().haveFullyQualifiedName("java.util.logging.Logger");</code></pre>
+
+<h3>Record, enum, sealed (Java 17+)</h3>
+<pre><code>ArchRule commands_are_records = classes()
+    .that().resideInAPackage("..command..")
+    .and().haveSimpleNameEndingWith("Command")
+    .should().beRecords();
+
+ArchRule sealed_hierarchy = classes()
+    .that().resideInAPackage("..domain.payment..")
+    .and().areAssignableTo(PaymentMethod.class)
+    .should().beMemberClasses()
+    .orShould().beTopLevelClasses(); // PaymentMethod sealed + permits</code></pre>
+
+<h2 id="custom">Predykaty i reguły własne</h2>
+
+<h3>DescribedPredicate</h3>
+<pre><code>DescribedPredicate&lt;JavaClass&gt; isApiModel = new DescribedPredicate&lt;&gt;("API model class") {
+  @Override
+  public boolean test(JavaClass input) {
+    return input.isAnnotatedWith(Schema.class)
+        || input.getSimpleName().endsWith("Request")
+        || input.getSimpleName().endsWith("Response");
+  }
+};
+
+ArchRule openapi_models = classes()
+    .that(isApiModel)
+    .should().resideInAnyPackage("..api..", "..dto..");</code></pre>
+
+<h3>ArchCondition (własna asercja)</h3>
+<pre><code>ArchCondition&lt;JavaClass&gt; haveSinglePublicConstructor = new ArchCondition&lt;&gt;(
+    "have exactly one public constructor") {
+  @Override
+  public void check(JavaClass item, ConditionEvents events) {
+    long count = item.getConstructors().stream()
+        .filter(c -&gt; c.getModifiers().contains(PUBLIC)).count();
+    if (count != 1) {
+      events.add(SimpleConditionEvent.violated(item,
+          item.getFullName() + " ma " + count + " publicznych konstruktorów"));
+    }
+  }
+};
+
+ArchRule dto_shape = classes()
+    .that().haveSimpleNameEndingWith("Dto")
+    .should(haveSinglePublicConstructor);</code></pre>
+
+<h3>allowEmptyShould — pułapka</h3>
+<pre><code>// Gdy żaden element nie pasuje do .that() — domyślnie test PRzechodzi
+classes().that().resideInAPackage("..nonexistent..")
+    .should().bePublic(); // false sense of security!
+
+// Jawne oczekiwanie pustego zbioru:
+classes().that().resideInAPackage("..legacy.v1..")
+    .should().beEmpty();</code></pre>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>Import testów do reguł produkcyjnych</strong> — test integracyjny łamie warstwy; używaj <code>DO_NOT_INCLUDE_TESTS</code>.</li>
+  <li><strong>Zbyt wąski <code>importPackages</code></strong> — reguła nie widzi klas z innego modułu i przechodzi mimo realnego naruszenia.</li>
+  <li><strong><code>consideringOnlyDependenciesInLayers()</code> vs <code>consideringAllDependencies()</code></strong> — pierwsze ignoruje zależności „poza warstwami”; wybierz świadomie.</li>
+  <li><strong>Reguły na Lombok / bytecode</strong> — syntetyczne klasy, buildery; czasem trzeba <code>ImportOption.DoNotIncludeGeneratedSources</code> lub wykluczyć <code>..generated..</code>.</li>
+  <li><strong>Reflection / Spring proxies</strong> — zależności przez CGLIB mogą wyglądać inaczej; testuj na „czystym” kodzie lub używaj <code>onlyDependOnClassesThat</code> z wyjątkami.</li>
+  <li><strong>Freeze bez review</strong> — plik store rośnie i nikt nie usuwa starych naruszeń; traktuj freeze jako tymczasowy most.</li>
+  <li><strong>Zbyt sztywne nazwy</strong> — <code>*Service</code> łamie <code>OrderApplicationService</code> vs <code>OrderService</code>; doprecyzuj regex.</li>
+  <li><strong>Brak <code>because()</code></strong> — przy failu w CI zespół nie wie, po co reguła istnieje.</li>
+  <li><strong>Duplikacja reguł w każdym module</strong> — wyciągnij do <code>ArchTests</code> / biblioteki wewnętrznej.</li>
+  <li><strong>Uruchamianie tylko lokalnie</strong> — bez fazy <code>test</code> w CI reguły architektury nie chronią main.</li>
+</ol>
+
+<p><strong>Podsumowanie:</strong> ArchUnit to „kontrakt architektury” w repozytorium — zacznij od 3–5 reguł (warstwy, brak encji w web, brak field injection), potem dokładaj slice i freeze tam, gdzie masz legacy.</p>
+
+</body>
+</html>
