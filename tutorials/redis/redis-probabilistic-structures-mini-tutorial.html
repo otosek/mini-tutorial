@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redis Stack — struktury probabilistyczne</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #dc382d;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fde8e6; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .struct-card {
+      background: var(--surface);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.15rem;
+      margin: 1.25rem 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    .struct-card h3 {
+      margin-top: 0;
+      color: var(--text);
+      font-size: 1.1rem;
+    }
+
+    .struct-card ul { margin-bottom: 0.25rem; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Redis Stack — struktury probabilistyczne</h1>
+<p class="meta">Bloom / Cuckoo · HyperLogLog · Count-Min Sketch · Top-K · t-digest · RedisBloom<br>
+Format: HTML offline · Bez sekcji ciekawostek</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#mapa">Mapa modułów i pole „pewność vs błąd”</a></li>
+    <li><a href="#filtry">Bloom Filter i Cuckoo Filter</a></li>
+    <li><a href="#hll">HyperLogLog</a></li>
+    <li><a href="#cms">Count-Min Sketch</a></li>
+    <li><a href="#topk">Top-K</a></li>
+    <li><a href="#tdigest">t-digest</a></li>
+    <li><a href="#komendy">Komendy Redis — skrót</a></li>
+    <li><a href="#architektura">Wzorzec architektoniczny</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>Struktury probabilistyczne</strong> w Redis to kompaktowe struktury, które świadomie rezygnują z pełnej dokładności na rzecz stałego (lub logarytmicznego) zużycia pamięci i wysokiej przepustowości. W <strong>Redis Stack</strong> większość z nich dostarcza moduł <strong>RedisBloom</strong> (Bloom, Cuckoo, CMS, Top-K, t-digest); wyjątkiem jest <strong>HyperLogLog</strong> — wbudowany w rdzeń Redis od lat (prefiks <code>PF*</code>).</p>
+
+<p>Jedno zdanie podsumowujące: wybierasz strukturę według pytania biznesowego („czy element był już widziany?”, „ile unikalnych?”, „ile razy klucz?”, „kto w topie?”, „jaki percentyl latencji?”), a nie według nazwy modułu.</p>
+
+<div class="keyword">
+  <strong>Redis Stack vs open-source Redis</strong>
+  <p>RedisBloom i pozostałe moduły Stack wymagają obrazu <code>redis/redis-stack</code> (lub managed Redis Enterprise / Cloud ze Stack). Czysty <code>redis:7</code> bez modułów obsługuje tylko HyperLogLog i klasyczne typy (string, set, hash…).</p>
+</div>
+
+<table>
+  <thead><tr><th>Pytanie</th><th>Struktura</th><th>Moduł</th></tr></thead>
+  <tbody>
+    <tr><td>Czy element <em>może</em> być w zbiorze? (membership)</td><td>Bloom / Cuckoo</td><td>RedisBloom</td></tr>
+    <tr><td>Ile <strong>unikalnych</strong> elementów (cardinality)?</td><td>HyperLogLog</td><td>rdzeń Redis</td></tr>
+    <tr><td>Ile razy wystąpił klucz (frequency, min)?</td><td>Count-Min Sketch</td><td>RedisBloom</td></tr>
+    <tr><td>Które K elementów ma najwyższy count?</td><td>Top-K</td><td>RedisBloom</td></tr>
+    <tr><td>Percentyle / rozkład (quantiles)</td><td>t-digest</td><td>RedisBloom</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="mapa">Mapa: co jest pewne, a co przybliżone</h2>
+
+<p>Poniższa tabela to szybki wybór — szczegóły w sekcjach z dokładnym formatem opisu (pewność / błąd / zastosowania).</p>
+
+<table>
+  <thead><tr><th>Struktura</th><th>Gwarantowane (100%)</th><th>Typ błędu</th></tr></thead>
+  <tbody>
+    <tr><td>Bloom Filter</td><td>Brak false negative przy poprawnym użyciu</td><td>False positive (FP)</td></tr>
+    <tr><td>Cuckoo Filter</td><td>Brak false negative; delete tylko dla wstawionych elementów</td><td>False positive; insert fail przy pełnym filtrze</td></tr>
+    <tr><td>HyperLogLog</td><td>Estymacja cardinality — zawsze przybliżona</td><td>Std. error ~1.04/√m (domyślnie ~0.81%)</td></tr>
+    <tr><td>Count-Min Sketch</td><td>Count ≥ prawdziwy (bez niedoszacowania)</td><td>Przeszacowanie (overestimate)</td></tr>
+    <tr><td>Top-K</td><td>Elementy poza top-K mogą być pominięte</td><td>False positive w top-K; błąd rankingu countów</td></tr>
+    <tr><td>t-digest</td><td>Quantile w centrum rozkładu — stabilny</td><td>Większy błąd w ogonach (tails)</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="filtry" class="must-know">Bloom Filter i Cuckoo Filter</h2>
+
+<p>Oba odpowiadają na pytanie <strong>membership</strong>: „czy ten klucz (URL, ID użytkownika, hash pliku) był już dodany?”. Odpowiedź <code>nie ma</code> jest wiarygodna; odpowiedź <code>może być</code> wymaga weryfikacji w źródle prawdy (DB, object storage).</p>
+
+<div class="struct-card">
+  <h3>1. Bloom Filter</h3>
+  <ul>
+    <li><strong>Co jest pewne:</strong> Jeśli <code>BF.EXISTS</code> zwraca <code>0</code>, element <strong>na pewno nie był</strong> dodany do tego filtra (przy braku resetu struktury i poprawnej semantyce klucza). Nie ma false negatives — negatywny wynik testu membership jest deterministyczny.</li>
+    <li><strong>Co jest niepewne (Błąd):</strong> Wynik <code>1</code> oznacza „prawdopodobnie jest” — możliwy <strong>false positive</strong> z prawdopodobieństwem zależnym od parametrów <code>BF.RESERVE</code> (<code>error_rate</code>, <code>capacity</code>). Po przekroczeniu założonej pojemności FP rośnie; Bloom <strong>nie obsługuje usuwania</strong> pojedynczych elementów bez rebuild całej struktury.</li>
+    <li><strong>Najczęstsze zastosowania:</strong> (1) <strong>Cache aside / deduplikacja zdarzeń</strong> — przed kosztownym odczytem z DB sprawdzasz Bloom „czy ten event_id już przetworzyliśmy”. (2) <strong>Anti-spam i rate limiting wstępny</strong> — szybki filtr „czy ten fingerprint IP+UA widzieliśmy w oknie” przed pełnym licznikiem token bucket. (3) <strong>Web crawler / CDN</strong> — unikanie wielokrotnego pobierania tych samych URL-i już odwiedzonych w shardzie.</li>
+  </ul>
+</div>
+
+<div class="struct-card">
+  <h3>1b. Cuckoo Filter (wariant membership z delete)</h3>
+  <ul>
+    <li><strong>Co jest pewne:</strong> Tak jak Bloom: <code>CF.EXISTS</code> = <code>0</code> ⇒ element <strong>definitywnie nie występuje</strong> w filtrze. Dodatkowo <code>CF.DEL</code> usuwa wcześniej wstawiony element — operacja poprawna w sensie struktury (w Bloom delete bez rebuild jest niemożliwe).</li>
+    <li><strong>Co jest niepewne (Błąd):</strong> Nadal występują <strong>false positives</strong> (parametry <code>CF.RESERVE</code>: <code>capacity</code>, <code>bucket size</code>, <code>max iterations</code>). Przy przepełnieniu (<code>CF.ADD</code> zwraca błąd insert) musisz zwiększyć capacity lub shardować filtry — inaczej tracisz gwarancję „brak FP” tylko wtedy, gdy insert się powiódł.</li>
+    <li><strong>Najczęstsze zastosowania:</strong> (1) <strong>Sliding window dedup</strong> — elementy wypadają z okna przez <code>CF.DEL</code> lub rotację kluczy Redis bez pełnego rebuild Bloom. (2) <strong>Graph / recommendation prefetch</strong> — „czy już proponowaliśmy parę (user, item)” z możliwością cofnięcia po expire sesji. (3) <strong>Stream processing</strong> — exactly-once <em>logiczne</em> przez membership z TTL na poziomie aplikacji (rotacja CF per partition).</li>
+  </ul>
+</div>
+
+<pre><code># Bloom — rezerwacja i insert (RedisBloom)
+BF.RESERVE urls_seen 0.001 10000000
+BF.ADD urls_seen "https://example.com/a"
+BF.EXISTS urls_seen "https://example.com/b"   # 0 = na pewno nie było
+
+# Cuckoo — delete
+CF.RESERVE sessions 1000000
+CF.ADD sessions "sess:abc"
+CF.DEL sessions "sess:abc"</code></pre>
+
+<p><strong>Pułapka:</strong> false positive w filtrze membership zawsze wymaga drugiego etapu (DB, set Redis) — projektuj ścieżkę „BF miss → tani odczyt”, „BF hit → drogi confirm”.</p>
+
+<hr>
+
+<h2 id="hll" class="must-know">HyperLogLog</h2>
+
+<div class="struct-card">
+  <h3>2. HyperLogLog</h3>
+  <ul>
+    <li><strong>Co jest pewne:</strong> Struktura <strong>nigdy nie zwraca dokładnej liczby unikalnych</strong> — zawsze estymacja. Pewne jest natomiast <strong>ograniczenie pamięci</strong>: ~12 KB na klucz HLL przy standardowej precyzji (domyślnie sparse/dense w Redis), niezależnie od liczby obserwowanych elementów (miliardy hashy nadal ~stały rozmiar).</li>
+    <li><strong>Co jest niepewne (Błąd):</strong> Błąd względny cardinality jest <strong>statystyczny</strong>, typowo ~<strong>0.81%</strong> (standard error dla domyślnej precyzji Redis). Merge (<code>PFMERGE</code>) sumuje estymacje zbiorów rozłącznych; przy dużym overlap merge daje zawyżoną cardinality — to błąd modelu użycia, nie „bug Redis”.</li>
+    <li><strong>Najczęstsze zastosowania:</strong> (1) <strong>UV / DAU / unikalni użytkownicy</strong> — <code>PFADD stats:2025-10-04 userId</code> bez trzymania setu milionów ID. (2) <strong>Metryki SRE</strong> — unikalne IP, unikalne trace_id na minutę w pipeline observability. (3) <strong>A/B i analityka produktowa</strong> — przybliżona liczba unikalnych viewerów kampanii per shard z <code>PFMERGE</code> na agregatorze.</li>
+  </ul>
+</div>
+
+<pre><code>PFADD uv:daily:20251004 "user:8812" "user:9910"
+PFCOUNT uv:daily:20251004
+PFMERGE uv:week41 uv:daily:20251004 uv:daily:20251005</code></pre>
+
+<p>Dla <strong>dokładnej</strong> cardinality (np. rozliczenia finansowe) użyj <code>SET</code> / DB — HLL to świadomy kompromis operacyjny.</p>
+
+<hr>
+
+<h2 id="cms">Count-Min Sketch</h2>
+
+<div class="struct-card">
+  <h3>3. Count-Min Sketch (CMS)</h3>
+  <ul>
+    <li><strong>Co jest pewne:</strong> Zapytanie <code>CMS.QUERY</code> zwraca licznik, który jest <strong>≥ rzeczywistej liczby wystąpień</strong> danego klucza (w modelu increment-only bez resetu). Count-Min Sketch to estymator <strong>górny</strong> — nigdy nie zaniża countu przez kolizje hashy w macierzy depth×width.</li>
+    <li><strong>Co jest niepewne (Błąd):</strong> Wartość może być <strong>zawyżona (overestimate)</strong> przez kolizje innych kluczy w tych samych komórkach; wielkość błędu zależy od <code>width</code> i <code>depth</code> (<code>CMS.INITBYPROB</code> / <code>INITBYDIM</code>). Nie rozróżniasz „hot key” z count 1M od sąsiada z count 10 — obaj mogą „pompować” wspólne komórki.</li>
+    <li><strong>Najczęstsze zastosowania:</strong> (1) <strong>Heavy hitter detection</strong> — identyfikacja kluczy API przekraczających próg zapytań bez trzymania hashmapy wszystkich klientów. (2) <strong>CDN / edge — popularność obiektów</strong> — przybliżone county URI do decyzji prefetch vs eviction. (3) <strong>Network security</strong> — licznik pakietów per flow (5-tuple skrócony) w anty-DDoS przed pełnym DPI.</li>
+  </ul>
+</div>
+
+<pre><code>CMS.INITBYPROB traffic 0.001 0.01
+CMS.INCRBY traffic "client:42" 1
+CMS.INCRBY traffic "client:42" 1
+CMS.QUERY traffic "client:42"    # &gt;= 2</code></pre>
+
+<hr>
+
+<h2 id="topk">Top-K</h2>
+
+<div class="struct-card">
+  <h3>4. Top-K</h3>
+  <ul>
+    <li><strong>Co jest pewne:</strong> Struktura utrzymuje <strong>co najwyżej K</strong> kandydatów na „najczęstsze” klucze w fixed memory. Element, który <strong>konsekwentnie</strong> dominuje countami, zostanie w strukturze; elementy o countach poniżej progu detekcji mogą <strong>w ogóle nie trafić</strong> do listy — to pewna właściwość algorytmu (HeavyKeeper / Space-Saving), nie pełny ranking.</li>
+    <li><strong>Co jest niepewne (Błąd):</strong> W liście top-K mogą pojawić się <strong>false positives</strong> (klucz chwilowo „wskoczył” przez fluktuację). Raportowane <code>TOPK.COUNT</code> to estymaty — mogą odbiegać od prawdziwego countu w strumieniu; kolejność miejsc 4–K bywa niestabilna przy podobnych countach.</li>
+    <li><strong>Najczęstsze zastosowania:</strong> (1) <strong>Realtime leaderboard / trending</strong> — hashtag, produkt, endpoint REST w oknie czasu bez sortowania milionów wierszy. (2) <strong>Observability — top slow endpoints</strong> — w parze z CMS lub metrykami aplikacji: Top-K na kluczu „route+status”. (3) <strong>Fraud / abuse</strong> — bieżąca lista top kont wysyłających transakcje w streamie Kafka konsumowanym przez Redis.</li>
+  </ul>
+</div>
+
+<pre><code>TOPK.RESERVE trending 50 2000 8 0.9
+TOPK.ADD trending "item:7" "item:3" "item:7"
+TOPK.LIST trending
+TOPK.COUNT trending "item:7"</code></pre>
+
+<hr>
+
+<h2 id="tdigest">t-digest</h2>
+
+<div class="struct-card">
+  <h3>5. t-digest</h3>
+  <ul>
+    <li><strong>Co jest pewne:</strong> Po dodaniu próbek (<code>TDIGEST.ADD</code>) struktura daje <strong>stabilne estymaty quantili w „ciężkim centrum”</strong> rozkładu (mediana, p50, p90 przy typowych rozkładach latencji) przy bounded memory (parametr <code>compression</code>). Merge digestów (<code>TDIGEST.MERGE</code>) jest asocjatywny — sensowny dla agregacji per-node → global w observability.</li>
+    <li><strong>Co jest niepewne (Błąd):</strong> W <strong>ogonach</strong> rozkładu (p99.9, p99.99, min/max ekstremalne) błąd względny rośnie — t-digest świadomie alokuje mniej „rozdzielczości” na tails. Pojedyncze outliery mogą być zbyt mocno „ściśnięte” przy niskim compression; dla SLA strict tail lepszy bywa HDR Histogram / raw sample w krótkim oknie.</li>
+    <li><strong>Najczęstsze zastosowania:</strong> (1) <strong>SLO latencji API</strong> — p95/p99 czasu odpowiedzi z milionów requestów/dzień w jednym kluczu Redis per service. (2) <strong>FinOps / billing usage</strong> — percentyle wielkości payloadu, czasu jobów batch bez exportu do TSDB. (3) <strong>Capacity planning</strong> — rozkład rozmiaru koszyka, czasu sesji — decyzje o shardingu i limitach.</li>
+  </ul>
+</div>
+
+<pre><code>TDIGEST.CREATE latency:checkout 100
+TDIGEST.ADD latency:checkout 12 45 38 1200 41
+TDIGEST.QUANTILE latency:checkout 0.95
+TDIGEST.CDF latency:checkout 100</code></pre>
+
+<hr>
+
+<h2 id="komendy">Komendy Redis — skrót referencyjny</h2>
+
+<table>
+  <thead><tr><th>Struktura</th><th>Inicjalizacja</th><th>Update</th><th>Odczyt</th></tr></thead>
+  <tbody>
+    <tr><td>Bloom</td><td><code>BF.RESERVE</code></td><td><code>BF.ADD</code> / <code>BF.MADD</code></td><td><code>BF.EXISTS</code></td></tr>
+    <tr><td>Cuckoo</td><td><code>CF.RESERVE</code></td><td><code>CF.ADD</code> / <code>CF.DEL</code></td><td><code>CF.EXISTS</code></td></tr>
+    <tr><td>HyperLogLog</td><td>(implicit)</td><td><code>PFADD</code></td><td><code>PFCOUNT</code> / <code>PFMERGE</code></td></tr>
+    <tr><td>CMS</td><td><code>CMS.INITBYPROB</code></td><td><code>CMS.INCRBY</code></td><td><code>CMS.QUERY</code></td></tr>
+    <tr><td>Top-K</td><td><code>TOPK.RESERVE</code></td><td><code>TOPK.ADD</code> / <code>TOPK.INCRBY</code></td><td><code>TOPK.LIST</code> / <code>TOPK.COUNT</code></td></tr>
+    <tr><td>t-digest</td><td><code>TDIGEST.CREATE</code></td><td><code>TDIGEST.ADD</code></td><td><code>TDIGEST.QUANTILE</code> / <code>TDIGEST.CDF</code></td></tr>
+  </tbody>
+</table>
+
+<p>W Redis Cluster klucz probabilistyczny musi być w tym samym hash slot co powiązane dane albo stanowić samodzielny klucz globalny — unikaj wielu struktur rozproszonych po slotach bez merge na aplikacji.</p>
+
+<hr>
+
+<h2 id="architektura">Wzorzec architektoniczny</h2>
+
+<div class="flow-box">Request / event
+  → (1) Bloom/CF membership — odrzut duplikatów
+  → (2) CMS / Top-K — hot keys w strumieniu
+  → (3) HLL — unikalni per dzień
+  → (4) t-digest — percentyle latencji per service
+  → Źródło prawdy (Postgres, S3, TSDB) tylko gdy filtr lub SLA tego wymaga</div>
+
+<p>Warstwa probabilistyczna siedzi <strong>przed</strong> drogimi systemami: Redis nie zastępuje ledgera ani dokładnego analytics warehouse — redukuje koszt I/O i pamięć na ścieżce gorącej.</p>
+
+<table>
+  <thead><tr><th>Potrzeba</th><th>Zła struktura</th><th>Lepszy wybór</th></tr></thead>
+  <tbody>
+    <tr><td>Dokładny count per user</td><td>HyperLogLog</td><td>Hash + INCR lub CMS</td></tr>
+    <tr><td>„Czy user był?” bez FP</td><td>Sam Bloom bez confirm</td><td>Set / DB lub Bloom + confirm</td></tr>
+    <tr><td>Pełny ranking wszystkich SKU</td><td>Top-K</td><td>Sortowany set / OLAP</td></tr>
+    <tr><td>Dokładne p99.99 SLA audit</td><td>t-digest niskie compression</td><td>Raw histogram / log sample</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ul>
+  <li><strong>Traktowanie Bloom/Cuckoo „1” jako pewnego membership</strong> — zawsze confirm w źródle prawdy; FP to feature, nie bug.</li>
+  <li><strong>Przekroczenie capacity Bloom bez resize</strong> — rosnące FP; monitoruj fill i planuj nowy klucz / sharding.</li>
+  <li><strong>Delete w Bloom</strong> — niemożliwe poprawnie; użyj Cuckoo lub rotacji kluczy czasowych.</li>
+  <li><strong>HLL jako dokładny UV do rozliczeń</strong> — błąd ~1% może być niedopuszczalny prawnie/finansowo.</li>
+  <li><strong>PFMERGE na zbiorach z dużym overlap</strong> — zawyżona cardinality; deduplikuj na poziomie kluczy dziennych.</li>
+  <li><strong>CMS jako licznik „dokładny”</strong> — overestimate; progi decyzyjne ustaw z zapasem.</li>
+  <li><strong>Top-K jako kompletny ranking</strong> — elementy poniżej progu znikają na zawsze z perspektywy struktury.</li>
+  <li><strong>t-digest p99.99 do alertów bez kalibracji</strong> — tails wymagają wyższego compression lub innego pipeline.</li>
+  <li><strong>Brak modułu RedisBloom na prod</strong> — komendy <code>BF.*</code> / <code>TDIGEST.*</code> fail; tylko HLL działa na vanilla Redis.</li>
+  <li><strong>Jeden wielki klucz probabilistyczny w Cluster</strong> — hot spot; sharduj po prefiksie (np. <code>bf:{hash%256}</code>).</li>
+</ul>
+
+</body>
+</html>
