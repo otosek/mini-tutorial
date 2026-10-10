@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C4 Model — format diagramów architektury</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #b45309;
+      --l1: #92400e;
+      --l2: #c2410c;
+      --l3: #ea580c;
+      --l4: #78716c;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .level-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+    .tag-l1 { background: #ffedd5; color: var(--l1); }
+    .tag-l2 { background: #fed7aa; color: var(--l2); }
+    .tag-l3 { background: #ffedd5; color: var(--l3); }
+    .tag-l4 { background: #e7e5e4; color: var(--l4); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fff7ed; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .map-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .map-box h3 { margin-top: 0; color: var(--accent); font-size: 1rem; }
+
+    .flow-box {
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>C4 Model — format diagramów architektury</h1>
+<p class="meta">Cztery poziomy zoom · notacja · kiedy stosować · analogia budynku + system rezerwacji sal<br>
+Simon Brown · Context, Containers, Components, Code · Format: HTML offline · Bez sekcji ciekawostek</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#co-to">Co to jest C4</a></li>
+    <li><a href="#poziomy">Cztery poziomy</a></li>
+    <li><a href="#notacja">Notacja i reguły rysowania</a></li>
+    <li><a href="#kiedy">Kiedy stosować C4</a></li>
+    <li><a href="#budynek">Przykład 1: biurowiec (analogia)</a></li>
+    <li><a href="#rezerwacje">Przykład 2: system rezerwacji sal</a></li>
+    <li><a href="#dsl">Structurizr DSL — szkic</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="co-to">Co to jest C4</h2>
+<p><strong>C4 Model</strong> to lekki sposób opisywania architektury oprogramowania w czterech poziomach przybliżenia (jak mapa: kraj → miasto → ulica → plan mieszkania). Autor: <strong>Simon Brown</strong>. Nie jest standardem ISO ani metodą EA — to <strong>konwencja diagramów + słownik elementów</strong>, która działa w dokumentacji, ADR i rozmowach z zespołem.</p>
+<p>Jeden diagram = jeden poziom zoom na <strong>jeden software system</strong> (granica odpowiedzialności zespołu). Relacje między elementami opisujesz krótkimi zdaniami („Wysyła zdarzenia do…”, „Czyta dane z…”). Szczegóły implementacji (framework, wersja JDK) należą do opisów kontenerów lub kodu, nie do każdego prostokąta na Context.</p>
+<p>C4 dobrze łączy się z EA (TOGAF, ArchiMate) jako <strong>zoom-in</strong> z warstwy aplikacji — szerszy kontekst opisuje tutorial <a href="togaf-archimate-c4-mini-tutorial.html">TOGAF · ArchiMate · C4</a>.</p>
+
+<hr>
+
+<h2 id="poziomy" class="must-know">Cztery poziomy</h2>
+
+<table>
+  <thead>
+    <tr><th>Poziom</th><th>Diagram</th><th>Pytanie, na które odpowiada</th><th>Typowy odbiorca</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="level-tag tag-l1">1</span></td>
+      <td><strong>System Context</strong></td>
+      <td>Co robi system i z kim (ludzie, inne systemy) współpracuje?</td>
+      <td>Product, biznes, nowi devs</td>
+    </tr>
+    <tr>
+      <td><span class="level-tag tag-l2">2</span></td>
+      <td><strong>Containers</strong></td>
+      <td>Z czego składa się system — aplikacje, bazy, kolejki (deployable)?</td>
+      <td>Tech lead, architekt, zespół</td>
+    </tr>
+    <tr>
+      <td><span class="level-tag tag-l3">3</span></td>
+      <td><strong>Components</strong></td>
+      <td>Co jest wewnątrz jednego kontenera (moduły, warstwy)?</td>
+      <td>Devs pracujący w kontenerze</td>
+    </tr>
+    <tr>
+      <td><span class="level-tag tag-l4">4</span></td>
+      <td><strong>Code</strong></td>
+      <td>Klasy, interfejsy — zwykle generowane z IDE, nie ręcznie</td>
+      <td>Implementacja, review</td>
+    </tr>
+  </tbody>
+</table>
+
+<pre><code>Zoom OUT ◄──────────────────────────────────────────────► Zoom IN
+
+  Context          Containers         Components          Code
+  (1 system        (aplikacje +        (moduły w           (klasy /
+   w świecie)       bazy w systemie)     jednym kontenerze)   pakiet)</code></pre>
+
+<p><strong>Granica systemu</strong> to decyzja organizacyjna: zespół, repozytorium, SLA. System sąsiadujący (CRM, IdP) na Context nie rozwijasz w Containers — tylko pokazujesz integrację.</p>
+
+<hr>
+
+<h2 id="notacja">Notacja i reguły rysowania</h2>
+
+<table>
+  <thead>
+    <tr><th>Element</th><th>Kształt / konwencja</th><th>Przykład etykiety</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Person</strong></td><td>Osoba (ikona ludzika)</td><td>Pracownik biurowy</td></tr>
+    <tr><td><strong>Software System</strong></td><td>Prostokąt — system, który budujesz lub cudzy</td><td>Room Booking [software system]</td></tr>
+    <tr><td><strong>Container</strong></td><td>Prostokąt wewnątrz systemu</td><td>Booking API [Spring Boot]</td></tr>
+    <tr><td><strong>Component</strong></td><td>Prostokąt wewnątrz kontenera</td><td>AvailabilityService</td></tr>
+    <tr><td><strong>Relationship</strong></td><td>Strzałka + opis technologii/celu</td><td>HTTPS / JSON, „Rezerwuje salę”</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Jedna historia na diagram</strong>
+  <p>Context: maks. ~10–15 elementów. Jeśli nie mieści się — podziel na dwa systemy lub dwa widoki (np. integracje wewnętrzne vs zewnętrzne).</p>
+</div>
+
+<div class="keyword">
+  <strong>Opis relacji obowiązkowy</strong>
+  <p>Strzałka bez etykiety („REST”) to najczęstszy błąd. C4 wymaga: <em>co</em> płynie i <em>po co</em> (sync/async, format).</p>
+</div>
+
+<p>Narzędzia: Structurizr (DSL + eksport do PlantUML/Mermaid), PlantUML C4, draw.io z biblioteką C4, IcePanel. Diagramy trzymaj w repo obok kodu (np. <code>docs/architecture/</code>).</p>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">Kiedy stosować C4</h2>
+
+<table>
+  <thead>
+    <tr><th>Sytuacja</th><th>Stosuj</th><th>Poziom</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Onboarding nowego deva / opis domeny produktu</td><td>Tak</td><td>Context (+ krótki opis systemu)</td></tr>
+    <tr><td>Projekt nowego serwisu, podział na mikroserwisy vs monolit</td><td>Tak</td><td>Context → Containers</td></tr>
+    <tr><td>Review integracji (API, eventy) przed sprintem</td><td>Tak</td><td>Context lub Containers</td></tr>
+    <tr><td>Refactoring wewnątrz jednej aplikacji</td><td>Tak</td><td>Components (czasem Code)</td></tr>
+    <tr><td>Cała mapa 500 systemów korporacji</td><td>Raczej nie sam C4</td><td>ArchiMate / asset catalog; C4 per wybrany system</td></tr>
+    <tr><td>Diagram sieci VLAN, racków, firewalli</td><td>Nie</td><td>Diagram infrastruktury / cloud (osobna notacja)</td></tr>
+    <tr><td>User journey / ekrany UI</td><td>Nie</td><td>Wireframe, mapa ekranów</td></tr>
+    <tr><td>Algorytm sortowania w jednej funkcji</td><td>Nie</td><td>Kod + test, bez C4</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Heurystyka:</strong> jeśli rozmowa dotyczy <em>granicy odpowiedzialności</em> lub <em>kontraktu między deployable units</em> — narysuj Containers. Jeśli dotyczy <em>całego produktu na rynku</em> — Context. Components rysuj, gdy zespół utknął w jednym repo i trzeba ustalić moduły bez przedwczesnego microservices split.</p>
+
+<p><strong>Kiedy aktualizować:</strong> przy zmianie integracji zewnętrznej (Context), wydzieleniu bazy/kolejki (Containers), wyciągnięciu modułu (Components). Context rzadziej niż Containers.</p>
+
+<hr>
+
+<h2 id="budynek">Przykład 1: biurowiec — ta sama logika co C4</h2>
+<p>Poniżej <strong>nie</strong> jest to diagram BMS w notacji C4 dla inwestora — to <strong>analogia</strong>, która uczy poziomów bez żargonu IT. Potem ten sam schemat myślenia przenosisz na software (przykład 2).</p>
+
+<div class="map-box">
+  <h3>Obiekt analogii: „System” = biurowiec Smart Tower</h3>
+  <p>Funkcja: bezpieczna praca i komfort najemców. Granica systemu: działka + budynek (nie całe miasto).</p>
+</div>
+
+<h3><span class="level-tag tag-l1">1 · Context</span> — budynek w otoczeniu</h3>
+<pre><code>                    ┌─────────────────┐
+                    │  Urząd miasta   │
+                    │  (media, pozw.) │
+                    └────────┬────────┘
+                             │ woda, prąd, ścieki
+┌──────────────┐             │             ┌──────────────┐
+│  Najemca A   │──wejście───►│ Smart Tower  │◄──dostawy───│ Kurier / DHL │
+│  (person)    │   karta     │  [budynek]   │             │  (person)    │
+└──────────────┘             └──────┬───────┘             └──────────────┘
+┌──────────────┐                    │
+│  Gość        │──recepcja────────┤
+│  (person)    │                  │
+└──────────────┘             ┌─────▼─────┐
+                             │ Straż     │
+                             │ pożarna   │ (system zewn.)
+                             │ (sygnał)  │
+                             └───────────┘</code></pre>
+<p>Na tym poziomie nie widać kotłowni ani kabli — widać <strong>kto korzysta</strong> i <strong>jakie zewnętrzne systemy</strong> są konieczne (media, PPOŻ).</p>
+
+<h3><span class="level-tag tag-l2">2 · Containers</span> — główne „aplikacje” budynku</h3>
+<p>Każdy kontener to <strong>osobna instalacja / zespół utrzymania</strong>, deployable w sensie fizycznym (można modernizować niezależnie).</p>
+<table>
+  <thead>
+    <tr><th>Container (analog)</th><th>Technologia (analog)</th><th>Odpowiedzialność</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Instalacja HVAC</strong></td><td>Kotłownia, chillery, kanały</td><td>Temperatura, nawiew, rekuperacja</td></tr>
+    <tr><td><strong>Windy i platformy</strong></td><td>Dźwigi, sterowniki</td><td>Transport pionowy, dostępność</td></tr>
+    <tr><td><strong>Kontrola dostępu</strong></td><td>Czytniki, centrale</td><td>Karty, strefy, logi wejść</td></tr>
+    <tr><td><strong>BMS / SCADA</strong></td><td>Serwer automatyki</td><td>Agregacja alarmów, harmonogramy</td></tr>
+    <tr><td><strong>Recepcja / visitor</strong></td><td>Stanowisko + procedury</td><td>Goście, przepustki</td></tr>
+  </tbody>
+</table>
+<pre><code>        ┌──────────────── Smart Tower ────────────────┐
+        │  ┌─────────┐   ┌─────────┐   ┌───────────┐  │
+        │  │  HVAC   │◄─►│   BMS   │◄─►│  Access   │  │
+        │  └────┬────┘   └────┬────┘   └─────┬─────┘  │
+        │       │             │              │        │
+        │  ┌────▼────┐   ┌────▼────┐         │        │
+        │  │ Windy   │   │ Alarmy  │         │        │
+        │  └─────────┘   └─────────┘         │        │
+        └──────────────────────────────────────┘        │
+                    ▲                                   │
+                    └──── sygnał do straży pożarnej ──┘</code></pre>
+
+<h3><span class="level-tag tag-l3">3 · Components</span> — wnętrze jednego kontenera (np. HVAC)</h3>
+<ul>
+  <li><strong>Controller stref</strong> — regulacja per piętro</li>
+  <li><strong>Sensor network</strong> — temperatura, CO₂, wilgotność</li>
+  <li><strong>Schedule engine</strong> — tryb dzień/noc, święta</li>
+  <li><strong>Alarm handler</strong> — awaria filtra → BMS</li>
+</ul>
+<p>Relacje: czujniki → controller (odczyt co 30 s); controller → aktuatory (PWM); schedule → controller (setpoint).</p>
+
+<h3><span class="level-tag tag-l4">4 · Code</span> — pojedynczy sterownik</h3>
+<p>Na tym poziomie analogii: schemat PLC, mapa rejestrów Modbus, firmware czujnika — odpowiednik <strong>diagramu klas</strong> w Java. W projekcie IT Level 4 często pomijasz ręcznie — wystarczy link do pakietu w repo.</p>
+
+<p><strong>Wniosek z analogii:</strong> gość na recepcji (Person) nie musi znać PID w kotłowni (Code). Context wystarczy dla najemcy; serwis HVAC zna Components.</p>
+
+<hr>
+
+<h2 id="rezerwacje">Przykład 2: system rezerwacji sal — przekład na C4</h2>
+<p><strong>Room Booking Platform</strong> — software w Smart Tower: pracownicy rezerwują sale, wyświetlacze przy drzwiach pokazują status, kalendarz firmowy synchronizuje zajętość. To ten sam <strong>typ myślenia</strong> co budynek, tylko z deployable w chmurze/on-prem.</p>
+
+<h3><span class="level-tag tag-l1">1 · System Context</span></h3>
+<pre><code>┌────────────────┐  HTTPS   ┌─────────────────────────────┐
+│ Pracownik      │────────►│ Room Booking Platform       │
+│ (person)       │         │ Rezerwacje sal, wyświetlacze│
+└────────────────┘         └───┬──────────┬──────────┬──┘
+┌────────────────┐               │          │          │
+│ Facility Mgmt  │──admin───────►│          │          │
+│ (person)       │               │          │          │
+└────────────────┘               │ Graph    │ LDAP     │ MQTT
+                                 ▼          ▼          ▼
+                          ┌──────────┐ ┌────────┐ ┌─────────────┐
+                          │ MS 365   │ │ Corp   │ │ Panel przy  │
+                          │ Calendar │ │ IdP    │ │ drzwiach    │
+                          │ [system] │ │[system]│ │ [system IoT]│
+                          └──────────┘ └────────┘ └─────────────┘</code></pre>
+<p>Opis systemu (1–2 zdania na diagramie): „Umożliwia rezerwację sal w Smart Tower i publikuje status na panelach oraz w kalendarzu firmowym.”</p>
+
+<h3><span class="level-tag tag-l2">2 · Containers</span></h3>
+<p>Granica: tylko wnętrze <strong>Room Booking Platform</strong> (sąsiedzi z Context to zewnętrzne prostokąty).</p>
+<table>
+  <thead>
+    <tr><th>Container</th><th>Technologia</th><th>Odpowiedzialność</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Web App</strong></td><td>React (SPA)</td><td>UI: wyszukiwanie sal, rezerwacja, anulowanie</td></tr>
+    <tr><td><strong>Booking API</strong></td><td>Java / Spring Boot</td><td>Reguły dostępności, konflikty, REST publiczne</td></tr>
+    <tr><td><strong>Calendar Sync Worker</strong></td><td>Java / scheduled + Graph API</td><td>Tworzy/aktualizuje wydarzenia w MS 365</td></tr>
+    <tr><td><strong>Display Gateway</strong></td><td>Node / MQTT broker client</td><td>Push statusu „wolna / zajęta / do 14:30” na panele</td></tr>
+    <tr><td><strong>Booking DB</strong></td><td>PostgreSQL</td><td>Rezerwacje, sale, reguły (min. czas, max. horyzont)</td></tr>
+  </tbody>
+</table>
+
+<div class="flow-box">
+  <p><strong>Przepływ (happy path):</strong> Pracownik → Web App → Booking API → zapis w Booking DB → (async) Calendar Sync → MS 365; równolegle Display Gateway → panele MQTT.</p>
+</div>
+
+<h3><span class="level-tag tag-l3">3 · Components</span> (wewnątrz Booking API)</h3>
+<table>
+  <thead>
+    <tr><th>Component</th><th>Odpowiedzialność</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>ReservationController</strong></td><td>REST, walidacja wejścia, OAuth2 resource server</td></tr>
+    <tr><td><strong>AvailabilityService</strong></td><td>Sloty, kolizje, reguły sal (pojemność, sprzęt)</td></tr>
+    <tr><td><strong>ReservationRepository</strong></td><td>Persistence, transakcje</td></tr>
+    <tr><td><strong>OutboxPublisher</strong></td><td>Zdarzenia <code>ReservationCreated</code> do sync i display</td></tr>
+    <tr><td><strong>RoomCatalog</strong></td><td>Metadane sal (piętro, ID panelu MQTT)</td></tr>
+  </tbody>
+</table>
+<p>Relacja: Controller → AvailabilityService → Repository; po commit → OutboxPublisher → (kolejka lub polling) Workers.</p>
+
+<h3><span class="level-tag tag-l4">4 · Code</span></h3>
+<p>Przykład: interfejs <code>AvailabilityService</code> + implementacja <code>DefaultAvailabilityService</code> w pakiecie <code>com.smarttower.booking.domain</code> — generuj z IDE lub pomiń w wiki, jeśli repo jest źródłem prawdy.</p>
+
+<p><strong>Mapowanie analogia → IT:</strong> Najemca = Person; HVAC = osobny container (tu: Calendar Sync); BMS = Booking API agregujące logikę; recepcja = Web App + reguły gości (tu: role z IdP).</p>
+
+<hr>
+
+<h2 id="dsl">Structurizr DSL — szkic</h2>
+<p>DSL trzyma diagramy jako tekst w repo; jeden model, wiele widoków (Context, Containers).</p>
+<pre><code>workspace {
+    model {
+        employee = person "Pracownik"
+        booking = softwareSystem "Room Booking Platform" {
+            web = container "Web App" "React"
+            api = container "Booking API" "Spring Boot"
+            db = container "Booking DB" "PostgreSQL"
+        }
+        m365 = softwareSystem "MS 365 Calendar"
+        employee -&gt; web "Rezerwuje sale" "HTTPS"
+        web -&gt; api "API" "JSON/HTTPS"
+        api -&gt; db "Czyta/zapisuje" "JDBC"
+        api -&gt; m365 "Sync wydarzeń" "Graph API"
+    }
+    views {
+        systemContext booking { include * }
+        container booking { include * }
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>Jeden diagram na wszystkie poziomy</strong> — klasy Java obok CRM i kasjer na jednym slajdzie; odbiorca traci kontekst.</li>
+  <li><strong>Brak etykiet na strzałkach</strong> — nie wiadomo, czy to sync REST, event, czy batch nocny.</li>
+  <li><strong>„Container” = VM lub Kubernetes pod</strong> — w C4 container to aplikacja/baza/kolejka, nie node K8s (infrastruktura to osobny diagram).</li>
+  <li><strong>Rozwijanie systemu sąsiedniego w Containers</strong> — CRM na Context zostaje czarną skrzynką; jego wnętrze to osobny model C4 innego zespołu.</li>
+  <li><strong>Components przed ustaleniem granic API</strong> — najpierw Containers i kontrakty, potem moduły w API.</li>
+  <li><strong>Diagram bez opisu systemu</strong> — prostokąt „Platforma X” bez 2 zdań o wartości biznesowej.</li>
+  <li><strong>Level 4 ręcznie dla całego monolitu</strong> — szybko się starzeje; lepiej odnośnik do modułu w repo.</li>
+  <li><strong>Mylenie C4 z modelem danych ERD</strong> — tabele mogą być kontenerem (DB), ale relacje FK to nie diagram architektury.</li>
+  <li><strong>Brak decyzji, co jest „systemem”</strong> — Mobile App czasem jest kontenerem, czasem osobnym systemem; ustal z zespołem i trzymaj konsekwencję.</li>
+  <li><strong>Diagramy tylko na kickoff</strong> — po zmianie integracji z MS 365 Context/Containers muszą być zaktualizowane, inaczej ADR i kod się rozjeżdżają.</li>
+</ol>
+
+</body>
+</html>
