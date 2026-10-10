@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manifesty Kubernetes — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #326ce5;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+    h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eff6ff; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .hint {
+      background: #eff6ff;
+      border-left: 4px solid var(--accent);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.95rem;
+    }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Manifesty Kubernetes — mini-tutorial</h1>
+<p class="meta">Pod · Service · Deployment · HPA · uruchomienie bez root — wariant minimalny i rozbudowany, komentarz linia po linii · triki i błędy<br>
+Format: HTML (offline, <code>file://</code>) · Bez sekcji ciekawostek · Bez instalacji klastra i teorii K8s</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#anatomia">Anatomia pliku YAML</a></li>
+    <li><a href="#pod">Pod</a></li>
+    <li><a href="#service">Service</a></li>
+    <li><a href="#deployment">Deployment</a></li>
+    <li><a href="#hpa">HorizontalPodAutoscaler</a></li>
+    <li><a href="#non-root">Usługa bez użytkownika root</a></li>
+    <li><a href="#triki">Triki, tipsy, zalecenia</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="anatomia">Część 0 — Anatomia manifestu</h2>
+<p>Każdy manifest to obiekt w API klastra zapisany jako YAML. Poniżej szkielet wspólny dla wszystkich typów w tym tutorialu — reszta sekcji to konkretne <code>kind</code>.</p>
+
+<pre><code>apiVersion: …          # wersja API grupy zasobu (np. v1, apps/v1, autoscaling/v2)
+kind: …                 # typ obiektu (Pod, Service, Deployment, HorizontalPodAutoscaler)
+metadata:               # metadane obiektu w etcd (identyfikacja, etykiety, adnotacje)
+  name: …               # unikalna nazwa w namespace (albo cluster-scoped bez namespace)
+  namespace: …          # opcjonalnie — domyślnie default
+  labels: …             # opcjonalnie — pary klucz:wartość do selekcji i grupowania
+  annotations: …        # opcjonalnie — metadane dla narzędzi (nie używane przez selektory Service)
+spec: …                 # pożądany stan — interpretacja zależy od kind
+status: …               # tylko odczyt z API — NIE wpisujesz tego w manifestach ręcznie</code></pre>
+
+<p>W plikach wielozasobowych oddziel obiekty linią <code>---</code>. Kolejność apply zwykle nie ma znaczenia, ale <strong>Deployment przed Service</strong> ułatwia uniknięcie chwil bez endpointów — Service bez Podów jest legalny.</p>
+
+<hr>
+
+<h2 id="pod" class="must-know">Pod — minimalny manifest</h2>
+<p>Pod uruchamia jeden lub więcej kontenerów na wspólnym network namespace. W produkcji rzadko tworzysz go ręcznie (robi to Deployment), ale manifest Poda jest szablonem dla <code>spec.template</code> w Deployment.</p>
+
+<pre><code>apiVersion: v1                    # Pod należy do core API w wersji v1
+kind: Pod                         # deklarujesz obiekt typu Pod
+metadata:                         # sekcja metadanych obiektu
+  name: demo-pod                  # nazwa Poda w namespace — DNS label (małe litery, myślniki)
+spec:                             # specyfikacja uruchomienia
+  containers:                     # lista kontenerów w Podzie (min. jeden)
+  - name: app                     # nazwa kontenera wewnątrz Poda (dla logów, exec, probes)
+    image: nginx:1.27-alpine      # obraz + tag (unikaj :latest w prod)</code></pre>
+
+<h3>Pod — manifest rozbudowany (komentarz każdej linii)</h3>
+
+<pre><code>apiVersion: v1                                      # wersja API dla Pod
+kind: Pod                                           # typ zasobu
+metadata:                                           # metadane
+  name: api-pod                                     # nazwa instancji Poda
+  namespace: production                             # namespace docelowy
+  labels:                                           # etykiety na obiekcie Pod
+    app.kubernetes.io/name: api                     # standardowa etykieta aplikacji
+    app.kubernetes.io/component: backend            # rola w systemie (frontend/backend/worker)
+    app.kubernetes.io/version: "2.4.1"              # wersja release (string)
+    env: prod                                       # środowisko (prod/stage/dev)
+  annotations:                                      # adnotacje — nie trafiają do label selector Service
+    description: "API — manifest przykładowy"       # opis dla ludzi / dokumentacji
+    kubectl.kubernetes.io/restartedAt: "2026-01-01T00:00:00Z"  # znacznik ręcznego restartu (wzorzec)
+spec:                                               # desired state Poda
+  restartPolicy: Always                             # Always | OnFailure | Never (dla bare Pod)
+  terminationGracePeriodSeconds: 45                 # czas na graceful shutdown przed SIGKILL
+  serviceAccountName: api-sa                        # tożsamość RBAC + mount tokena API w Podzie
+  automountServiceAccountToken: true                # false gdy Pod nie potrzebuje API klastra
+  priorityClassName: workload-high                  # kolejka eviction — wyższy priorytet = później zabijany
+  runtimeClassName: ""                              # opcjonalnie inny runtime (np. gVisor) — puste = domyślny
+  nodeSelector:                                     # twarde przypisanie do Node z etykietami
+    kubernetes.io/os: linux                         # przykład: tylko węzły Linux
+  affinity:                                         # miękkie/twarde reguły schedulingu
+    podAntiAffinity:                                # rozłóż repliki na różne Node
+      preferredDuringSchedulingIgnoredDuringExecution:  # preferencja, nie wymóg
+      - weight: 100                                 # waga reguły (1–100)
+        podAffinityTerm:                            # definicja dopasowania
+          labelSelector:                            # szukaj Podów z etykietami
+            matchLabels:                            # wszystkie pary muszą pasować
+              app.kubernetes.io/name: api           # ten sam app co ten Pod
+          topologyKey: kubernetes.io/hostname       # rozdziel per hostname (Node)
+  tolerations:                                      # pozwól schedulować na Node z taintami
+  - key: "dedicated"                                # klucz tainta
+    operator: "Equal"                               # Equal | Exists
+    value: "api"                                    # wartość tainta (przy Equal)
+    effect: "NoSchedule"                            # NoSchedule | PreferNoSchedule | NoExecute
+  securityContext:                                  # kontekst bezpieczeństwa na poziomie Poda
+    runAsNonRoot: true                              # wymuszenie UID != 0
+    runAsUser: 10001                                # UID procesów w kontenerach (domyślnie dla wszystkich)
+    fsGroup: 10001                                  # GID wolumenów współdzielonych
+    seccompProfile:                                 # profil seccomp
+      type: RuntimeDefault                          # RuntimeDefault | Localhost | Unconfined
+  initContainers:                                   # kontenery startujące przed app (kolejność listy)
+  - name: wait-db                                   # nazwa init kontenera
+    image: busybox:1.36                             # lekki obraz do skryptów
+    command: ["sh", "-c", "until nc -z db 5432; do sleep 2; done"]  # czekaj na DB
+    securityContext:                                # osobny securityContext dla init
+      allowPrivilegeEscalation: false               # brak eskalacji uprawnień
+      readOnlyRootFilesystem: true                  # root FS tylko do odczytu
+  containers:                                       # kontenery aplikacyjne
+  - name: api                                       # nazwa kontenera
+    image: registry.example.com/api:2.4.1           # prywatny rejestr + immutable tag
+    imagePullPolicy: IfNotPresent                   # Always | IfNotPresent | Never
+    ports:                                          # porty deklarowane (informacyjnie + dla probes)
+    - name: http                                    # nazwa portu — używana w probe port: http
+      containerPort: 8080                           # port nasłuchu w kontenerze
+      protocol: TCP                                 # TCP | UDP | SCTP
+    env:                                            # zmienne środowiskowe
+    - name: LOG_LEVEL                               # nazwa ENV w procesie
+      value: "info"                                 # wartość literalna
+    - name: DB_PASSWORD                             # sekret z obiektu Secret
+      valueFrom:                                    # źródło wartości
+        secretKeyRef:                               # klucz w Secret
+          name: api-db                                # nazwa Secret
+          key: password                             # klucz w data Secret
+    envFrom:                                        # załaduj całą ConfigMap/Secret jako ENV
+    - configMapRef:                                 # wszystkie klucze ConfigMap → ENV
+        name: api-config                            # nazwa ConfigMap
+    resources:                                      # limity i requesty — ważne dla schedulera i HPA
+      requests:                                     # minimum gwarantowane przy schedule
+        cpu: "250m"                                 # 0.25 vCPU (m = millicores)
+        memory: "512Mi"                             # pamięć rezerwowana na Node
+      limits:                                       # maksimum — przekroczenie memory → OOMKill
+        cpu: "1000m"                                # limit CPU (throttling, nie kill)
+        memory: "1Gi"                               # twardy limit RAM
+    volumeMounts:                                   # podpięcie wolumenów do ścieżek w kontenerze
+    - name: tmp                                     # nazwa volume z spec.volumes
+      mountPath: /tmp                               # ścieżka w kontenerze
+      readOnly: false                               # zapis dozwolony
+    - name: config                                  # volume z ConfigMap
+      mountPath: /etc/api/config.yaml               # plik konfiguracyjny
+      subPath: config.yaml                          # jeden klucz jako pojedynczy plik
+      readOnly: true                                # tylko odczyt
+    livenessProbe:                                  # restart kontenera gdy aplikacja „umarła”
+      httpGet:                                      # probe HTTP
+        path: /healthz                              # endpoint żywotności
+        port: http                                  # nazwa z ports[].name
+        scheme: HTTP                                # HTTP | HTTPS
+      initialDelaySeconds: 15                       # opóźnienie po starcie przed pierwszym checkiem
+      periodSeconds: 10                             # co ile sekund powtarzać
+      timeoutSeconds: 2                             # timeout pojedynczego requestu
+      failureThreshold: 3                           # ile failów z rzędu → restart
+    readinessProbe:                                 # czy Pod dostaje ruch z Service
+      httpGet:                                      # probe HTTP
+        path: /ready                                # endpoint gotowości (np. po migracji DB)
+        port: http                                  # ten sam port co aplikacja
+      periodSeconds: 5                              # częstsze sprawdzanie niż liveness
+      successThreshold: 1                           # ile sukcesów → Ready
+      failureThreshold: 3                           # ile failów → usunięcie z Endpoints
+    startupProbe:                                   # dla wolnego startu — blokuje liveness/readiness
+      httpGet:                                      # ten sam styl co liveness
+        path: /healthz                              # prosty endpoint
+        port: http                                  # port aplikacji
+      periodSeconds: 5                              # interwał podczas fazy startu
+      failureThreshold: 30                          # max 30*5s = 150s na start
+    securityContext:                                # per-kontener (nadpisuje część pod securityContext)
+      allowPrivilegeEscalation: false               # CAP_SYS_ADMIN itd. zablokowane
+      readOnlyRootFilesystem: true                  # wymuszenie wolumenu na zapis (np. /tmp)
+      capabilities:                                 # fine-grained Linux capabilities
+        drop: ["ALL"]                               # usuń wszystkie domyślne
+        add: ["NET_BIND_SERVICE"]                   # dodaj tylko potrzebne (port &lt; 1024)
+    lifecycle:                                      # hooki cyklu życia kontenera
+      preStop:                                      # przed wysłaniem SIGTERM przy usuwaniu Poda
+        exec:                                       # komenda w kontenerze
+          command: ["/bin/sh", "-c", "sleep 5"]     # opóźnienie — czas na drain z load balancera
+  volumes:                                          # definicje wolumenów dostępnych dla mountów
+  - name: tmp                                       # emptyDir dla /tmp przy readOnlyRootFilesystem
+    emptyDir:                                       # tymczasowy dysk na Node (ginie z Podem)
+      medium: Memory                                # tmpfs w RAM (szybki, mały)
+      sizeLimit: 64Mi                               # limit rozmiaru emptyDir
+  - name: config                                    # wolumen z ConfigMap
+    configMap:                                      # typ volume
+      name: api-config                              # źródło danych
+      defaultMode: 0440                             # uprawnienia plików (octal)
+  dnsPolicy: ClusterFirst                           # ClusterFirst | Default | None
+  dnsConfig:                                        # opcjonalna customizacja DNS
+    options:                                        # opcje resolv.conf
+    - name: ndots                                   # ile kropek w nazwie → search domains
+      value: "2"                                    # mniej zbędnych lookupów zewnętrznych
+  hostAliases:                                      # wpisy /etc/hosts w Podzie
+  - ip: "10.0.0.50"                                 # statyczny IP (legacy integracje)
+    hostnames: ["legacy.internal"]                  # nazwy hostów</code></pre>
+
+<div class="hint"><strong>Pułapka:</strong> ręczny Pod z <code>restartPolicy: Always</code> po crashu kontenera restartuje tylko kontener w tym samym Podzie — nie tworzy nowego Poda z nową tożsamością. Do replik i rolloutów używaj Deployment.</div>
+
+<hr>
+
+<h2 id="service" class="must-know">Service — minimalny manifest</h2>
+<p>Service to stały wirtualny IP (ClusterIP) i DNS (<code>name.namespace.svc</code>) kierujący ruch do Podów pasujących do <code>selector</code> (etykiety muszą zgadzać się z Podami).</p>
+
+<pre><code>apiVersion: v1                    # Service w core v1
+kind: Service                     # typ obiektu Service
+metadata:                         # metadane
+  name: api                       # nazwa Service — DNS w klastrze: api.default.svc.cluster.local
+spec:                             # specyfikacja routingu
+  selector:                       # etykiety Podów docelowych (AND wszystkich par)
+    app: api                      # musi być na Podzie (zwykle z Deployment template)
+  ports:                          # lista portów Service
+  - port: 80                      # port na którym Service nasłuchuje w klastrze
+    targetPort: 8080              # port kontenera (liczba lub nazwa portu z Pod)</code></pre>
+
+<h3>Service — manifest rozbudowany</h3>
+
+<pre><code>apiVersion: v1                                      # wersja API Service
+kind: Service                                       # obiekt Service
+metadata:                                           # metadane
+  name: api                                         # nazwa DNS
+  namespace: production                             # namespace
+  labels:                                           # etykiety Service (nie mylić z selector)
+    app.kubernetes.io/name: api                     # spójność z innymi obiektami
+    app.kubernetes.io/component: backend            # komponent
+  annotations:                                      # adnotacje
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # cloud-specific (przykład AWS NLB)
+spec:                                               # spec Service
+  type: ClusterIP                                   # ClusterIP | NodePort | LoadBalancer | ExternalName
+  clusterIP: 10.96.120.50                         # opcjonalnie stały IP (tylko ClusterIP) — rzadko
+  clusterIPs:                                       # dual-stack: IPv4 + IPv6
+  - 10.96.120.50                                    # IPv4 cluster IP
+  - fd00:10:96::1                                    # IPv6 cluster IP (jeśli włączone)
+  ipFamilies:                                       # kolejność rodzin IP
+  - IPv4                                             # preferencja IPv4
+  - IPv6                                             # i IPv6
+  ipFamilyPolicy: PreferDualStack                   # SingleStack | PreferDualStack | RequireDualStack
+  publishNotReadyAddresses: false                   # true tylko dla headless + StatefulSet edge cases
+  sessionAffinity: ClientIP                         # None | ClientIP — sticky sessions
+  sessionAffinityConfig:                            # konfiguracja sticky
+    clientIP:                                       # parametry ClientIP affinity
+      timeoutSeconds: 10800                         # czas trzymania sesji (3h)
+  internalTrafficPolicy: Cluster                    # Cluster | Local — Local = tylko Node lokalne (kube-proxy)
+  externalTrafficPolicy: Cluster                    # dla NodePort/LB: Local zachowuje source IP
+  allocateLoadBalancerNodePorts: true               # NodePort pod LB (cloud)
+  loadBalancerClass: ""                             # wybór implementacji LB (provider-specific)
+  loadBalancerSourceRanges:                         # whitelist CIDR dla LB (bezpieczeństwo)
+  - 203.0.113.0/24                                  # przykładowa sieć biurowa
+  selector:                                         # dopasowanie Podów
+    app.kubernetes.io/name: api                     # etykieta na Pod template
+    app.kubernetes.io/component: backend            # druga etykieta — obie wymagane
+  ports:                                            # porty
+  - name: http                                      # nazwa — używana w Ingress / innych referencjach
+    protocol: TCP                                   # TCP | UDP | SCTP
+    port: 80                                        # port Service (klienci w klastrze)
+    targetPort: http                                # nazwa portu z Pod containers[].ports[].name
+    appProtocol: http                               # hint dla mesh / observability (Kubernetes 1.20+)
+  - name: metrics                                   # drugi port (Prometheus scrape wewnętrzny)
+    protocol: TCP                                   # TCP
+    port: 9090                                      # port metryk na Service
+    targetPort: 9090                                # port w kontenerze
+  - name: grpc                                      # przykład HTTP/2 / gRPC
+    protocol: TCP                                   # TCP
+    port: 8443                                      # port w Service
+    targetPort: 8443                                # port w Pod</code></pre>
+
+<h4>NodePort i LoadBalancer — tylko różnice w <code>spec</code></h4>
+<pre><code>spec:                                               # ten sam metadata/selector co wyżej
+  type: NodePort                                    # ekspozycja na każdym Node:port
+  ports:                                            # porty
+  - port: 80                                        # ClusterIP wewnętrzny
+    targetPort: 8080                                # kontener
+    nodePort: 30080                                 # 30000–32767 na Node (stały jeśli wolny)
+---
+spec:                                               # wariant LoadBalancer
+  type: LoadBalancer                                # provisionuje LB u cloud providera
+  ports:                                            # porty
+  - port: 443                                       # port publiczny LB
+    targetPort: http                                # do Podów
+  loadBalancerIP: ""                                # deprecated w wielu chmurach — używaj adnotacji</code></pre>
+
+<h4>Headless Service (<code>clusterIP: None</code>)</h4>
+<pre><code>spec:                                               # Service bez wirtualnego IP
+  clusterIP: None                                   # headless — DNS zwraca A/AAAA rekordy Podów
+  selector:                                         # selektor
+    app.kubernetes.io/name: api                     # Pody aplikacji
+  ports:                                            # porty (nadal wymagane dla nazw portów)
+  - name: http                                      # nazwa
+    port: 8080                                      # port logiczny
+    targetPort: 8080                                # port kontenera</code></pre>
+
+<hr>
+
+<h2 id="deployment" class="must-know">Deployment — minimalny manifest</h2>
+<p>Deployment utrzymuje desired liczbę replik przez ReplicaSet i obsługuje rolling update szablonu Poda (<code>spec.template</code>).</p>
+
+<pre><code>apiVersion: apps/v1                 # Deployment w grupie apps
+kind: Deployment                  # typ Deployment
+metadata:                         # metadane
+  name: api                       # nazwa Deployment
+spec:                             # spec Deployment
+  replicas: 3                     # ile Podów ma działać jednocześnie
+  selector:                       # musi pasować do etykiet w template.metadata.labels
+    matchLabels:                  # selektor ReplicaSet
+      app: api                    # ta sama etykieta co w template poniżej
+  template:                       # szablon Poda — struktura jak w sekcji Pod
+    metadata:                     # etykiety nowych Podów
+      labels:                     # labels
+        app: api                  # wymagane dopasowanie do selector.matchLabels
+    spec:                         # spec Poda
+      containers:                 # kontenery
+      - name: api                 # nazwa
+        image: registry.example.com/api:2.4.1  # obraz replik</code></pre>
+
+<h3>Deployment — manifest rozbudowany</h3>
+
+<pre><code>apiVersion: apps/v1                                 # API apps/v1 dla Deployment
+kind: Deployment                                    # Deployment
+metadata:                                           # metadane
+  name: api                                         # nazwa
+  namespace: production                             # namespace
+  labels:                                           # etykiety Deployment (nie używane przez selector Pod)
+    app.kubernetes.io/name: api                     # standard app
+    app.kubernetes.io/managed-by: kubectl           # kto zarządza (helm/kustomize/argocd)
+  annotations:                                      # adnotacje
+    deployment.kubernetes.io/revision: "12"         # tylko informacyjnie w status — nie ustawiaj ręcznie przy create
+spec:                                               # desired state Deployment
+  replicas: 5                                       # liczba Podów (HPA może nadpisywać)
+  revisionHistoryLimit: 5                           # ile starych ReplicaSet trzymać (rollback)
+  minReadySeconds: 10                               # Pod musi być Ready min. N sekund przed „success” rollout
+  progressDeadlineSeconds: 600                      # timeout rollout — failed po 10 min
+  paused: false                                     # true zatrzymuje rollout (rzadko)
+  strategy:                                         # strategia aktualizacji
+    type: RollingUpdate                             # RollingUpdate | Recreate
+    rollingUpdate:                                  # parametry rolling
+      maxSurge: 1                                   # ile dodatkowych Podów ponad replicas podczas update
+      maxUnavailable: 0                             # ile Podów może być niedostępnych (0 = zero downtime jeśli surge&gt;0)
+  selector:                                         # selektor ReplicaSet — IMMUTABLE po utworzeniu
+    matchLabels:                                    # wymagane matchLabels
+      app.kubernetes.io/name: api                   # kluczowa etykieta
+      app.kubernetes.io/component: backend          # druga etykieta
+  template:                                         # Pod template
+    metadata:                                       # metadane każdego tworzonego Poda
+      labels:                                       # musi ⊇ selector.matchLabels
+        app.kubernetes.io/name: api                 # zgodność z selector
+        app.kubernetes.io/component: backend        # zgodność z selector
+        app.kubernetes.io/version: "2.4.1"          # wersja — zmiana wymusza nowy ReplicaSet
+      annotations:                                  # adnotacje Poda
+        prometheus.io/scrape: "true"                # konwencja dla scrapera (nie magiczne samo w sobie)
+        prometheus.io/port: "9090"                  # port metryk
+    spec:                                           # spec Poda — skrót produkcyjny (pełny wzorzec w sekcji Pod)
+      serviceAccountName: api-sa                    # SA dla Podów replik
+      securityContext:                              # pod-level security
+        runAsNonRoot: true                          # non-root
+        seccompProfile:                             # seccomp
+          type: RuntimeDefault                      # domyślny profil runtime
+      containers:                                   # kontenery aplikacji
+      - name: api                                   # nazwa
+        image: registry.example.com/api:2.4.1       # wersjonowany obraz
+        imagePullPolicy: IfNotPresent               # polityka pull
+        ports:                                      # porty
+        - name: http                                # nazwa dla Service targetPort
+          containerPort: 8080                       # port app
+        resources:                                  # resources — konieczne sensowne HPA na CPU
+          requests:                                 # requests
+            cpu: "250m"                             # request CPU
+            memory: "512Mi"                         # request memory
+          limits:                                   # limits
+            memory: "1Gi"                           # limit memory
+        readinessProbe:                             # bez tego rolling update wysyła ruch za wcześnie
+          httpGet:                                  # HTTP GET
+            path: /ready                            # endpoint
+            port: http                              # nazwany port
+          periodSeconds: 5                          # interwał
+        livenessProbe:                              # restart zawieszonej repliki
+          httpGet:                                  # HTTP
+            path: /healthz                          # health
+            port: http                              # port
+          initialDelaySeconds: 20                   # opóźnienie startu
+      affinity:                                     # rozłożenie replik Deployment
+        podAntiAffinity:                            # anty-kolokacja
+          preferredDuringSchedulingIgnoredDuringExecution:  # preferuj różne Node
+          - weight: 100                             # waga
+            podAffinityTerm:                        # reguła
+              labelSelector:                        # szukaj Podów
+                matchLabels:                        # etykiety
+                  app.kubernetes.io/name: api       # ten sam app
+              topologyKey: kubernetes.io/hostname   # per Node</code></pre>
+
+<hr>
+
+<h2 id="hpa" class="must-know">HorizontalPodAutoscaler — minimalny manifest</h2>
+<p>HPA skaluje <code>replicas</code> w Deployment (lub innych scale target) na podstawie metryk — najczęściej CPU, czasem memory lub custom metrics z metrics API.</p>
+
+<pre><code>apiVersion: autoscaling/v2          # HPA v2 — wiele typów metryk
+kind: HorizontalPodAutoscaler       # autoscaler poziomy (liczba replik)
+metadata:                           # metadane
+  name: api                         # nazwa HPA
+spec:                               # spec HPA
+  scaleTargetRef:                   # co skalować
+    apiVersion: apps/v1             # API obiektu docelowego
+    kind: Deployment                # zwykle Deployment
+    name: api                       # nazwa Deployment w tym samym namespace
+  minReplicas: 2                    # dolna granica replik
+  maxReplicas: 10                   # górna granica replik
+  metrics:                          # lista metryk
+  - type: Resource                  # metryka zasobu Poda (CPU/memory)
+    resource:                       # szczegóły zasobu
+      name: cpu                     # cpu | memory
+      target:                       # cel skalowania
+        type: Utilization           # Utilization (% request) | AverageValue
+        averageUtilization: 70      # utrzymuj ~70% CPU względem request</code></pre>
+
+<h3>HPA — manifest rozbudowany</h3>
+
+<pre><code>apiVersion: autoscaling/v2                            # autoscaling API v2
+kind: HorizontalPodAutoscaler                         # HPA
+metadata:                                             # metadane
+  name: api                                           # nazwa
+  namespace: production                               # namespace
+  labels:                                             # etykiety
+    app.kubernetes.io/name: api                       # app
+spec:                                                 # spec autoscalera
+  scaleTargetRef:                                     # referencja do skalowanego obiektu
+    apiVersion: apps/v1                               # Deployment/StatefulSet/ReplicaSet
+    kind: Deployment                                  # typ target
+    name: api                                         # nazwa Deployment
+  minReplicas: 3                                      # minimum — HA i bufor na spike
+  maxReplicas: 50                                     # maximum — limit kosztów / capacity
+  behavior:                                           # jak szybko skalować góra/dół (stabilizacja)
+    scaleUp:                                          # reguły scale up
+      stabilizationWindowSeconds: 0                   # 0 = reaguj natychmiast (domyślnie 0 up / 300 down)
+      policies:                                       # polityki zmian replik
+      - type: Percent                                 # Percent | Pods
+        value: 100                                    # max +100% replik na okno
+        periodSeconds: 60                             # okno 60s
+      - type: Pods                                    # alternatywna polityka
+        value: 4                                      # max +4 Pody na okno
+        periodSeconds: 60                             # w tym samym oknie
+      selectPolicy: Max                               # Max | Min | Disabled — wybierz agresywniejszą
+    scaleDown:                                        # scale down — ostrożniej
+      stabilizationWindowSeconds: 300                 # 5 min — unikaj flappingu
+      policies:                                       # polityki
+      - type: Percent                                 # procentowo
+        value: 50                                     # max -50% replik na okno
+        periodSeconds: 60                             # co 60s
+      selectPolicy: Min                               # wybierz łagodniejszą politykę
+  metrics:                                            # metryki wyzwalające skalowanie
+  - type: Resource                                    # CPU/memory z metrics-server
+    resource:                                         # zasób
+      name: cpu                                       # cpu
+      target:                                         # cel
+        type: Utilization                             # procent względem requests.cpu
+        averageUtilization: 65                        # target 65%
+  - type: Resource                                    # druga metryka — memory
+    resource:                                         # memory
+      name: memory                                    # nazwa
+      target:                                         # cel
+        type: AverageValue                            # średnia wartość absolutna (nie %)
+        averageValue: 750Mi                           # ~750Mi na Pod średnio
+  - type: Pods                                        # metryka per-Pod (custom metrics pipeline)
+    pods:                                             # sekcja pods metrics
+      metric:                                         # identyfikacja metryki
+        name: http_requests_per_second                # nazwa z metrics adapter / Prometheus adapter
+      target:                                         # cel
+        type: AverageValue                            # AverageValue na Pod
+        averageValue: "500"                           # 500 RPS na replikę średnio
+  - type: Object                                      # metryka obiektu (np. kolejka, Ingress)
+    object:                                           # object metric
+      metric:                                         # nazwa metryki
+        name: messages_ready                          # np. głębokość kolejki
+      describedObject:                                # który obiekt obserwować
+        apiVersion: v1                                # API obiektu
+        kind: Service                                 # typ (Service, Ingress, …)
+        name: rabbitmq                                # nazwa obiektu
+      target:                                         # cel skalowania
+        type: Value                                   # Value | AverageValue
+        value: "30"                                   # skaluj gdy metryka &gt; 30
+  - type: External                                    # metryka zewnętrzna (cloud monitoring)
+    external:                                         # external
+      metric:                                         # metryka
+        name: queue_messages                          # nazwa z providera
+        selector:                                     # opcjonalny selector etykiet metryki
+          matchLabels:                                # dopasowanie
+            queue: orders                             # konkretna kolejka
+      target:                                         # cel
+        type: AverageValue                            # średnia na replikę
+        averageValue: "100"                           # target</code></pre>
+
+<p><strong>Wymagania poza manifestem (tylko checklist, bez instalacji):</strong> metryki <code>Resource</code> wymagają <code>resources.requests</code> na kontenerze i działającego metrics-server; metryki <code>Pods</code>/<code>Object</code>/<code>External</code> wymagają adaptera custom/external metrics API.</p>
+
+<hr>
+
+<h2 id="non-root" class="must-know">Usługa bez użytkownika root — Deployment + Service</h2>
+<p>Proces w kontenerze nie powinien działać jako UID 0. Manifest wymusza to przez <code>securityContext</code> (Pod + kontener); obraz powinien mieć użytkownika nie-root (<code>USER</code> w Dockerfile) i nasłuchiwać na porcie &gt; 1024 albo mieć tylko capability <code>NET_BIND_SERVICE</code> przy porcie 80/443.</p>
+<p>Poniżej komplet: <strong>Deployment</strong> (repliki) + <strong>Service</strong> (ruch w klastrze). Ten sam wzorzec działa dla nginx unprivileged, Spring Boot na 8080, Node.js itd.</p>
+
+<h3>Minimalny — dwa manifesty w jednym pliku (<code>---</code>)</h3>
+
+<pre><code>apiVersion: apps/v1                         # Deployment w apps/v1
+kind: Deployment                            # workload z replikami
+metadata:                                   # metadane Deployment
+  name: web                                 # nazwa
+spec:                                       # spec Deployment
+  replicas: 2                               # dwie repliki non-root
+  selector:                                 # selektor ReplicaSet
+    matchLabels:                            # musi = template.labels
+      app: web                              # etykieta app
+  template:                                 # szablon Poda
+    metadata:                               # metadane Poda
+      labels:                               # etykiety Podów
+        app: web                            # ta sama etykieta co selector
+    spec:                                   # spec Poda
+      securityContext:                      # kontekst na poziomie Poda
+        runAsNonRoot: true                  # API odrzuci Pod jeśli kontener chce UID 0
+        runAsUser: 10001                    # stały UID nie-root (spójny z obrazem)
+        fsGroup: 10001                      # grupa dla wolumenów — pliki zapisalne przez app
+      containers:                           # kontenery
+      - name: web                           # nazwa kontenera
+        image: myregistry/web:1.0.0         # obraz z USER 10001 w Dockerfile
+        ports:                              # porty
+        - name: http                        # nazwa — użyjesz w Service targetPort
+          containerPort: 8080               # port &gt; 1024 — bez uprawnień root
+        securityContext:                    # per-kontener (doprecyzowanie)
+          allowPrivilegeEscalation: false   # brak eskalacji do root
+          readOnlyRootFilesystem: true      # tylko odczyt / — zapis przez emptyDir
+        volumeMounts:                       # montaże
+        - name: tmp                         # volume na zapis tymczasowy
+          mountPath: /tmp                   # cache, temp files
+      volumes:                              # definicje wolumenów
+      - name: tmp                           # emptyDir
+        emptyDir: {}                          # dysk tymczasowy na Node
+---
+apiVersion: v1                              # Service core v1
+kind: Service                               # stały adres do Podów
+metadata:                                   # metadane
+  name: web                                 # DNS: web.&lt;namespace&gt;.svc
+spec:                                       # spec Service
+  selector:                                 # trafia w Pody Deployment
+    app: web                                # etykieta z template
+  ports:                                    # porty
+  - port: 80                                # port w klastrze (klienci wewnętrzni)
+    targetPort: http                        # nazwa portu 8080 z Deployment</code></pre>
+
+<h3>Rozbudowany — wymuszenie non-root, porty, seccomp, wolumeny (komentarz linii)</h3>
+
+<pre><code>apiVersion: apps/v1                                      # Deployment
+kind: Deployment                                         # typ
+metadata:                                                # metadane
+  name: web                                              # nazwa workloadu
+  namespace: production                                  # namespace
+  labels:                                                # etykiety obiektu
+    app.kubernetes.io/name: web                          # standardowa nazwa app
+spec:                                                    # spec
+  replicas: 3                                            # repliki
+  revisionHistoryLimit: 3                                # historia rollback
+  selector:                                              # immutable selector
+    matchLabels:                                         # match
+      app.kubernetes.io/name: web                        # klucz selekcji
+  template:                                              # Pod template
+    metadata:                                            # metadane Pod
+      labels:                                            # etykiety Pod
+        app.kubernetes.io/name: web                      # zgodne z selector + Service
+    spec:                                                # spec Pod
+      automountServiceAccountToken: false                # Pod nie potrzebuje tokena API — mniejsza powierzchnia
+      securityContext:                                   # pod securityContext
+        runAsNonRoot: true                               # wymuszenie: żaden kontener jako root
+        runAsUser: 10001                                 # konkretny UID (zgodny z obrazem / /etc/passwd)
+        runAsGroup: 10001                                # GID procesów
+        fsGroup: 10001                                   # właściciel grupy montowanych wolumenów
+        fsGroupChangePolicy: OnRootMismatch              # OnRootMismatch — chmod/chown tylko gdy root w volume
+        seccompProfile:                                  # seccomp
+          type: RuntimeDefault                           # domyślny profil runtime (restricted-friendly)
+      containers:                                        # lista kontenerów
+      - name: web                                        # kontener aplikacji
+        image: myregistry/web:1.0.0                      # obraz: USER 10001, brak zapisu do /
+        imagePullPolicy: IfNotPresent                    # polityka pull
+        ports:                                           # deklaracja portów
+        - name: http                                     # nazwany port HTTP
+          containerPort: 8080                            # aplikacja bind na 8080 (non-privileged)
+          protocol: TCP                                  # TCP
+        env:                                             # ENV
+        - name: PORT                                     # wiele frameworków czyta PORT
+          value: "8080"                                  # musi zgadzać się z containerPort
+        resources:                                       # limity — osobno od security
+          requests:                                      # request
+            cpu: "100m"                                  # CPU
+            memory: "128Mi"                              # RAM
+          limits:                                        # limit
+            memory: "256Mi"                              # OOMKill po przekroczeniu
+        securityContext:                                 # security kontenera
+          runAsNonRoot: true                             # redundancja — jasny kontrakt w review
+          runAsUser: 10001                               # ten sam UID co pod (można pominąć jeśli identyczny)
+          allowPrivilegeEscalation: false                # CAP_SETUID itd. zablokowane
+          readOnlyRootFilesystem: true                   # / tylko read-only
+          capabilities:                                  # Linux capabilities
+            drop: ["ALL"]                                # usuń wszystkie domyślne capability
+          # add: ["NET_BIND_SERVICE"]                    # odkomentuj TYLKO gdy musisz słuchać na 80/443 bez root
+        volumeMounts:                                    # podpięcie wolumenów (wymagane przy readOnlyRoot)
+        - name: tmp                                      # tmp
+          mountPath: /tmp                                # pliki tymczasowe
+        - name: cache                                    # cache
+          mountPath: /var/cache/app                      # katalog cache aplikacji
+        - name: run                                      # pid/socket dir
+          mountPath: /var/run/app                        # runtime state (nie /var/run cały system)
+        readinessProbe:                                  # gotowość — Service dostaje ruch
+          httpGet:                                       # HTTP
+            path: /health/ready                          # endpoint
+            port: http                                   # 8080
+            scheme: HTTP                                   # HTTP
+          periodSeconds: 5                               # co 5s
+        livenessProbe:                                   # żywotność
+          httpGet:                                       # HTTP
+            path: /health/live                           # prostszy check
+            port: http                                   # ten sam port
+          initialDelaySeconds: 10                        # po starcie
+      volumes:                                           # wolumeny Pod
+      - name: tmp                                        # emptyDir tmp
+        emptyDir:                                        # tymczasowy
+          medium: Memory                                 # tmpfs — szybki, mały
+          sizeLimit: 32Mi                                # limit
+      - name: cache                                      # cache na dysku Node
+        emptyDir:                                        # emptyDir
+          sizeLimit: 128Mi                               # limit cache
+      - name: run                                        # katalog runtime
+        emptyDir:                                        # emptyDir
+          sizeLimit: 16Mi                                # mały
+---
+apiVersion: v1                                           # Service
+kind: Service                                            # typ
+metadata:                                                # metadane
+  name: web                                              # nazwa
+  namespace: production                                  # ten sam namespace co Deployment
+spec:                                                    # spec
+  type: ClusterIP                                        # wewnętrzny ruch (Ingress/LB osobno)
+  selector:                                              # wybór Podów
+    app.kubernetes.io/name: web                          # etykieta z template Deployment
+  ports:                                                 # mapowanie portów
+  - name: http                                           # nazwa portu Service
+    port: 80                                             # port „wewnętrzny” dla klientów (nie wymaga root w Podzie)
+    targetPort: http                                     # → containerPort 8080 (nazwa z Deployment)
+    protocol: TCP                                        # TCP</code></pre>
+
+<h3>Obraz kontenera — co musi pasować do manifestu (bez budowy klastra)</h3>
+<table>
+  <thead>
+    <tr><th>Element</th><th>Manifest / obraz</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>UID/GID</strong></td><td><code>runAsUser</code> / <code>fsGroup</code> w YAML = użytkownik z <code>USER</code> w Dockerfile (np. 10001). Pułapka: oficjalny nginx na 80 wymaga root lub osobnego obrazu unprivileged.</td></tr>
+    <tr><td><strong>Port</strong></td><td><code>containerPort</code> 8080 + Service <code>port: 80</code> → <code>targetPort: http</code>. Klient widzi 80; proces w Podzie nie binduje privileged portu.</td></tr>
+    <tr><td><strong>Zapis na dysk</strong></td><td><code>readOnlyRootFilesystem: true</code> + <code>emptyDir</code> na <code>/tmp</code>, cache, pidfile — inaczej CrashLoop „Read-only file system”.</td></tr>
+    <tr><td><strong>Namespace / PSS</strong></td><td>Namespace z <code>pod-security.kubernetes.io/enforce: restricted</code> wymaga m.in. <code>runAsNonRoot</code> i drop ALL — manifest powyżej jest pod restricted.</td></tr>
+  </tbody>
+</table>
+
+<div class="hint"><strong>Check przed deployem:</strong> jeśli Pod ma status <code>CreateContainerConfigError</code> lub <code>runAsNonRoot</code> — obraz nadal startuje jako UID 0 (brak <code>USER</code> w obrazie). Jeśli <code>Permission denied</code> na pliku — zły <code>fsGroup</code> lub brak <code>volumeMount</code> dla ścieżki zapisu.</div>
+
+<hr>
+
+<h2 id="triki">Triki, tipsy i zalecenia</h2>
+
+<table>
+  <thead>
+    <tr><th>Obszar</th><th>Praktyka</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Etykiety</strong></td><td>Używaj <code>app.kubernetes.io/name</code>, <code>/instance</code>, <code>/version</code> — selector Service i Deployment muszą być spójne i stabilne (nie zmieniaj selector Deployment po create).</td></tr>
+    <tr><td><strong>Immutable</strong></td><td><code>Deployment.spec.selector</code> nie zmienia się. Nowa aplikacja = nowy Deployment lub migracja blue/green.</td></tr>
+    <tr><td><strong>Probes</strong></td><td><code>readiness</code> ≠ <code>liveness</code>. Readiness wyłącza z Service; liveness restartuje kontener. Dla wolnego startu dodaj <code>startupProbe</code>.</td></tr>
+    <tr><td><strong>Resources</strong></td><td>Bez <code>requests</code> scheduler nie wie gdzie posadzić Pod; HPA na CPU % nie ma sensu. Ustal requests ≈ typowe użycie, limits na memory konserwatywnie.</td></tr>
+    <tr><td><strong>Graceful shutdown</strong></td><td><code>terminationGracePeriodSeconds</code> + <code>preStop sleep</code> + aplikacja obsługująca SIGTERM — mniej 502 przy rollout.</td></tr>
+    <tr><td><strong>Service</strong></td><td><code>targetPort</code> jako nazwa (<code>http</code>) — zmiana numeru portu tylko w Pod. Dla source IP użyj <code>externalTrafficPolicy: Local</code> na LB.</td></tr>
+    <tr><td><strong>HPA</strong></td><td><code>minReplicas ≥ 2</code> dla HA. Osobne polityki <code>scaleDown</code> — wolniejsze niż scale up. Testuj na synthetic load.</td></tr>
+    <tr><td><strong>Manifesty</strong></td><td>Trzymaj jeden logical app w wielu plikach lub <code>---</code> — ta sama <code>namespace</code> i spójne nazwy. Generuj z Helm/Kustomize, nie kopiuj ręcznie wersji w 10 miejscach.</td></tr>
+    <tr><td><strong>Bezpieczeństwo / non-root</strong></td><td>Pod + kontener: <code>runAsNonRoot</code>, stały <code>runAsUser</code>, <code>fsGroup</code>, <code>readOnlyRootFilesystem</code>, <code>drop: ALL</code>. Service mapuje port 80 → 8080 — aplikacja nie potrzebuje root. Szczegóły: sekcja <a href="#non-root">Usługa bez root</a>.</td></tr>
+    <tr><td><strong>Walidacja</strong></td><td>Przed merge: <code>kubectl apply --dry-run=server</code> (wymaga API) lub <code>kubeconform</code> / <code>kubeval</code> offline na CI — łapie błędne pola i wersje API.</td></tr>
+  </tbody>
+</table>
+
+<h3>Szybkie mapowanie: co łączy manifesty</h3>
+<pre><code>Deployment.spec.template.metadata.labels  ──►  Service.spec.selector
+Deployment.spec.template.spec             ──►  ten sam kształt co Pod.spec
+HPA.spec.scaleTargetRef.name              ──►  Deployment.metadata.name
+HPA metrics Resource.cpu                  ──►  containers[].resources.requests.cpu</code></pre>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>Selector Deployment ≠ labels w template</strong> — ReplicaSet nie tworzy Podów; błąd przy apply lub puste repliki.</li>
+  <li><strong>Service bez pasujących Podów</strong> — <code>selector</code> nie zgadza się z etykietami (literówka, inny <code>component</code>).</li>
+  <li><strong><code>targetPort</code> zły numer</strong> — Service działa, ale connection refused — aplikacja słucha na innym porcie niż w manifest.</li>
+  <li><strong>Brak <code>resources.requests</code> przy HPA CPU</strong> — metryka utilization jest bezużyteczna lub HPA nie skaluje przewidywalnie.</li>
+  <li><strong>Liveness na tym samym endpoint co readiness z DB</strong> — chwilowa niedostępność DB restartuje wszystkie Pody (storm).</li>
+  <li><strong><code>latest</code> tag obrazu + <code>imagePullPolicy: IfNotPresent</code></strong> — Node trzyma stary obraz; „deploy” nie zmienia wersji.</li>
+  <li><strong>Zmiana <code>Deployment.spec.selector</code></strong> — API odrzuca update; wymaga nowego obiektu.</li>
+  <li><strong><code>maxUnavailable: 100%</code> + <code>maxSurge: 0</code></strong> — rolling update może zdjąć cały ruch naraz (downtime).</li>
+  <li><strong>Headless bez poprawnych portów</strong> — DNS działa, ale klient łączy się na zły port kontenera.</li>
+  <li><strong>HPA <code>maxReplicas</code> mniejsze niż ręczne <code>replicas</code> w Deployment</strong> — HPA obniży repliki przy pierwszej pętli; niespodziewane przy ręcznym skalowaniu.</li>
+  <li><strong><code>runAsNonRoot: true</code>, ale obraz startuje jako root</strong> — kubelet nie uruchomi kontenera; ustaw <code>USER</code> w obrazie lub użyj obrazu unprivileged.</li>
+  <li><strong><code>readOnlyRootFilesystem: true</code> bez emptyDir</strong> — aplikacja zapisuje do <code>/tmp</code> lub cache i pada w pętli; dodaj <code>volumeMounts</code> + <code>volumes</code>.</li>
+</ol>
+
+</body>
+</html>
