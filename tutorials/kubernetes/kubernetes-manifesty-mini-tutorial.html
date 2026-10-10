@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manifesty Kubernetes — mini-tutorial</title>
+  <title>Manifesty Kubernetes (Spring Boot) — mini-tutorial</title>
   <style>
     :root {
       --bg: #fafafa;
@@ -119,14 +119,15 @@
 
 <p class="back"><a href="../index.html">← Spis tutoriali</a></p>
 
-<h1>Manifesty Kubernetes — mini-tutorial</h1>
-<p class="meta">Pod · Service · Deployment · HPA · uruchomienie bez root — wariant minimalny i rozbudowany, komentarz linia po linii · triki i błędy<br>
+<h1>Manifesty Kubernetes — mini-tutorial (Spring Boot)</h1>
+<p class="meta">Scenariusz przewodni: <strong>Java Spring Boot</strong> (Actuator, port 8080) · Pod · Service · Deployment · HPA · non-root — minimal vs rozbudowany, komentarz linia po linii<br>
 Format: HTML (offline, <code>file://</code>) · Bez sekcji ciekawostek · Bez instalacji klastra i teorii K8s</p>
 
 <nav class="toc">
   <strong>Spis treści</strong>
   <ol>
     <li><a href="#anatomia">Anatomia pliku YAML</a></li>
+    <li><a href="#spring-boot">Spring Boot — Actuator i probe’y</a></li>
     <li><a href="#pod">Pod</a></li>
     <li><a href="#service">Service</a></li>
     <li><a href="#deployment">Deployment</a></li>
@@ -154,6 +155,52 @@ status: …               # tylko odczyt z API — NIE wpisujesz tego w manifest
 
 <hr>
 
+<h2 id="spring-boot" class="must-know">Spring Boot — Actuator a manifest K8s</h2>
+<p>Wszystkie przykłady YAML poniżej zakładają serwis HTTP na <strong>porcie 8080</strong> (<code>server.port</code>) i włączony <strong>Spring Boot Actuator</strong>. Od Boot 2.3+ Kubernetes dostaje dedykowane endpointy po włączeniu probe groups — nie musisz sam składać ścieżek z własnych kontrolerów REST.</p>
+
+<h3>Konfiguracja aplikacji (poza manifestem)</h3>
+<pre><code># application-k8s.yaml (profil prod / k8s)
+management.endpoint.health.probes.enabled: true
+management.health.livenessstate.enabled: true
+management.health.readinessstate.enabled: true
+management.endpoint.health.show-details: never
+management.endpoints.web.exposure.include: health,prometheus,info
+server.shutdown: graceful
+spring.lifecycle.timeout-per-shutdown-phase: 30s</code></pre>
+
+<h3>Mapowanie probe → Actuator</h3>
+<table>
+  <thead>
+    <tr><th>Probe K8s</th><th>Ścieżka Spring Boot</th><th>Uwagi</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>startupProbe</strong></td><td><code>/actuator/health/liveness</code></td><td>Długi start JVM + Spring — ustaw wysoki <code>failureThreshold</code>; blokuje liveness/readiness do pierwszego sukcesu.</td></tr>
+    <tr><td><strong>livenessProbe</strong></td><td><code>/actuator/health/liveness</code></td><td>Tylko „proces żyje” (LivenessState). <strong>Nie</strong> wołaj agregatu <code>/actuator/health</code> — restart przy padniętej bazie.</td></tr>
+    <tr><td><strong>readinessProbe</strong></td><td><code>/actuator/health/readiness</code></td><td>ReadinessState + wskazane <code>HealthIndicator</code> (np. DataSource). Chwilowy brak DB → Pod wycięty z Service, bez restartu.</td></tr>
+  </tbody>
+</table>
+
+<h3>Czego nie stosować (Spring Boot w K8s)</h3>
+<table>
+  <thead>
+    <tr><th>Unikaj</th><th>Dlaczego</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>tcpSocket</code> na 8080 zamiast HTTP</td><td>Tomcat/Netty nasłuchuje, ale kontekst Spring jeszcze nie gotowy — fałszywe „healthy”.</td></tr>
+    <tr><td><code>exec</code> + <code>curl</code> w obrazie</td><td>Grubszy obraz, wolniejsze probe’y; Actuator HTTP wystarczy.</td></tr>
+    <tr><td>Endpoint biznesowy (<code>/api/orders</code>)</td><td>Auth, efekty uboczne, obciążenie — to nie health check.</td></tr>
+    <tr><td>Ten sam URL liveness = readiness = <code>/actuator/health</code></td><td>Agregat łączy DB/disk/broker — pad zależności → restart całego fleetu zamiast drain.</td></tr>
+    <tr><td>Ekspozycja Actuator na Ingress/LB</td><td>Service/Ingress tylko na port aplikacji; metryki wewnętrznie (<code>ClusterIP</code>) lub osobny port management.</td></tr>
+    <tr><td><code>management.endpoints.web.exposure.include: "*"</code> w prod</td><td><code>env</code>, <code>heapdump</code>, <code>shutdown</code> — nigdy publicznie; <code>shutdown</code> nie jest probe’em.</td></tr>
+  </tbody>
+</table>
+
+<div class="hint"><strong>Opcja zaawansowana:</strong> <code>management.server.port: 8081</code> — probe’y wskazują port <code>management</code>, a Service HTTP dla klientów mapuje tylko 8080 → brak Actuator na głównym serwisie. W manifestach poniżej używamy jednego portu <code>http</code> (8080) — najczęstszy wariant w mikroserwisach Spring.</div>
+
+<div class="hint"><strong>Pamięć JVM a <code>resources.limits.memory</code>:</strong> ustaw np. <code>JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75.0</code> (lub <code>-XX:+UseContainerSupport</code> na starszych JDK) i zostaw headroom ponad heap — limit RAM w YAML to cały kontener (metaspace, thread stack, native), nie tylko <code>-Xmx</code>.</div>
+
+<hr>
+
 <h2 id="pod" class="must-know">Pod — minimalny manifest</h2>
 <p>Pod uruchamia jeden lub więcej kontenerów na wspólnym network namespace. W produkcji rzadko tworzysz go ręcznie (robi to Deployment), ale manifest Poda jest szablonem dla <code>spec.template</code> w Deployment.</p>
 
@@ -164,7 +211,9 @@ metadata:                         # sekcja metadanych obiektu
 spec:                             # specyfikacja uruchomienia
   containers:                     # lista kontenerów w Podzie (min. jeden)
   - name: app                     # nazwa kontenera wewnątrz Poda (dla logów, exec, probes)
-    image: nginx:1.27-alpine      # obraz + tag (unikaj :latest w prod)</code></pre>
+    image: registry.example.com/orders-api:2.4.1  # Spring Boot fat JAR w obrazie (unikaj :latest w prod)
+    ports:
+    - containerPort: 8080         # domyślny server.port Spring Boot</code></pre>
 
 <h3>Pod — manifest rozbudowany (komentarz każdej linii)</h3>
 
@@ -179,7 +228,7 @@ metadata:                                           # metadane
     app.kubernetes.io/version: "2.4.1"              # wersja release (string)
     env: prod                                       # środowisko (prod/stage/dev)
   annotations:                                      # adnotacje — nie trafiają do label selector Service
-    description: "API — manifest przykładowy"       # opis dla ludzi / dokumentacji
+    description: "Spring Boot orders-api — manifest przykładowy"  # opis dla ludzi / dokumentacji
     kubectl.kubernetes.io/restartedAt: "2026-01-01T00:00:00Z"  # znacznik ręcznego restartu (wzorzec)
 spec:                                               # desired state Poda
   restartPolicy: Always                             # Always | OnFailure | Never (dla bare Pod)
@@ -219,16 +268,18 @@ spec:                                               # desired state Poda
       readOnlyRootFilesystem: true                  # root FS tylko do odczytu
   containers:                                       # kontenery aplikacyjne
   - name: api                                       # nazwa kontenera
-    image: registry.example.com/api:2.4.1           # prywatny rejestr + immutable tag
+    image: registry.example.com/orders-api:2.4.1    # Spring Boot fat JAR — immutable tag
     imagePullPolicy: IfNotPresent                   # Always | IfNotPresent | Never
     ports:                                          # porty deklarowane (informacyjnie + dla probes)
     - name: http                                    # nazwa portu — używana w probe port: http
       containerPort: 8080                           # port nasłuchu w kontenerze
       protocol: TCP                                 # TCP | UDP | SCTP
     env:                                            # zmienne środowiskowe
-    - name: LOG_LEVEL                               # nazwa ENV w procesie
-      value: "info"                                 # wartość literalna
-    - name: DB_PASSWORD                             # sekret z obiektu Secret
+    - name: SPRING_PROFILES_ACTIVE                  # profil Spring (np. k8s, prod)
+      value: "k8s,prod"                             # wieloprofilowość
+    - name: JAVA_TOOL_OPTIONS                       # JVM świadoma limitu kontenera
+      value: "-XX:MaxRAMPercentage=75.0"            # heap ~75% limitu RAM — zostaw headroom
+    - name: SPRING_DATASOURCE_PASSWORD              # sekret z obiektu Secret (relaxed binding)
       valueFrom:                                    # źródło wartości
         secretKeyRef:                               # klucz w Secret
           name: api-db                                # nazwa Secret
@@ -251,25 +302,25 @@ spec:                                               # desired state Poda
       mountPath: /etc/api/config.yaml               # plik konfiguracyjny
       subPath: config.yaml                          # jeden klucz jako pojedynczy plik
       readOnly: true                                # tylko odczyt
-    livenessProbe:                                  # restart kontenera gdy aplikacja „umarła”
-      httpGet:                                      # probe HTTP
-        path: /healthz                              # endpoint żywotności
-        port: http                                  # nazwa z ports[].name
+    livenessProbe:                                  # restart gdy JVM/Spring „zawieszone” (LivenessState)
+      httpGet:                                      # probe HTTP — Actuator, nie tcpSocket
+        path: /actuator/health/liveness             # wymaga management.endpoint.health.probes.enabled
+        port: http                                  # nazwa z ports[].name (8080)
         scheme: HTTP                                # HTTP | HTTPS
-      initialDelaySeconds: 15                       # opóźnienie po starcie przed pierwszym checkiem
+      initialDelaySeconds: 0                        # przy startupProbe initialDelay może być 0
       periodSeconds: 10                             # co ile sekund powtarzać
-      timeoutSeconds: 2                             # timeout pojedynczego requestu
+      timeoutSeconds: 3                             # Spring start + GC — nie za krótki timeout
       failureThreshold: 3                           # ile failów z rzędu → restart
     readinessProbe:                                 # czy Pod dostaje ruch z Service
       httpGet:                                      # probe HTTP
-        path: /ready                                # endpoint gotowości (np. po migracji DB)
+        path: /actuator/health/readiness            # ReadinessState + wybrane HealthIndicator (np. DB)
         port: http                                  # ten sam port co aplikacja
       periodSeconds: 5                              # częstsze sprawdzanie niż liveness
       successThreshold: 1                           # ile sukcesów → Ready
       failureThreshold: 3                           # ile failów → usunięcie z Endpoints
-    startupProbe:                                   # dla wolnego startu — blokuje liveness/readiness
-      httpGet:                                      # ten sam styl co liveness
-        path: /healthz                              # prosty endpoint
+    startupProbe:                                   # wolny start Spring Boot — blokuje liveness/readiness
+      httpGet:                                      # ten sam endpoint co liveness
+        path: /actuator/health/liveness             # dopóki JVM/context się podnosi
         port: http                                  # port aplikacji
       periodSeconds: 5                              # interwał podczas fazy startu
       failureThreshold: 30                          # max 30*5s = 150s na start
@@ -280,9 +331,9 @@ spec:                                               # desired state Poda
         drop: ["ALL"]                               # usuń wszystkie domyślne
         add: ["NET_BIND_SERVICE"]                   # dodaj tylko potrzebne (port &lt; 1024)
     lifecycle:                                      # hooki cyklu życia kontenera
-      preStop:                                      # przed wysłaniem SIGTERM przy usuwaniu Poda
+      preStop:                                      # przed SIGTERM — czas na wycięcie z Endpoints (readiness już fail)
         exec:                                       # komenda w kontenerze
-          command: ["/bin/sh", "-c", "sleep 5"]     # opóźnienie — czas na drain z load balancera
+          command: ["/bin/sh", "-c", "sleep 10"]    # kubelet czeka; Spring server.shutdown=graceful kończy requesty
   volumes:                                          # definicje wolumenów dostępnych dla mountów
   - name: tmp                                       # emptyDir dla /tmp przy readOnlyRootFilesystem
     emptyDir:                                       # tymczasowy dysk na Node (ginie z Podem)
@@ -361,14 +412,10 @@ spec:                                               # spec Service
     port: 80                                        # port Service (klienci w klastrze)
     targetPort: http                                # nazwa portu z Pod containers[].ports[].name
     appProtocol: http                               # hint dla mesh / observability (Kubernetes 1.20+)
-  - name: metrics                                   # drugi port (Prometheus scrape wewnętrzny)
+  - name: metrics                                   # Micrometer / Actuator (wewnętrzny scrape)
     protocol: TCP                                   # TCP
-    port: 9090                                      # port metryk na Service
-    targetPort: 9090                                # port w kontenerze
-  - name: grpc                                      # przykład HTTP/2 / gRPC
-    protocol: TCP                                   # TCP
-    port: 8443                                      # port w Service
-    targetPort: 8443                                # port w Pod</code></pre>
+    port: 8080                                      # ten sam port co app (path /actuator/prometheus)
+    targetPort: http                                # nazwa portu z Deployment — nie wystawiaj na publiczny Ingress</code></pre>
 
 <h4>NodePort i LoadBalancer — tylko różnice w <code>spec</code></h4>
 <pre><code>spec:                                               # ten sam metadata/selector co wyżej
@@ -452,8 +499,9 @@ spec:                                               # desired state Deployment
         app.kubernetes.io/component: backend        # zgodność z selector
         app.kubernetes.io/version: "2.4.1"          # wersja — zmiana wymusza nowy ReplicaSet
       annotations:                                  # adnotacje Poda
-        prometheus.io/scrape: "true"                # konwencja dla scrapera (nie magiczne samo w sobie)
-        prometheus.io/port: "9090"                  # port metryk
+        prometheus.io/scrape: "true"                # konwencja dla scrapera (np. Prometheus operator)
+        prometheus.io/path: "/actuator/prometheus"  # Micrometer registry — Spring Boot Actuator
+        prometheus.io/port: "8080"                  # ten sam port co server.port (lub management.server.port)
     spec:                                           # spec Poda — skrót produkcyjny (pełny wzorzec w sekcji Pod)
       serviceAccountName: api-sa                    # SA dla Podów replik
       securityContext:                              # pod-level security
@@ -473,16 +521,22 @@ spec:                                               # desired state Deployment
             memory: "512Mi"                         # request memory
           limits:                                   # limits
             memory: "1Gi"                           # limit memory
+        startupProbe:                               # Spring Boot — długi cold start przed liveness
+          httpGet:                                  # HTTP GET Actuator
+            path: /actuator/health/liveness         # LivenessState
+            port: http                              # 8080
+          periodSeconds: 5                          # interwał podczas startu
+          failureThreshold: 36                      # np. 36×5s ≈ 3 min na start JVM
         readinessProbe:                             # bez tego rolling update wysyła ruch za wcześnie
           httpGet:                                  # HTTP GET
-            path: /ready                            # endpoint
+            path: /actuator/health/readiness        # gotowość na ruch (DB w HealthIndicator)
             port: http                              # nazwany port
           periodSeconds: 5                          # interwał
         livenessProbe:                              # restart zawieszonej repliki
-          httpGet:                                  # HTTP
-            path: /healthz                          # health
+          httpGet:                                  # HTTP Actuator
+            path: /actuator/health/liveness         # nie /actuator/health (agregat z DB)
             port: http                              # port
-          initialDelaySeconds: 20                   # opóźnienie startu
+          periodSeconds: 10                         # rzadziej niż readiness
       affinity:                                     # rozłożenie replik Deployment
         podAntiAffinity:                            # anty-kolokacja
           preferredDuringSchedulingIgnoredDuringExecution:  # preferuj różne Node
@@ -599,40 +653,53 @@ spec:                                                 # spec autoscalera
 
 <h2 id="non-root" class="must-know">Usługa bez użytkownika root — Deployment + Service</h2>
 <p>Proces w kontenerze nie powinien działać jako UID 0. Manifest wymusza to przez <code>securityContext</code> (Pod + kontener); obraz powinien mieć użytkownika nie-root (<code>USER</code> w Dockerfile) i nasłuchiwać na porcie &gt; 1024 albo mieć tylko capability <code>NET_BIND_SERVICE</code> przy porcie 80/443.</p>
-<p>Poniżej komplet: <strong>Deployment</strong> (repliki) + <strong>Service</strong> (ruch w klastrze). Ten sam wzorzec działa dla nginx unprivileged, Spring Boot na 8080, Node.js itd.</p>
+<p>Poniżej komplet: <strong>Deployment</strong> (repliki) + <strong>Service</strong> (ruch w klastrze) dla typowego obrazu <strong>Spring Boot</strong> (distroless / JRE + fat JAR, użytkownik nie-root, <code>server.port=8080</code>).</p>
 
 <h3>Minimalny — dwa manifesty w jednym pliku (<code>---</code>)</h3>
 
 <pre><code>apiVersion: apps/v1                         # Deployment w apps/v1
 kind: Deployment                            # workload z replikami
 metadata:                                   # metadane Deployment
-  name: web                                 # nazwa
+  name: orders-api                          # nazwa Deployment
 spec:                                       # spec Deployment
   replicas: 2                               # dwie repliki non-root
   selector:                                 # selektor ReplicaSet
     matchLabels:                            # musi = template.labels
-      app: web                              # etykieta app
+      app: orders-api                       # etykieta app
   template:                                 # szablon Poda
     metadata:                               # metadane Poda
       labels:                               # etykiety Podów
-        app: web                            # ta sama etykieta co selector
+        app: orders-api                     # ta sama etykieta co selector
     spec:                                   # spec Poda
       securityContext:                      # kontekst na poziomie Poda
         runAsNonRoot: true                  # API odrzuci Pod jeśli kontener chce UID 0
         runAsUser: 10001                    # stały UID nie-root (spójny z obrazem)
         fsGroup: 10001                      # grupa dla wolumenów — pliki zapisalne przez app
       containers:                           # kontenery
-      - name: web                           # nazwa kontenera
-        image: myregistry/web:1.0.0         # obraz z USER 10001 w Dockerfile
+      - name: orders-api                    # nazwa kontenera
+        image: myregistry/orders-api:1.0.0  # Spring Boot; Dockerfile: USER 10001
         ports:                              # porty
         - name: http                        # nazwa — użyjesz w Service targetPort
-          containerPort: 8080               # port &gt; 1024 — bez uprawnień root
+          containerPort: 8080               # server.port — bez uprawnień root
+        env:                                # Spring — port spójny z containerPort
+        - name: SERVER_PORT                 # relaxed binding dla server.port
+          value: "8080"
+        readinessProbe:                     # Actuator readiness przed ruchem
+          httpGet:
+            path: /actuator/health/readiness
+            port: http
+          periodSeconds: 5
+        livenessProbe:                      # Actuator liveness — bez agregatu /health
+          httpGet:
+            path: /actuator/health/liveness
+            port: http
+          periodSeconds: 10
         securityContext:                    # per-kontener (doprecyzowanie)
           allowPrivilegeEscalation: false   # brak eskalacji do root
           readOnlyRootFilesystem: true      # tylko odczyt / — zapis przez emptyDir
         volumeMounts:                       # montaże
         - name: tmp                         # volume na zapis tymczasowy
-          mountPath: /tmp                   # cache, temp files
+          mountPath: /tmp                   # Tomcat/work, temp Spring
       volumes:                              # definicje wolumenów
       - name: tmp                           # emptyDir
         emptyDir: {}                          # dysk tymczasowy na Node
@@ -640,33 +707,33 @@ spec:                                       # spec Deployment
 apiVersion: v1                              # Service core v1
 kind: Service                               # stały adres do Podów
 metadata:                                   # metadane
-  name: web                                 # DNS: web.&lt;namespace&gt;.svc
+  name: orders-api                          # DNS: orders-api.&lt;namespace&gt;.svc
 spec:                                       # spec Service
   selector:                                 # trafia w Pody Deployment
-    app: web                                # etykieta z template
+    app: orders-api                         # etykieta z template
   ports:                                    # porty
   - port: 80                                # port w klastrze (klienci wewnętrzni)
-    targetPort: http                        # nazwa portu 8080 z Deployment</code></pre>
+    targetPort: http                        # → 8080 w Podzie (Actuator tylko wewnątrz klastra)</code></pre>
 
 <h3>Rozbudowany — wymuszenie non-root, porty, seccomp, wolumeny (komentarz linii)</h3>
 
 <pre><code>apiVersion: apps/v1                                      # Deployment
 kind: Deployment                                         # typ
 metadata:                                                # metadane
-  name: web                                              # nazwa workloadu
+  name: orders-api                                       # nazwa workloadu Spring Boot
   namespace: production                                  # namespace
   labels:                                                # etykiety obiektu
-    app.kubernetes.io/name: web                          # standardowa nazwa app
+    app.kubernetes.io/name: orders-api                   # standardowa nazwa app
 spec:                                                    # spec
   replicas: 3                                            # repliki
   revisionHistoryLimit: 3                                # historia rollback
   selector:                                              # immutable selector
     matchLabels:                                         # match
-      app.kubernetes.io/name: web                        # klucz selekcji
+      app.kubernetes.io/name: orders-api                 # klucz selekcji
   template:                                              # Pod template
     metadata:                                            # metadane Pod
       labels:                                            # etykiety Pod
-        app.kubernetes.io/name: web                      # zgodne z selector + Service
+        app.kubernetes.io/name: orders-api               # zgodne z selector + Service
     spec:                                                # spec Pod
       automountServiceAccountToken: false                # Pod nie potrzebuje tokena API — mniejsza powierzchnia
       securityContext:                                   # pod securityContext
@@ -678,16 +745,20 @@ spec:                                                    # spec
         seccompProfile:                                  # seccomp
           type: RuntimeDefault                           # domyślny profil runtime (restricted-friendly)
       containers:                                        # lista kontenerów
-      - name: web                                        # kontener aplikacji
-        image: myregistry/web:1.0.0                      # obraz: USER 10001, brak zapisu do /
+      - name: orders-api                                 # kontener Spring Boot
+        image: myregistry/orders-api:1.0.0               # obraz: USER 10001, brak zapisu do /
         imagePullPolicy: IfNotPresent                    # polityka pull
         ports:                                           # deklaracja portów
         - name: http                                     # nazwany port HTTP
-          containerPort: 8080                            # aplikacja bind na 8080 (non-privileged)
+          containerPort: 8080                            # server.port (non-privileged)
           protocol: TCP                                  # TCP
         env:                                             # ENV
-        - name: PORT                                     # wiele frameworków czyta PORT
-          value: "8080"                                  # musi zgadzać się z containerPort
+        - name: SERVER_PORT                              # server.port przez relaxed binding
+          value: "8080"                                  # zgodne z containerPort
+        - name: SPRING_PROFILES_ACTIVE                   # profil z probe groups w Actuator
+          value: "k8s,prod"
+        - name: JAVA_TOOL_OPTIONS                        # heap w limicie RAM kontenera
+          value: "-XX:MaxRAMPercentage=75.0"
         resources:                                       # limity — osobno od security
           requests:                                      # request
             cpu: "100m"                                  # CPU
@@ -709,17 +780,23 @@ spec:                                                    # spec
           mountPath: /var/cache/app                      # katalog cache aplikacji
         - name: run                                      # pid/socket dir
           mountPath: /var/run/app                        # runtime state (nie /var/run cały system)
+        startupProbe:                                    # cold start Spring — przed liveness
+          httpGet:
+            path: /actuator/health/liveness
+            port: http
+          periodSeconds: 5
+          failureThreshold: 30
         readinessProbe:                                  # gotowość — Service dostaje ruch
-          httpGet:                                       # HTTP
-            path: /health/ready                          # endpoint
+          httpGet:                                       # HTTP Actuator
+            path: /actuator/health/readiness             # DB w readiness, nie w liveness
             port: http                                   # 8080
             scheme: HTTP                                   # HTTP
           periodSeconds: 5                               # co 5s
         livenessProbe:                                   # żywotność
-          httpGet:                                       # HTTP
-            path: /health/live                           # prostszy check
+          httpGet:                                       # HTTP Actuator
+            path: /actuator/health/liveness              # LivenessState — bez restartu przy padniętej DB
             port: http                                   # ten sam port
-          initialDelaySeconds: 10                        # po starcie
+          periodSeconds: 10                              # po startupProbe
       volumes:                                           # wolumeny Pod
       - name: tmp                                        # emptyDir tmp
         emptyDir:                                        # tymczasowy
@@ -735,12 +812,12 @@ spec:                                                    # spec
 apiVersion: v1                                           # Service
 kind: Service                                            # typ
 metadata:                                                # metadane
-  name: web                                              # nazwa
+  name: orders-api                                       # nazwa
   namespace: production                                  # ten sam namespace co Deployment
 spec:                                                    # spec
   type: ClusterIP                                        # wewnętrzny ruch (Ingress/LB osobno)
   selector:                                              # wybór Podów
-    app.kubernetes.io/name: web                          # etykieta z template Deployment
+    app.kubernetes.io/name: orders-api                   # etykieta z template Deployment
   ports:                                                 # mapowanie portów
   - name: http                                           # nazwa portu Service
     port: 80                                             # port „wewnętrzny” dla klientów (nie wymaga root w Podzie)
@@ -753,7 +830,7 @@ spec:                                                    # spec
     <tr><th>Element</th><th>Manifest / obraz</th></tr>
   </thead>
   <tbody>
-    <tr><td><strong>UID/GID</strong></td><td><code>runAsUser</code> / <code>fsGroup</code> w YAML = użytkownik z <code>USER</code> w Dockerfile (np. 10001). Pułapka: oficjalny nginx na 80 wymaga root lub osobnego obrazu unprivileged.</td></tr>
+    <tr><td><strong>UID/GID</strong></td><td><code>runAsUser</code> / <code>fsGroup</code> w YAML = użytkownik z <code>USER</code> w Dockerfile (np. 10001). Spring Boot nie potrzebuje root na 8080.</td></tr>
     <tr><td><strong>Port</strong></td><td><code>containerPort</code> 8080 + Service <code>port: 80</code> → <code>targetPort: http</code>. Klient widzi 80; proces w Podzie nie binduje privileged portu.</td></tr>
     <tr><td><strong>Zapis na dysk</strong></td><td><code>readOnlyRootFilesystem: true</code> + <code>emptyDir</code> na <code>/tmp</code>, cache, pidfile — inaczej CrashLoop „Read-only file system”.</td></tr>
     <tr><td><strong>Namespace / PSS</strong></td><td>Namespace z <code>pod-security.kubernetes.io/enforce: restricted</code> wymaga m.in. <code>runAsNonRoot</code> i drop ALL — manifest powyżej jest pod restricted.</td></tr>
@@ -773,9 +850,9 @@ spec:                                                    # spec
   <tbody>
     <tr><td><strong>Etykiety</strong></td><td>Używaj <code>app.kubernetes.io/name</code>, <code>/instance</code>, <code>/version</code> — selector Service i Deployment muszą być spójne i stabilne (nie zmieniaj selector Deployment po create).</td></tr>
     <tr><td><strong>Immutable</strong></td><td><code>Deployment.spec.selector</code> nie zmienia się. Nowa aplikacja = nowy Deployment lub migracja blue/green.</td></tr>
-    <tr><td><strong>Probes</strong></td><td><code>readiness</code> ≠ <code>liveness</code>. Readiness wyłącza z Service; liveness restartuje kontener. Dla wolnego startu dodaj <code>startupProbe</code>.</td></tr>
-    <tr><td><strong>Resources</strong></td><td>Bez <code>requests</code> scheduler nie wie gdzie posadzić Pod; HPA na CPU % nie ma sensu. Ustal requests ≈ typowe użycie, limits na memory konserwatywnie.</td></tr>
-    <tr><td><strong>Graceful shutdown</strong></td><td><code>terminationGracePeriodSeconds</code> + <code>preStop sleep</code> + aplikacja obsługująca SIGTERM — mniej 502 przy rollout.</td></tr>
+    <tr><td><strong>Probes (Spring Boot)</strong></td><td><code>readiness</code> → <code>/actuator/health/readiness</code>; <code>liveness</code>/<code>startup</code> → <code>/actuator/health/liveness</code>. Włącz <code>management.endpoint.health.probes.enabled</code>. Nie używaj agregatu <code>/actuator/health</code> na liveness.</td></tr>
+    <tr><td><strong>Graceful shutdown</strong></td><td>Spring: <code>server.shutdown=graceful</code>. K8s: <code>terminationGracePeriodSeconds</code> ≥ timeout shutdown + <code>preStop sleep</code> — mniej 502 przy rollout.</td></tr>
+    <tr><td><strong>Resources</strong></td><td>Bez <code>requests</code> scheduler nie wie gdzie posadzić Pod; HPA na CPU % nie ma sensu. JVM: <code>JAVA_TOOL_OPTIONS</code> + limits memory z headroomem (nie samo <code>-Xmx</code>).</td></tr>
     <tr><td><strong>Service</strong></td><td><code>targetPort</code> jako nazwa (<code>http</code>) — zmiana numeru portu tylko w Pod. Dla source IP użyj <code>externalTrafficPolicy: Local</code> na LB.</td></tr>
     <tr><td><strong>HPA</strong></td><td><code>minReplicas ≥ 2</code> dla HA. Osobne polityki <code>scaleDown</code> — wolniejsze niż scale up. Testuj na synthetic load.</td></tr>
     <tr><td><strong>Manifesty</strong></td><td>Trzymaj jeden logical app w wielu plikach lub <code>---</code> — ta sama <code>namespace</code> i spójne nazwy. Generuj z Helm/Kustomize, nie kopiuj ręcznie wersji w 10 miejscach.</td></tr>
@@ -798,7 +875,10 @@ HPA metrics Resource.cpu                  ──►  containers[].resources.requ
   <li><strong>Service bez pasujących Podów</strong> — <code>selector</code> nie zgadza się z etykietami (literówka, inny <code>component</code>).</li>
   <li><strong><code>targetPort</code> zły numer</strong> — Service działa, ale connection refused — aplikacja słucha na innym porcie niż w manifest.</li>
   <li><strong>Brak <code>resources.requests</code> przy HPA CPU</strong> — metryka utilization jest bezużyteczna lub HPA nie skaluje przewidywalnie.</li>
-  <li><strong>Liveness na tym samym endpoint co readiness z DB</strong> — chwilowa niedostępność DB restartuje wszystkie Pody (storm).</li>
+  <li><strong>Liveness na <code>/actuator/health</code> lub z DB w LivenessState</strong> — chwilowa niedostępność DB restartuje wszystkie Pody (storm); DB tylko w readiness / ReadinessState.</li>
+  <li><strong>Brak <code>management.endpoint.health.probes.enabled</code></strong> — ścieżki <code>/actuator/health/liveness|readiness</code> zwracają 404; probe’y w CrashLoop.</li>
+  <li><strong><code>limits.memory</code> ≈ heap JVM (<code>-Xmx</code>)</strong> — OOMKill kontenera mimo „wolnej” sterty; użyj <code>MaxRAMPercentage</code> i headroom na metaspace/native.</li>
+  <li><strong>Actuator na publicznym Ingress</strong> — wyciek metryk, <code>env</code>, możliwość wywołania <code>/actuator/shutdown</code>; Service tylko na port biznesowy.</li>
   <li><strong><code>latest</code> tag obrazu + <code>imagePullPolicy: IfNotPresent</code></strong> — Node trzyma stary obraz; „deploy” nie zmienia wersji.</li>
   <li><strong>Zmiana <code>Deployment.spec.selector</code></strong> — API odrzuca update; wymaga nowego obiektu.</li>
   <li><strong><code>maxUnavailable: 100%</code> + <code>maxSurge: 0</code></strong> — rolling update może zdjąć cały ruch naraz (downtime).</li>
