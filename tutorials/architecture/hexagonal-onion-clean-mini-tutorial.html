@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hexagonal · Onion · Clean — architektury domenowe w Javie</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #0f766e;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; color: var(--text); }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #ecfdf5; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .map-box {
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Hexagonal, Onion i Clean — trzy twarze tej samej idei</h1>
+<p class="meta">Ports &amp; Adapters · Onion · Clean Architecture · Java 17+ · Spring Boot bez frameworków w domenie<br>
+Format: samodzielny HTML (offline). Bez sekcji ciekawostek.</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundament">Fundament — po co te trzy nazwy</a></li>
+    <li><a href="#teoria">Teoretyczny opis architektur</a></li>
+    <li><a href="#mapowanie">Anatomia obiektów i mapowanie warstw</a></li>
+    <li><a href="#pakiety">Struktura pakietów (moduł order)</a></li>
+    <li><a href="#kod">Przykład w kodzie Java</a></li>
+    <li><a href="#praktyki">Dobre praktyki i decyzje</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundament">Fundament — po co te trzy nazwy</h2>
+<p>Hexagonal (Ports &amp; Adapters), Onion i Clean Architecture to <strong>nie trzy konkurencyjne frameworki</strong>, lecz trzy sposoby opisania tego samego celu: <strong>reguły biznesowe w centrum</strong>, zależności skierowane do środka, technologia (HTTP, JPA, Kafka) na obwodzie. Różnią się metaforą i słownictwem — w projekcie Spring Boot często łączysz je w jedną strukturę pakietów.</p>
+<p>Jedno zdanie na zapamiętanie: <strong>port to kontrakt, adapter to implementacja, use case to scenariusz, agregat to prawo domeny.</strong></p>
+
+<hr>
+
+<h2 id="teoria" class="must-know">1. Teoretyczny opis architektur</h2>
+
+<h3>a) Architektura heksagonalna (Ports &amp; Adapters)</h3>
+<p>Metafora <strong>Inside / Outside</strong>: w środku aplikacji siedzi logika domenowa i scenariusze aplikacyjne; na zewnątrz — „świat” (użytkownik, baza, kolejka, inny serwis). <strong>Port</strong> to interfejs w języku domeny („potrzebuję zapisać zamówienie”), <strong>adapter</strong> to konkretna technologia (REST controller, repozytorium JPA, klient HTTP).</p>
+<p>Cel: wymienność infrastruktury bez dotykania reguł. Testujesz use case z adapterem w pamięci; produkcja podpina PostgreSQL — ten sam port, inna implementacja.</p>
+<p>Cecha wyróżniająca: <strong>symetria wejścia i wyjścia</strong>. Sterownik HTTP i repozytorium bazy to oba adaptery; oba wołają porty zdefiniowane przez aplikację/domenę. Nie ma „górnej warstwy ważniejszej od dolnej” — obie są równorzędnymi wejściami/wyjściami do heksagonu.</p>
+
+<h3>b) Onion Architecture</h3>
+<p>Metafora <strong>koncentrycznych pierścieni</strong>: im głębiej w cebuli, tym mniej zależności od szczegółów technicznych i tym <strong>stabilniejszy</strong> kod. Jądro to model domeny; kolejne pierścienie to serwisy aplikacyjne, interfejsy infrastruktury, na zewnątrz implementacje.</p>
+<p>Cel: chronić jądro przed „przeciekaniem” frameworków — encje JPA, adnotacje Springa i DTO HTTP nie powinny definiować modelu biznesowego.</p>
+<p>Cecha wyróżniająca: <strong>reguła zależności według promienia</strong> — warstwa zewnętrzna może znać wewnętrzną (adapter implementuje interfejs zdefiniowany bliżej centrum), nigdy odwrotnie. Stabilność rośnie w kierunku jądra.</p>
+
+<h3>c) Clean Architecture (Robert C. Martin)</h3>
+<p>Metafora <strong>rygorystycznego podziału ról</strong>: Entities (reguły enterprise), Use Cases (reguły aplikacji), Interface Adapters (prezentacja, persistence, mapowanie), Frameworks &amp; Drivers (Spring, Hibernate, baza). Nazwy są sztywne, ale mapują się 1:1 na hex/onion.</p>
+<p>Cel: niezależność od UI, bazy i frameworków — biznes może działać w konsoli, a potem dostać REST bez przepisywania use case’ów.</p>
+<p>Cecha wyróżniająca: <strong>Dependency Rule</strong> — źródła zależności wskazują wyłącznie do wewnątrz. Use case nie importuje <code>JpaRepository</code>; gateway (port wyjściowy) jest interfejsem w pierścieniu use case, implementacja (np. <code>OrderRepositoryJpaAdapter</code>) żyje na zewnątrz.</p>
+
+<div class="map-box">
+<strong>Porównanie w jednej tabeli</strong>
+<table>
+  <thead><tr><th>Pojęcie</th><th>Hexagonal</th><th>Onion</th><th>Clean</th></tr></thead>
+  <tbody>
+    <tr><td>Centrum</td><td>Application + Domain</td><td>Domain Core</td><td>Entities + Use Cases</td></tr>
+    <tr><td>Scenariusz</td><td>Application service / handler portu wej.</td><td>Application services</td><td>Interactor / Use Case</td></tr>
+    <tr><td>Kontrakt na zewnątrz</td><td>Port</td><td>Interfejs w pierścieniu aplikacji</td><td>Gateway / Boundary interface</td></tr>
+    <tr><td>Implementacja</td><td>Adapter</td><td>Infrastructure</td><td>Interface Adapter + Frameworks</td></tr>
+    <tr><td>Wejście (HTTP)</td><td>Driving adapter</td><td>UI / API (zewn.)</td><td>Controller</td></tr>
+    <tr><td>Wyjście (DB)</td><td>Driven adapter</td><td>Infrastructure</td><td>Gateway impl</td></tr>
+  </tbody>
+</table>
+</div>
+
+<pre><code>        [ REST / CLI ]     [ Kafka consumer ]   ← driving adapters
+              │                      │
+              ▼                      ▼
+        ┌─────────────────────────────────┐
+        │  Use Cases / Application        │  ← porty WE (inbound)
+        ├─────────────────────────────────┤
+        │  Domain (Aggregates, VO)        │  ← zero frameworków
+        ├─────────────────────────────────┤
+        │  Porty WY (OrderRepository…)    │  ← interfejsy
+        └─────────────────────────────────┘
+              ▲                      ▲
+              │                      │
+        [ JPA adapter ]        [ HTTP client ]   ← driven adapters</code></pre>
+
+<hr>
+
+<h2 id="mapowanie">2. Anatomia obiektów i zmiana warstw (mapowanie)</h2>
+<p>Te same słowa („Order”) pojawiają się w wielu warstwach — <strong>to różne typy obiektów</strong>. Mapowanie między nimi robi adapter lub mapper w infrastrustrukturze, nie agregat.</p>
+
+<table>
+  <thead><tr><th>Typ</th><th>Warstwa</th><th>Rola</th><th>Framework</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>DTO / Request–Response</strong></td>
+      <td>Presentation (adapter wej.)</td>
+      <td>Kształt JSON/API; walidacja techniczna (@NotNull, format). Nie niesie reguł biznesowych.</td>
+      <td>Often records + Bean Validation w adapterze</td>
+    </tr>
+    <tr>
+      <td><strong>Command / Query</strong></td>
+      <td>Application</td>
+      <td>Intencja use case’a: <code>CreateOrderCommand</code>, <code>GetOrderQuery</code>. Proste, niemutowalne.</td>
+      <td>Czyste <code>record</code>, bez Springa</td>
+    </tr>
+    <tr>
+      <td><strong>Domain model / VO</strong></td>
+      <td>Domain</td>
+      <td>Agregaty, value objects, reguły i invarianty. Metody biznesowe zmieniają stan.</td>
+      <td>POJO / records — zero adnotacji</td>
+    </tr>
+    <tr>
+      <td><strong>DB Entity / JPA bean</strong></td>
+      <td>Infrastructure (persistence adapter)</td>
+      <td>Mapa tabeli: kolumny, relacje ORM. Nie wychodzi poza adapter.</td>
+      <td><code>@Entity</code>, <code>@Table</code>, Spring Data tylko tutaj</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Przepływ przy tworzeniu zamówienia</strong>
+  <p><code>CreateOrderRequest</code> (DTO) → controller mapuje na <code>CreateOrderCommand</code> → <code>CreateOrderUseCase</code> buduje/wywołuje <code>Order</code> (domena) → <code>OrderRepository.save(order)</code> (port) → adapter mapuje <code>Order</code> → <code>OrderJpaEntity</code> → baza.</p>
+</div>
+
+<p><strong>Pułapka:</strong> jeden wspólny „OrderDTO” używany od kontrolera do Hibernate — łamie izolację i prowadzi do anemicznego modelu albo reguł w adnotacjach JPA.</p>
+
+<hr>
+
+<h2 id="pakiety" class="must-know">3. Struktura pakietów w Javie (moduł order)</h2>
+<p>Poniżej wzorcowe drzewo dla bounded context / modułu <strong>order</strong> w monolicie Maven. Pakiety odzwierciedlają warstwy; Spring skanuje tylko <code>...adapter...</code> i <code>...config...</code>.</p>
+
+<pre><code>com.example.shop.order/
+│
+├── domain/                              # czysta Java — jądro
+│   ├── model/
+│   │   ├── Order.java                   # agregat (POJO, metody biznesowe)
+│   │   ├── OrderId.java                 # record VO
+│   │   ├── OrderLine.java               # record / VO
+│   │   └── OrderStatus.java             # enum domenowy
+│   ├── exception/
+│   │   └── OrderDomainException.java
+│   └── service/                         # opcjonalnie: Domain Service (czysta Java)
+│       └── PricingPolicy.java
+│
+├── application/                         # use case'y — czysta Java
+│   ├── port/
+│   │   ├── in/                          # PORTY WEJŚCIOWE (driving)
+│   │   │   ├── CreateOrderUseCase.java  # interfejs portu IN
+│   │   │   └── GetOrderUseCase.java
+│   │   └── out/                         # PORTY WYJŚCIOWE (driven)
+│   │       ├── OrderRepository.java     # interfejs portu OUT
+│   │       └── ProductCatalogPort.java  # np. inny serwis / ACL
+│   ├── command/
+│   │   └── CreateOrderCommand.java      # record
+│   ├── query/
+│   │   └── GetOrderQuery.java           # record
+│   └── service/                         # implementacje use case (POJO)
+│       ├── CreateOrderService.java      # implements CreateOrderUseCase
+│       └── GetOrderService.java
+│
+└── adapter/                             # Spring / JPA / HTTP — obwód
+    ├── in/
+    │   └── web/
+    │       ├── OrderController.java     # @RestController — ADAPTER IN
+    │       ├── CreateOrderRequest.java  # record + @Valid
+    │       └── OrderResponse.java       # record
+    ├── out/
+    │   └── persistence/
+    │       ├── OrderJpaEntity.java      # @Entity — tylko persistence
+    │       ├── OrderLineJpaEmbeddable.java
+    │       ├── SpringDataOrderJpaRepository.java  # extends JpaRepository
+    │       ├── OrderRepositoryAdapter.java        # ADAPTER OUT — implements OrderRepository
+    │       └── OrderPersistenceMapper.java        # Order ↔ OrderJpaEntity
+    └── out/
+        └── catalog/
+            └── HttpProductCatalogAdapter.java     # ADAPTER OUT — implements ProductCatalogPort
+│
+└── config/                              # składanie beanów Springa
+    └── OrderModuleConfiguration.java    # @Configuration — rejestruje use case + adaptery</code></pre>
+
+<p>W wariancie <strong>Clean</strong> nazwy <code>port/in</code> ≈ Input Boundary, <code>port/out</code> ≈ Gateway. W <strong>Onion</strong> folder <code>domain</code> to jądro, <code>application</code> pierścień, <code>adapter</code> skórka.</p>
+
+<hr>
+
+<h2 id="kod" class="must-know">4. Przykład w kodzie Java — utworzenie zamówienia</h2>
+<p>Minimalny, spójny przekrój: agregat z regułą, port wyjściowy, use case, adapter JPA i konfiguracja Springa poza domeną.</p>
+
+<h3>Domain — agregat i port (tylko w application/port/out)</h3>
+<pre><code>// domain/model/OrderId.java
+public record OrderId(UUID value) {
+    public OrderId {
+        Objects.requireNonNull(value);
+    }
+}
+
+// domain/model/OrderLine.java
+public record OrderLine(String sku, int quantity, Money unitPrice) {
+    public OrderLine {
+        if (quantity &lt;= 0) throw new OrderDomainException("quantity must be positive");
+        Objects.requireNonNull(sku);
+        Objects.requireNonNull(unitPrice);
+    }
+    Money lineTotal() { return unitPrice.multiply(quantity); }
+}
+
+// domain/model/Order.java — rich model, bez setterów
+public final class Order {
+    private final OrderId id;
+    private final List&lt;OrderLine&gt; lines;
+    private OrderStatus status;
+
+    private Order(OrderId id, List&lt;OrderLine&gt; lines) {
+        this.id = id;
+        this.lines = List.copyOf(lines);
+        this.status = OrderStatus.DRAFT;
+    }
+
+    public static Order createDraft(OrderId id, List&lt;OrderLine&gt; lines) {
+        if (lines.isEmpty()) throw new OrderDomainException("order needs at least one line");
+        return new Order(id, lines);
+    }
+
+    public void confirm() {
+        if (status != OrderStatus.DRAFT)
+            throw new OrderDomainException("only draft can be confirmed");
+        status = OrderStatus.CONFIRMED;
+    }
+
+    public OrderId id() { return id; }
+    public OrderStatus status() { return status; }
+    public List&lt;OrderLine&gt; lines() { return lines; }
+}
+
+// application/port/out/OrderRepository.java — PORT wyjściowy
+public interface OrderRepository {
+    void save(Order order);
+    Optional&lt;Order&gt; findById(OrderId id);
+}</code></pre>
+
+<h3>Application — command i use case</h3>
+<pre><code>// application/command/CreateOrderCommand.java
+public record CreateOrderCommand(UUID orderId, List&lt;Line&gt; lines) {
+    public record Line(String sku, int quantity, BigDecimal unitPrice, String currency) {}
+}
+
+// application/port/in/CreateOrderUseCase.java
+public interface CreateOrderUseCase {
+    OrderId handle(CreateOrderCommand command);
+}
+
+// application/service/CreateOrderService.java — czysta Java
+public final class CreateOrderService implements CreateOrderUseCase {
+    private final OrderRepository orders;
+    private final ProductCatalogPort catalog;
+
+    public CreateOrderService(OrderRepository orders, ProductCatalogPort catalog) {
+        this.orders = orders;
+        this.catalog = catalog;
+    }
+
+    @Override
+    public OrderId handle(CreateOrderCommand command) {
+        var lines = command.lines().stream()
+            .map(l -&gt; {
+                var price = catalog.priceFor(l.sku())
+                    .orElseThrow(() -&gt; new OrderDomainException("unknown sku: " + l.sku()));
+                return new OrderLine(l.sku(), l.quantity(), price);
+            })
+            .toList();
+        var order = Order.createDraft(new OrderId(command.orderId()), lines);
+        order.confirm();
+        orders.save(order);
+        return order.id();
+    }
+}</code></pre>
+
+<h3>Infrastructure — encja JPA, mapper, adapter</h3>
+<pre><code>// adapter/out/persistence/OrderJpaEntity.java
+@Entity
+@Table(name = "orders")
+class OrderJpaEntity {
+    @Id UUID id;
+    @Enumerated(EnumType.STRING) OrderStatus status;
+    @ElementCollection
+    @CollectionTable(name = "order_lines")
+    List&lt;OrderLineEmbeddable&gt; lines;
+}
+
+// adapter/out/persistence/OrderRepositoryAdapter.java — ADAPTER
+class OrderRepositoryAdapter implements OrderRepository {
+    private final SpringDataOrderJpaRepository jpa;
+    private final OrderPersistenceMapper mapper;
+
+    OrderRepositoryAdapter(SpringDataOrderJpaRepository jpa, OrderPersistenceMapper mapper) {
+        this.jpa = jpa;
+        this.mapper = mapper;
+    }
+
+    @Override
+    public void save(Order order) {
+        jpa.save(mapper.toEntity(order));
+    }
+
+    @Override
+    public Optional&lt;Order&gt; findById(OrderId id) {
+        return jpa.findById(id.value()).map(mapper::toDomain);
+    }
+}
+
+// config/OrderModuleConfiguration.java — Spring tylko tutaj
+@Configuration
+class OrderModuleConfiguration {
+    @Bean
+    CreateOrderUseCase createOrderUseCase(OrderRepository repo, ProductCatalogPort catalog) {
+        return new CreateOrderService(repo, catalog);
+    }
+
+    @Bean
+    OrderRepository orderRepository(SpringDataOrderJpaRepository jpa, OrderPersistenceMapper mapper) {
+        return new OrderRepositoryAdapter(jpa, mapper);
+    }
+}</code></pre>
+
+<h3>Adapter wejściowy (skrót)</h3>
+<pre><code>// adapter/in/web/OrderController.java
+@RestController
+@RequestMapping("/orders")
+class OrderController {
+    private final CreateOrderUseCase createOrder;
+
+    OrderController(CreateOrderUseCase createOrder) { this.createOrder = createOrder; }
+
+    @PostMapping
+    ResponseEntity&lt;OrderResponse&gt; create(@Valid @RequestBody CreateOrderRequest body) {
+        var id = createOrder.handle(new CreateOrderCommand(
+            body.orderId(),
+            body.lines().stream()
+                .map(l -&gt; new CreateOrderCommand.Line(l.sku(), l.quantity(), l.unitPrice(), l.currency()))
+                .toList()
+        ));
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(new OrderResponse(id.value(), "CONFIRMED"));
+    }
+}</code></pre>
+
+<hr>
+
+<h2 id="praktyki">5. Dobre praktyki i decyzje architektoniczne</h2>
+
+<h3>Kiedy pełne warstwy, a kiedy uprościć?</h3>
+<ul>
+  <li><strong>Pełny hex/onion/clean</strong> — nietrywialne reguły (stany, promocje, limity), wiele adapterów (REST + batch + events), wysoka potrzeba testów bez Springa, długi żywot modułu.</li>
+  <li><strong>Uproszczenie</strong> — prosty CRUD bez invariantów: wystarczy controller → service → repository z encją JPA; nie twórz trzech klas Order „dla zasady”.</li>
+  <li><strong>Kompromis</strong> — port na repozytorium + cienka domena (kilka metod) często daje 80% korzyści przy umiarkowanej złożoności.</li>
+</ul>
+
+<h3>Jeden mikroserwis, 2–3 domeny obok siebie</h3>
+<p>Nie mieszaj modeli w jednym pakiecie <code>service</code>. Trzymaj <strong>osobne korzenie modułów</strong> (<code>order</code>, <code>inventory</code>, <code>billing</code>) z własnym <code>domain/application/adapter</code>. Komunikacja między kontekstami:</p>
+<ul>
+  <li><strong>Port wyjściowy + adapter</strong> w tym samym procesie (wywołanie use case innego modułu przez interfejs — jak port driven).</li>
+  <li><strong>Anti-Corruption Layer</strong> — adapter tłumaczy obcy model (np. DTO innego modułu) na lokalny command/VO.</li>
+  <li><strong>Domain events</strong> (opcjonalnie) — moduł A publikuje fakt, moduł B ma własny handler w <code>adapter/in/messaging</code>; brak importu encji A w B.</li>
+</ul>
+<p>Granica modułu = granica pakietów + brak publicznych klas domenowych poza modułem (Java module system lub konwencja + ArchUnit).</p>
+
+<h3>Czego kategorycznie unikać</h3>
+<ul>
+  <li>Import <code>jakarta.persistence</code>, <code>org.springframework</code> w <code>domain</code> i <code>application</code>.</li>
+  <li>Encja JPA jako agregat domenowy „bo szybciej”.</li>
+  <li>Use case wywołujący <code>EntityManager</code> lub <code>RestTemplate</code> bezpośrednio.</li>
+  <li>Transakcje i polityki retry w klasach domenowych — to cross-cutting adaptera lub fasady aplikacyjnej.</li>
+  <li>Współdzielenie mutowalnych DTO między warstwami.</li>
+  <li>Porty z metodami w stylu CRUD tabeli (<code>saveOrderEntity</code>) zamiast języka domeny (<code>save(Order)</code>).</li>
+</ul>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>„Clean Architecture folder” bez reguł w domenie</strong> — piękne pakiety, puste encje, logika w 500-liniowym serwisie.</li>
+  <li><strong>Port = interfejs JpaRepository</strong> — port należy do application, nie do Spring Data.</li>
+  <li><strong>Mapowanie tylko w jedną stronę</strong> — brak odtwarzania agregatu z bazy (lazy, brak VO).</li>
+  <li><strong>Use case z logiką biznesową</strong> — if-y statusów powinny być w agregacie; use case tylko orkiestruje.</li>
+  <li><strong>Jeden moduł na cały monolit</strong> — brak podziału na bounded context przy wielu domenach.</li>
+  <li><strong>Testy tylko @SpringBootTest</strong> — brak szybkich testów use case z fake adapterami.</li>
+  <li><strong>DTO w warstwie application</strong> — command/query to nie JSON; trzymaj kształt API w adapterze web.</li>
+  <li><strong>Odwrotne zależności przez events „globalne”</strong> — wspólny bus bez kontraktu i wersjonowania psuje granice.</li>
+  <li><strong>Over-engineering CRUD</strong> — trzy mapery i sześć klas Order na listę rekordów bez reguł.</li>
+  <li><strong>Wspólny „kernel” encji</strong> — jedna współdzielona encja JPA używana przez wiele serwisów łamie autonomię kontekstów.</li>
+</ol>
+
+</body>
+</html>
