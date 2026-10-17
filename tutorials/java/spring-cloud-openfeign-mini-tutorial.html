@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud OpenFeign — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6db33f;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef8e6; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      font-family: ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud OpenFeign</h1>
+<p class="meta">Deklaratywny klient HTTP · <code>@FeignClient</code> · LoadBalancer · interceptory · fallback<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#kiedy">Kiedy tak / kiedy nie</a></li>
+    <li><a href="#podstawy">Interfejs i konfiguracja</a></li>
+    <li><a href="#loadbalancer">LoadBalancer i discovery</a></li>
+    <li><a href="#interceptory">Interceptory i nagłówki</a></li>
+    <li><a href="#odpornosc">Fallback, błędy, timeouty</a></li>
+    <li><a href="#testy">Testy</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>OpenFeign</strong> to deklaratywny klient HTTP dla Javy: interfejs z adnotacjami Spring MVC (<code>@GetMapping</code>, <code>@PathVariable</code>) → implementacja generowana w runtime (JDK proxy). <strong>Spring Cloud OpenFeign</strong> dodaje integrację ze Spring Cloud LoadBalancer, OAuth2, Resilience4j i konfiguracją przez properties.</p>
+
+<div class="flow-box">OrderService
+    │
+    └─ @Autowired AuthorClient client;
+           │
+           └─ client.getAuthor(1L)  →  HTTP GET lb://author-service/authors/1</div>
+
+<table>
+  <thead><tr><th>Klient</th><th>Styl</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>OpenFeign</strong></td><td>Deklaratywny interfejs</td><td>Wiele podobnych wywołań REST między serwisami Spring</td></tr>
+    <tr><td><strong>RestClient</strong> (Spring 6+)</td><td>Imperatywny, fluent</td><td>Pojedyncze, złożone requesty; pełna kontrola</td></tr>
+    <tr><td><strong>WebClient</strong></td><td>Reaktywny (Mono/Flux)</td><td>WebFlux, streaming, backpressure</td></tr>
+    <tr><td><strong>HTTP Interface Client</strong></td><td>Deklaratywny (Spring 6.1+)</td><td>Nowe projekty bez zależności Feign — natywny Spring</td></tr>
+    <tr><td><strong>RestTemplate</strong></td><td>Imperatywny, legacy</td><td>Deprecated — nie w nowym kodzie</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Feign ≠ gateway</strong>
+  <p>Feign to klient wychodzący z serwisu A do serwisu B. Spring Cloud Gateway to wejście z internetu do klastra. Oba mogą współistnieć: SPA → Gateway → Order → Feign → Author.</p>
+</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">1. Kiedy używać / kiedy nie</h2>
+
+<table>
+  <thead><tr><th>Bierz OpenFeign</th><th>Olej OpenFeign</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Kilkanaście endpointów REST do innych mikroserwisów — czytelny interfejs</td>
+      <td>Greenfield Spring 7+ — rozważ <strong>HTTP Interface Client</strong> (bez Feign)</td>
+    </tr>
+    <tr>
+      <td>Stack już ma Spring Cloud (LB, Contract, Resilience4j)</td>
+      <td>Jeden wywołanie HTTP na rok — wystarczy <code>RestClient</code></td>
+    </tr>
+    <tr>
+      <td>Propagacja nagłówków (JWT, tenant, correlation-id) przez <code>RequestInterceptor</code></td>
+      <td>GraphQL/gRPC między serwisami — inny protokół</td>
+    </tr>
+    <tr>
+      <td>Testy kontraktowe (SCC) + Feign w konsumencie</td>
+      <td>Publiczne API zewnętrzne (Stripe, AWS) — SDK vendorów zamiast Feign</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Starter: <code>spring-cloud-starter-openfeign</code>. Włączenie: <code>@EnableFeignClients</code> na klasie konfiguracji lub <code>@SpringBootApplication</code>.</p>
+
+<hr>
+
+<h2 id="podstawy" class="must-know">2. Interfejs i konfiguracja</h2>
+
+<pre><code>@FeignClient(name = "author-service", path = "/authors")
+public interface AuthorClient {
+
+  @GetMapping("/{id}")
+  AuthorDto getById(@PathVariable("id") Long id);
+
+  @PostMapping
+  AuthorDto create(@RequestBody CreateAuthorRequest req);
+
+  @GetMapping(params = "name")
+  List&lt;AuthorDto&gt; search(@RequestParam("name") String name);
+}</code></pre>
+
+<p><code>name</code> — identyfikator dla LoadBalancer / discovery (nie musi być hostname). <code>url</code> — statyczny URL (pomija LB): <code>url = "http://localhost:8082"</code>. <code>path</code> — prefix do wszystkich metod.</p>
+
+<p>Konfiguracja globalna i per-klient:</p>
+
+<pre><code>spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 2000
+            readTimeout: 5000
+            loggerLevel: basic
+          author-service:
+            readTimeout: 10000</code></pre>
+
+<p>Logowanie: <code>logging.level.com.ex.client.AuthorClient=DEBUG</code> + <code>loggerLevel: full</code> — w prod ostrożnie (body z PII).</p>
+
+<h3>Mapowanie odpowiedzi</h3>
+
+<p>Feign domyślnie używa tego samego konwertera co Spring MVC (Jackson). <code>ResponseEntity&lt;T&gt;</code> — dostęp do statusu i nagłówków. Błędy 4xx/5xx → <code>FeignException</code> (chyba że własny <code>ErrorDecoder</code>).</p>
+
+<pre><code>@GetMapping("/{id}")
+ResponseEntity&lt;AuthorDto&gt; getById(@PathVariable Long id);</code></pre>
+
+<hr>
+
+<h2 id="loadbalancer">3. LoadBalancer i service discovery</h2>
+
+<p><code>name = "author-service"</code> + brak <code>url</code> → Feign woła przez <code>LoadBalancerClient</code> (<code>lb://author-service</code>). Wymaga <code>spring-cloud-starter-loadbalancer</code> (tranzytywnie ze starterem OpenFeign) i rejestru instancji (Eureka, Consul, Kubernetes).</p>
+
+<pre><code>@FeignClient(name = "author-service")
+// równoważne żądaniu: GET http://author-service/authors/1
+// LoadBalancer wybiera instancję z listy</code></pre>
+
+<table>
+  <thead><tr><th>Środowisko</th><th>Źródło listy instancji</th></tr></thead>
+  <tbody>
+    <tr><td>Eureka / Consul</td><td>Rejestracja serwisów przy starcie</td></tr>
+    <tr><td>Kubernetes</td><td><code>spring-cloud-kubernetes-client</code> — Service name = <code>name</code> w Feign</td></tr>
+    <tr><td>Test / local</td><td><code>url = "http://localhost:8082"</code> albo <code>spring.cloud.discovery.client.simple.instances</code></td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> <code>name</code> musi zgadzać się z nazwą w discovery. <code>author-service</code> vs <code>authorService</code> — 503 „No instances available”.</div>
+
+<hr>
+
+<h2 id="interceptory">4. Interceptory — auth, tenant, tracing</h2>
+
+<p><code>RequestInterceptor</code> — bean dodawany do każdego żądania Feign (lub per-klient przez <code>configuration</code> w <code>@FeignClient</code>).</p>
+
+<pre><code>@Component
+public class FeignAuthInterceptor implements RequestInterceptor {
+  @Override
+  public void apply(RequestTemplate template) {
+  // propagacja JWT z bieżącego żądania HTTP (servlet)
+    ServletRequestAttributes attrs =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    if (attrs != null) {
+      String auth = attrs.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
+      if (auth != null) template.header(HttpHeaders.AUTHORIZATION, auth);
+    }
+  }
+}</code></pre>
+
+<p>Multi-tenancy — doklej <code>X-Tenant-Id</code> z kontekstu (nie z requestu klienta):</p>
+
+<pre><code>template.header("X-Tenant-Id", TenantContext.getCurrentTenant());</code></pre>
+
+<p>OAuth2 client credentials (serwis woła serwis bez użytkownika): <code>spring-cloud-starter-oauth2</code> + <code>OAuth2AuthorizedClientManager</code> w interceptorze — token z client credentials flow.</p>
+
+<div class="keyword">
+  <strong>RequestContextHolder w @Async</strong>
+  <p>Interceptor oparty na <code>RequestContextHolder</code> nie zadziała w wątku asynchronicznym — kontekst HTTP nie jest przenoszony. Przekaż token/tenant jawnie albo użyj <code>DelegatingSecurityContextRunnable</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="odpornosc" class="must-know">5. Fallback, ErrorDecoder, Resilience4j</h2>
+
+<h3>Fallback (legacy)</h3>
+
+<pre><code>@FeignClient(name = "author-service", fallback = AuthorClientFallback.class)
+public interface AuthorClient { ... }
+
+@Component
+class AuthorClientFallback implements AuthorClient {
+  @Override public AuthorDto getById(Long id) {
+    return new AuthorDto(id, "Unknown");
+  }
+}</code></pre>
+
+<p>Fallback wymaga włączenia <code>feign.circuitbreaker.enabled=true</code> (Spring Cloud Circuit Breaker). Nowszy kierunek: Resilience4j bezpośrednio albo HTTP Interface + adnotacje.</p>
+
+<h3>ErrorDecoder</h3>
+
+<pre><code>@Bean
+ErrorDecoder authorErrorDecoder() {
+  return (methodKey, response) -&gt; {
+    if (response.status() == 404) return new AuthorNotFoundException();
+    return new Default().decode(methodKey, response);
+  };
+}</code></pre>
+
+<h3>Resilience4j z Feign</h3>
+
+<p>Spring Cloud Circuit Breaker opakowuje Feign — nazwa instancji = <code>name</code> klienta. Konfiguracja jak w tutorialu Resilience4j (<code>resilience4j.circuitbreaker.instances.author-service</code>). Retry na Feign — ostrożnie z POST; lepiej na poziomie biznesu lub tylko GET.</p>
+
+<p>Timeouty: <code>connectTimeout</code> / <code>readTimeout</code> w YAML Feign to pierwsza linia obrony. Nie zastępują circuit breakera przy masowych awariach downstream.</p>
+
+<hr>
+
+<h2 id="testy">6. Testy</h2>
+
+<table>
+  <thead><tr><th>Podejście</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Spring Cloud Contract</strong> + Stub Runner</td><td>Konsument Feign testuje przeciw stubom producenta — patrz tutorial SCC</td></tr>
+    <tr><td><strong>WireMock</strong> (<code>@AutoConfigureWireMock</code>)</td><td>Szybki test bez pełnego SCC — stub URL w <code>@FeignClient(url=...)</code></td></tr>
+    <tr><td><strong><code>@SpringBootTest</code> + MockWebServer</strong></td><td>Kontrola nad kolejnością requestów</td></tr>
+    <tr><td><strong>Test slice bez sieci</strong></td><td>Mockuj interfejs <code>@FeignClient</code> w testach serwisu — unit, nie test Feign</td></tr>
+  </tbody>
+</table>
+
+<pre><code>@SpringBootTest
+@AutoConfigureStubRunner(
+    ids = "com.ex:author-service:+:stubs:8081",
+    stubsMode = StubRunnerProperties.StubsMode.LOCAL)
+class OrderServiceIT {
+  @Autowired AuthorClient authorClient;
+  // Feign woła stub na 8081
+}</code></pre>
+
+<p>Testuj logikę <em>Twojego</em> serwisu z zamockowanym klientem; testuj integrację Feign osobno (Contract / WireMock) — nie mieszaj w jednym teście „wszystkiego”.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong>Brak <code>@EnableFeignClients</code>.</strong> Bean interfejsu nie powstaje — <code>NoSuchBeanDefinitionException</code>.</li>
+  <li><strong><code>name</code> bez działającego discovery.</strong> „Load balancer does not contain an instance” — dodaj <code>url</code> na local albo rejestrację w Eureka/K8s.</li>
+  <li><strong>Duplikat <code>@RequestMapping</code> na interfejsie i metodzie.</strong> Złe ścieżki — 404. Trzymaj konwencję: <code>path</code> na klasie, metody krótkie.</li>
+  <li><strong>Feign w tym samym pakiecie co encje JPA.</strong> Skanowanie myli konteksty — osobny pakiet <code>...client</code>.</li>
+  <li><strong>Interceptor z <code>RequestContextHolder</code> w jobie / @Async.</strong> Brak nagłówka Authorization w wywołaniu — 401 na downstream.</li>
+  <li><strong>Fallback bez włączonego circuit breaker.</strong> Klasa fallback nigdy nie jest używana — mylące przy awarii.</li>
+  <li><strong>Log <code>full</code> na prod.</strong> Body requestów z hasłami i tokenami w logach centralnych.</li>
+  <li><strong>Retry Feign na POST create.</strong> Podwójne zamówienie / duplikat rekordu.</li>
+  <li><strong>Dwa klienty do tego samego serwisu z różnymi timeoutami bez <code>contextId</code>.</strong> Konflikt beanów — użyj <code>@FeignClient(contextId = "authorClientV2", ...)</code>.</li>
+  <li><strong>Feign zamiast SDK zewnętrznego API.</strong> Brak obsługi paginacji vendor-specific, rate limitów i wersji API — użyj oficjalnego klienta.</li>
+</ol>
+
+</body>
+</html>
