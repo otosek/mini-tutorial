@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Boot + K8s Probes — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #326ce5;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+      --err: #dc2626;
+      --ok: #16a34a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .must-know::after {
+      content: " ★";
+      color: var(--star);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.88rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.65rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eff6ff; font-weight: 600; }
+    .th-bad { background: #fef2f2; }
+    .th-good { background: #f0fdf4; }
+
+    .cell-bad { color: var(--err); font-weight: 600; }
+    .cell-good { color: var(--ok); font-weight: 600; }
+    .cell-mono { font-family: ui-monospace, monospace; font-size: 0.82rem; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .tip {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    .warn {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Boot + Kubernetes Probes</h1>
+<p class="meta">Błędne proby, graceful shutdown, preStop hook, Java w kontenerach, skalowanie<br>
+Format: HTML (otwórz w przeglądarce). Bez sekcji ciekawostek.</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#czesc-1">Błędny startup — socket vs actuator</a></li>
+    <li><a href="#czesc-2">Błędny shutdown</a></li>
+    <li><a href="#czesc-3">Graceful shutdown w Spring Boot</a></li>
+    <li><a href="#czesc-4">PreStop hook — race condition</a></li>
+    <li><a href="#czesc-5">Java w kontenerach — dobre praktyki</a></li>
+    <li><a href="#czesc-6">Dlaczego skalować aplikacje Java</a></li>
+    <li><a href="#czesc-7">Kompletna konfiguracja</a></li>
+    <li><a href="#czesc-8">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="czesc-1" class="must-know">Część 1 — Błędny startup: socket vs actuator</h2>
+
+<p><strong>Problem:</strong> <code>tcpSocket</code> probe pokazuje OK gdy port się otworzy, ale aplikacja Spring Boot jest gotowa dopiero kilkanaście sekund później. Ruch płynie do niegotowego Poda.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Czas</th>
+      <th>Wydarzenie</th>
+      <th class="th-bad">tcpSocket</th>
+      <th class="th-bad">Ruch</th>
+      <th class="th-good">actuator</th>
+      <th class="th-good">Ruch</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="cell-mono">0s</td>
+      <td>JVM startuje</td>
+      <td class="cell-bad">FAIL</td>
+      <td>—</td>
+      <td class="cell-bad">FAIL</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">2s</td>
+      <td>Tomcat binduje port 8080</td>
+      <td class="cell-good">OK</td>
+      <td>Pod w endpoints</td>
+      <td class="cell-bad">FAIL</td>
+      <td>Brak ruchu</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">4s</td>
+      <td>Flyway migracje DB</td>
+      <td class="cell-good">OK</td>
+      <td class="cell-bad">Ruch → 503</td>
+      <td class="cell-bad">FAIL</td>
+      <td>Brak ruchu</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">8s</td>
+      <td>Hibernate SessionFactory</td>
+      <td class="cell-good">OK</td>
+      <td class="cell-bad">503, timeout</td>
+      <td class="cell-bad">FAIL</td>
+      <td>Brak ruchu</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">12s</td>
+      <td>Connection pool, @PostConstruct</td>
+      <td class="cell-good">OK</td>
+      <td class="cell-bad">503</td>
+      <td class="cell-bad">FAIL</td>
+      <td>Brak ruchu</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">18s</td>
+      <td>Spring Context GOTOWY</td>
+      <td class="cell-good">OK</td>
+      <td>OK</td>
+      <td class="cell-good">OK</td>
+      <td>Pod w endpoints</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Konsekwencje przy 100 req/s:</strong></p>
+<ul>
+  <li><code>tcpSocket</code>: ~16s fałszywego OK = <strong>~1600 błędów</strong> przy każdym restarcie</li>
+  <li><code>/actuator/health/readiness</code>: <strong>0 błędów</strong></li>
+</ul>
+
+<hr>
+
+<h2 id="czesc-2" class="must-know">Część 2 — Błędny shutdown</h2>
+
+<p><strong>Problem:</strong> Przy wyłączaniu Poda <code>tcpSocket</code> pokazuje OK aż do zamknięcia portu — K8s kieruje ruch do umierającego Poda.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Czas</th>
+      <th>Wydarzenie</th>
+      <th class="th-bad">tcpSocket</th>
+      <th class="th-bad">Błędy</th>
+      <th class="th-good">actuator</th>
+      <th class="th-good">Błędy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="cell-mono">0s</td>
+      <td>K8s wysyła SIGTERM</td>
+      <td class="cell-good">OK</td>
+      <td>—</td>
+      <td class="cell-bad">FAIL</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">1s</td>
+      <td>Graceful shutdown trwa</td>
+      <td class="cell-good">OK</td>
+      <td class="cell-bad">503</td>
+      <td class="cell-bad">FAIL</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">3s</td>
+      <td>Connection pool zamykany</td>
+      <td class="cell-good">OK</td>
+      <td class="cell-bad">DB errors</td>
+      <td class="cell-bad">FAIL</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">5s</td>
+      <td>Tomcat zamyka socket</td>
+      <td class="cell-bad">FAIL</td>
+      <td class="cell-bad">Conn refused</td>
+      <td class="cell-bad">FAIL</td>
+      <td>—</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Konsekwencje:</strong> <code>tcpSocket</code> = ~500 błędów, <code>actuator</code> = 0 błędów.</p>
+
+<hr>
+
+<h2 id="czesc-3" class="must-know">Część 3 — Graceful shutdown w Spring Boot</h2>
+
+<p><strong>Problem:</strong> Bez <code>server.shutdown=graceful</code> Spring ucina aktywne requesty natychmiast przy SIGTERM.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Czas</th>
+      <th>Wydarzenie</th>
+      <th class="th-good">Z graceful</th>
+      <th class="th-bad">Bez graceful</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="cell-mono">0s</td>
+      <td>SIGTERM</td>
+      <td>Czeka na aktywne req</td>
+      <td class="cell-bad">Zamyka natychmiast</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">0.5s</td>
+      <td>Aktywne requesty</td>
+      <td>Dokańcza</td>
+      <td class="cell-bad">Connection reset</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">2s</td>
+      <td>Zakończenie</td>
+      <td class="cell-good">0 błędów</td>
+      <td class="cell-bad">~200 błędów + ucięte TX</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Konfiguracja</h3>
+<pre><code>server:
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s</code></pre>
+
+<hr>
+
+<h2 id="czesc-4">Część 4 — PreStop hook i race condition</h2>
+
+<p><strong>Problem:</strong> K8s robi dwie rzeczy równolegle przy delete Pod:</p>
+<ol>
+  <li>Wysyła SIGTERM do kontenera (~50ms)</li>
+  <li>Usuwa Pod z Service endpoints (propagacja 1-2s)</li>
+</ol>
+<p>SIGTERM dociera szybciej niż propagacja endpoints. Przez 1-2s ruch wciąż płynie do zamykającego się Poda.</p>
+
+<div class="warn">
+<strong>Bez preStop:</strong> ~100-200 błędów przy każdym shutdown (nawet z graceful shutdown włączonym).
+</div>
+
+<h3>Rozwiązanie — preStop hook</h3>
+<pre><code>spec:
+  containers:
+  - name: app
+    lifecycle:
+      preStop:
+        exec:
+          command: ["sleep", "3"]</code></pre>
+
+<p><code>sleep 3</code> daje czas na propagację endpoints. Dopiero potem SIGTERM dociera do aplikacji.</p>
+
+<hr>
+
+<h2 id="czesc-5">Część 5 — Java w kontenerach: dobre praktyki</h2>
+
+<h3>Zalecane parametry JVM</h3>
+<table>
+  <thead>
+    <tr><th>Parametr</th><th>Opis</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="cell-mono">-XX:MaxRAMPercentage=75</td><td>Heap = 75% RAM kontenera</td><td>Zalecane</td></tr>
+    <tr><td class="cell-mono">-XX:InitialRAMPercentage=50</td><td>Początkowy heap</td><td>Opcjonalne</td></tr>
+    <tr><td class="cell-mono">-XX:+ExitOnOutOfMemoryError</td><td>Zabij JVM przy OOM — K8s zrestartuje</td><td>Zalecane</td></tr>
+    <tr><td class="cell-mono">-XX:+UseG1GC</td><td>G1 — domyślny od Java 9</td><td>Domyślne</td></tr>
+  </tbody>
+</table>
+
+<h3>Częste błędy</h3>
+<table>
+  <thead>
+    <tr><th>Błąd</th><th>Dlaczego źle</th><th>Rozwiązanie</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="cell-mono">-Xmx2g (hardcoded)</td>
+      <td>Ignoruje limity kontenera</td>
+      <td class="cell-mono">MaxRAMPercentage=75</td>
+    </tr>
+    <tr>
+      <td class="cell-mono">-Xmx = limit RAM</td>
+      <td>Brak miejsca na native memory → OOMKill</td>
+      <td>Zostaw 25% na metaspace, stacks</td>
+    </tr>
+    <tr>
+      <td>Brak ExitOnOutOfMemoryError</td>
+      <td>JVM wisi po OOM</td>
+      <td>Dodaj flagę</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>JAVA_TOOL_OPTIONS — wszystkie flagi w jednym miejscu</h3>
+<pre><code>env:
+  - name: JAVA_TOOL_OPTIONS
+    value: &gt;-
+      -XX:MaxRAMPercentage=75
+      -XX:InitialRAMPercentage=50
+      -XX:+ExitOnOutOfMemoryError
+      -XX:+UseG1GC</code></pre>
+
+<div class="tip">
+<strong>Tip:</strong> <code>requests.memory = limits.memory</code> dla JVM. Inaczej JVM alokuje heap na podstawie requests, a potem OOMKill.
+</div>
+
+<hr>
+
+<h2 id="czesc-6">Część 6 — Dlaczego skalować aplikacje Java</h2>
+
+<p><strong>Jedna instancja to anty-pattern.</strong> Java w dużych kontenerach działa gorzej niż w wielu małych.</p>
+
+<h3>Problemy z 1 instancją</h3>
+<table>
+  <thead>
+    <tr><th>Problem</th><th>Opis</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Restart = 100% downtime</td><td>Deploy, crash, OOM — pełna niedostępność</td></tr>
+    <tr><td>Brak rolling update</td><td>Nowa wersja = okno niedostępności</td></tr>
+    <tr><td>readinessProbe bezużyteczna</td><td>Ruch nie ma gdzie iść</td></tr>
+    <tr><td>Duży heap = wolny GC</td><td>16GB heap = pauzy 200-500ms</td></tr>
+  </tbody>
+</table>
+
+<h3>GC: duży heap vs wiele małych</h3>
+<table>
+  <thead>
+    <tr><th>Konfiguracja</th><th>Pauza GC</th><th>Ryzyko awarii</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="cell-mono">1 × 16GB</td><td class="cell-bad">200-500ms</td><td>1 OOM = 100% down</td></tr>
+    <tr><td class="cell-mono">4 × 4GB</td><td>20-50ms</td><td>1 OOM = 25% down</td></tr>
+    <tr><td class="cell-mono">8 × 2GB</td><td class="cell-good">5-15ms</td><td>1 OOM = 12.5% down</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — Kompletna konfiguracja</h2>
+
+<h3>application.yml</h3>
+<pre><code>server:
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState, db
+        liveness:
+          include: livenessState</code></pre>
+
+<h3>Deployment</h3>
+<pre><code>spec:
+  containers:
+  - name: app
+    image: myregistry/app:1.2.0
+    ports:
+    - containerPort: 8080
+    env:
+    - name: JAVA_TOOL_OPTIONS
+      value: &gt;-
+        -XX:MaxRAMPercentage=75
+        -XX:+ExitOnOutOfMemoryError
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    startupProbe:
+      httpGet:
+        path: /actuator/health/liveness
+        port: 8080
+      failureThreshold: 30
+      periodSeconds: 2
+    livenessProbe:
+      httpGet:
+        path: /actuator/health/liveness
+        port: 8080
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /actuator/health/readiness
+        port: 8080
+      periodSeconds: 5
+    lifecycle:
+      preStop:
+        exec:
+          command: ["sleep", "3"]</code></pre>
+
+<hr>
+
+<h2 id="czesc-8" class="must-know">Część 8 — Typowe błędy</h2>
+
+<ol>
+  <li><strong>tcpSocket zamiast httpGet</strong> — port otwarty ≠ aplikacja gotowa</li>
+  <li><strong>Brak graceful shutdown</strong> — requesty ucięte przy SIGTERM</li>
+  <li><strong>Brak preStop hook</strong> — race condition, błędy przez 1-2s</li>
+  <li><strong>Hardcoded -Xmx</strong> — ignoruje limity kontenera</li>
+  <li><strong>-Xmx = limit RAM</strong> — brak miejsca na native memory → OOMKill</li>
+  <li><strong>1 replika</strong> — restart = 100% downtime, readiness bezużyteczna</li>
+  <li><strong>Liveness sprawdza DB</strong> — pad DB = restart loop wszystkich Podów</li>
+  <li><strong>Brak startupProbe</strong> — liveness zabija wolno startującą aplikację</li>
+  <li><strong>requests ≠ limits dla memory</strong> — JVM alokuje za dużo → OOMKill</li>
+  <li><strong>Duży heap (16GB+)</strong> — długie pauzy GC, gorsza latencja</li>
+</ol>
+
+</body>
+</html>
