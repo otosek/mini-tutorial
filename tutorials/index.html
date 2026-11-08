@@ -131,24 +131,8 @@
 
 <p><span class="count">53 tutoriali</span></p>
 
-<h2>Backend / Java</h2>
+<h2>Java Core</h2>
 <div class="card-list">
-  <a class="card" href="hibernate/hibernate-mini-tutorial.html">
-    <div class="card-title">Hibernate / JPA</div>
-    <p class="card-desc">Stany encji, relacje, N+1, LazyInitException, błędy.</p>
-  </a>
-  <a class="card" href="java/jooq-mini-tutorial.html">
-    <div class="card-title">jOOQ</div>
-    <p class="card-desc">Type-safe SQL, codegen, DSL, batch, UPSERT, Spring Boot vs Hibernate.</p>
-  </a>
-  <a class="card" href="java/virtual-threads-mini-tutorial.html">
-    <div class="card-title">Java Virtual Threads</div>
-    <p class="card-desc">Project Loom, pinning, kiedy używać, Spring Boot.</p>
-  </a>
-  <a class="card" href="java/selenium-junit-spock-mini-tutorial.html">
-    <div class="card-title">Selenium + JUnit + Spock</div>
-    <p class="card-desc">E2E UI, Page Object, waits, JUnit 5, Spock BDD.</p>
-  </a>
   <a class="card" href="java/java-8-to-25-mini-tutorial.html">
     <div class="card-title">Java 8 → 25</div>
     <p class="card-desc">Lambda, modules, records, virtual threads — wersja po wersji.</p>
@@ -165,29 +149,25 @@
     <div class="card-title">Foreign Memory API</div>
     <p class="card-desc">FFM API, MemorySegment, Arena, layout, vs JNI/ByteBuffer.</p>
   </a>
+  <a class="card" href="java/virtual-threads-mini-tutorial.html">
+    <div class="card-title">Java Virtual Threads</div>
+    <p class="card-desc">Project Loom, pinning, kiedy używać, Spring Boot.</p>
+  </a>
   <a class="card" href="java/leyden-graal-mini-tutorial.html">
     <div class="card-title">Leyden + Graal</div>
     <p class="card-desc">JEP 483, AOT cache, CDS, Native Image vs Leyden.</p>
-  </a>
-  <a class="card" href="java/code-review-mini-tutorial.html">
-    <div class="card-title">Code review (Java)</div>
-    <p class="card-desc">Checklist reviewera: CI+LLM, zadanie, pakiety, testy, tipy.</p>
-  </a>
-  <a class="card" href="java/vaadin-flow-mini-tutorial.html">
-    <div class="card-title">Vaadin Flow</div>
-    <p class="card-desc">UI w Javie: kiedy stosować, architektura, praktyki, vs Hilla.</p>
   </a>
   <a class="card" href="java/kotlin-mini-tutorial.html">
     <div class="card-title">Kotlin vs Java 25</div>
     <p class="card-desc">Null safety, data class, extensions, coroutines — i odpowiednik w Javie.</p>
   </a>
+</div>
+
+<h2>Spring</h2>
+<div class="card-list">
   <a class="card" href="java/spring-7-boot-4-mini-tutorial.html">
     <div class="card-title">Spring 7 · Boot 4</div>
     <p class="card-desc">Framework 6→7, Boot 3→4: breaking, Jackson 3, startery, migracja.</p>
-  </a>
-  <a class="card" href="java/spring-cloud-contract-mini-tutorial.html">
-    <div class="card-title">Spring Cloud Contract</div>
-    <p class="card-desc">CDC, Maven/Gradle, kontrakty YAML/Groovy, producer, consumer, Kafka — przykłady.</p>
   </a>
   <a class="card" href="java/spring-cloud-stack-mini-tutorial.html">
     <div class="card-title">Spring Cloud — mapa stacku</div>
@@ -205,18 +185,50 @@
     <div class="card-title">Spring Cloud Stream</div>
     <p class="card-desc">Kafka/Rabbit binders, Supplier/Consumer, DLQ, retry, testy.</p>
   </a>
-  <a class="card" href="java/resilience4j-mini-tutorial.html">
-    <div class="card-title">Resilience4j</div>
-    <p class="card-desc">Circuit breaker, retry, bulkhead, rate limiter — Spring Boot, metryki.</p>
+  <a class="card" href="java/spring-cloud-contract-mini-tutorial.html">
+    <div class="card-title">Spring Cloud Contract</div>
+    <p class="card-desc">CDC, Maven/Gradle, kontrakty YAML/Groovy, producer, consumer, Kafka — przykłady.</p>
+  </a>
+</div>
+
+<h2>Testowanie i jakość</h2>
+<div class="card-list">
+  <a class="card" href="java/selenium-junit-spock-mini-tutorial.html">
+    <div class="card-title">Selenium + JUnit + Spock</div>
+    <p class="card-desc">E2E UI, Page Object, waits, JUnit 5, Spock BDD.</p>
   </a>
   <a class="card" href="java/archunit-mini-tutorial.html">
     <div class="card-title">ArchUnit</div>
     <p class="card-desc">Testy architektury JUnit 5 — warstwy, Spring, DDD, slice, freeze, wiele przykładów.</p>
   </a>
+  <a class="card" href="java/code-review-mini-tutorial.html">
+    <div class="card-title">Code review (Java)</div>
+    <p class="card-desc">Checklist reviewera: CI+LLM, zadanie, pakiety, testy, tipy.</p>
+  </a>
+</div>
+
+<h2>Biblioteki Java</h2>
+<div class="card-list">
+  <a class="card" href="java/resilience4j-mini-tutorial.html">
+    <div class="card-title">Resilience4j</div>
+    <p class="card-desc">Circuit breaker, retry, bulkhead, rate limiter — Spring Boot, metryki.</p>
+  </a>
+  <a class="card" href="java/vaadin-flow-mini-tutorial.html">
+    <div class="card-title">Vaadin Flow</div>
+    <p class="card-desc">UI w Javie: kiedy stosować, architektura, praktyki, vs Hilla.</p>
+  </a>
 </div>
 
 <h2>Bazy danych</h2>
 <div class="card-list">
+  <a class="card" href="hibernate/hibernate-mini-tutorial.html">
+    <div class="card-title">Hibernate / JPA</div>
+    <p class="card-desc">Stany encji, relacje, N+1, LazyInitException, błędy.</p>
+  </a>
+  <a class="card" href="java/jooq-mini-tutorial.html">
+    <div class="card-title">jOOQ</div>
+    <p class="card-desc">Type-safe SQL, codegen, DSL, batch, UPSERT, Spring Boot vs Hibernate.</p>
+  </a>
   <a class="card" href="postgresql/postgresql-mini-tutorial.html">
     <div class="card-title">PostgreSQL</div>
     <p class="card-desc">UPSERT, CTE, window functions, JSONB, EXPLAIN, RLS.</p>
