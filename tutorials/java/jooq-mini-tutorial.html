@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>jOOQ — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #c0392b;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+      --why-bg: #fef2f2;
+      --why-border: #fecaca;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fde8e8; font-weight: 600; }
+
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .po-co {
+      background: var(--why-bg);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 0.85rem 1rem;
+      margin: 1rem 0 1.25rem;
+      font-size: 0.95rem;
+    }
+
+    .po-co strong { color: var(--accent); }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    .lib-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #fde8e8;
+      color: #991b1b;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      margin-right: 0.35rem;
+    }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>jOOQ — type-safe SQL w Javie</h1>
+<p class="meta">DSL · code generation · CRUD · JOIN · batch · Spring Boot · vs Hibernate<br>
+Format: HTML offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty — co to jest jOOQ</a></li>
+    <li><a href="#kiedy">Kiedy jOOQ, kiedy Hibernate, kiedy JDBC</a></li>
+    <li><a href="#setup">Konfiguracja i generowanie kodu</a></li>
+    <li><a href="#dsl">DSL i type-safe SQL</a></li>
+    <li><a href="#crud">CRUD, JOIN, warunki dynamiczne</a></li>
+    <li><a href="#batch">Batch, UPSERT, transakcje</a></li>
+    <li><a href="#spring">Spring Boot</a></li>
+    <li><a href="#zaawansowane">Zaawansowane scenariusze</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Fundamenty — co to jest jOOQ</h2>
+
+<p><strong>jOOQ</strong> (Java Object Oriented Querying) to biblioteka, która mapuje SQL na <strong>typowany DSL w Javie</strong>. Zamiast składać zapytania z łańcuchów znaków albo polegać na abstrakcji ORM, piszesz SQL — ale kompilator pilnuje nazw tabel, kolumn i typów.</p>
+
+<div class="po-co">
+  <strong>Po co w ogóle jOOQ?</strong> Bo w wielu systemach <em>SQL jest prawdą</em>: raporty, agregacje, window functions, UPSERT, CTE — to nie jest „szczegół implementacji”, tylko rdzeń logiki. Hibernate ukrywa SQL kosztem niespodzianek (N+1, lazy loading, nieoptymalne zapytania). Czysty JDBC daje kontrolę, ale bez bezpieczeństwa typów i z dużą ilością boilerplate. jOOQ łączy oba światy: <strong>pełna kontrola nad SQL + compile-time safety</strong>.
+</div>
+
+<p>Filozofia jOOQ: <em>„SQL first”</em>. Biblioteka nie udaje, że baza to obiektowa graf encji — generuje i wykonuje prawdziwe zapytania SQL, znane z dokumentacji Postgresa, MySQL czy Oracle.</p>
+
+<table>
+  <thead><tr><th>Element</th><th>Co robi</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><code>DSLContext</code></td><td>Główny punkt wejścia — SELECT, INSERT, UPDATE, DELETE</td><td>Jeden obiekt do wszystkich operacji; wstrzykiwany przez Spring</td></tr>
+    <tr><td>Wygenerowane tabele (<code>AUTHOR</code>)</td><td>Stałe reprezentujące kolumny i tabele z bazy</td><td>Refaktoring kolumny w DB → błąd kompilacji, nie runtime</td></tr>
+    <tr><td><code>Record</code> / POJO</td><td>Wiersz wyniku lub mapowanie na klasę</td><td>Elastyczność: dynamiczny record albo typowany DTO</td></tr>
+    <tr><td>Code generator</td><td>Skanuje schemat DB i generuje klasy Java</td><td>Schema jest źródłem prawdy — nie duplikujesz nazw ręcznie</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>jOOQ ≠ ORM</strong>
+  <p>Nie zarządza cyklem życia encji, nie ma lazy loading ani cache pierwszego poziomu. To <strong>query builder + executor</strong>. Mapowanie obiektowo-relacyjne (1:N, dziedziczenie) zostaw Hibernate — jOOQ bierze na siebie zapytania, gdzie SQL ma znaczenie.</p>
+</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">Kiedy jOOQ, kiedy Hibernate, kiedy JDBC</h2>
+
+<div class="po-co">
+  <strong>Po co wybierać narzędzie świadomie?</strong> W stacku Java często masz wszystkie trzy opcje naraz. Zły wybór = miesiące walki z N+1 albo setkami linii JDBC. Reguła praktyczna: <strong>Hibernate do CRUD i prostych relacji</strong>, <strong>jOOQ do zapytań, gdzie SQL jest złożony lub krytyczny</strong>, <strong>JDBC / JdbcClient gdy potrzebujesz absolutnego minimum zależności</strong>.
+</div>
+
+<table>
+  <thead><tr><th>Sytuacja</th><th>Hibernate/JPA</th><th>jOOQ</th><th>JDBC</th></tr></thead>
+  <tbody>
+    <tr><td>Prosty CRUD encji</td><td>✓ naturalny wybór</td><td>możliwe, ale verbose</td><td>dużo boilerplate</td></tr>
+    <tr><td>Złożone JOIN + agregacje</td><td>ryzyko N+1, ciężki JPQL</td><td>✓ czytelny SQL w Javie</td><td>✓, bez typów</td></tr>
+    <tr><td>Window functions, CTE, UPSERT</td><td>ograniczone / vendor-specific</td><td>✓ natywne wsparcie dialektu</td><td>✓, ręcznie</td></tr>
+    <tr><td>Refaktoring schematu DB</td><td>adnotacje @Column — runtime</td><td>✓ błąd kompilacji</td><td>runtime (stringi)</td></tr>
+    <tr><td>Multi-tenancy (schema per tenant)</td><td>możliwe, skomplikowane</td><td>✓ <code>DSLContext</code> per schema</td><td>ręcznie</td></tr>
+    <tr><td>Prototyp / skrypt jednorazowy</td><td>overkill</td><td>overkill</td><td>✓ JdbcClient (Spring 6+)</td></tr>
+  </tbody>
+</table>
+
+<p>W praktyce korporacyjnej często spotkasz <strong>hybrydę</strong>: Hibernate do zapisu encji domenowych, jOOQ do odczytów (CQRS-light), raportów i batchy. Spring Boot wspiera oba bez konfliktu — wspólny <code>DataSource</code>.</p>
+
+<div class="keyword">
+  <strong>Pułapka: „zamienimy cały Hibernate na jOOQ”</strong>
+  <p>jOOQ nie zastąpi zarządzania relacjami obiektowymi ani dirty checking. Przepisanie całego modelu domenowego na jOOQ rzadko się opłaca — chyba że domena jest płaska i query-centric.</p>
+</div>
+
+<hr>
+
+<h2 id="setup">Konfiguracja i generowanie kodu</h2>
+
+<div class="po-co">
+  <strong>Po co code generator?</strong> Ręczne definiowanie <code>"author"."id"</code> w stringach to ten sam problem co JDBC — literówka wykryta dopiero na produkcji. Generator czyta <strong>rzeczywisty schemat</strong> (tabele, kolumny, klucze, enumy Postgresa) i tworzy klasy <code>Tables.AUTHOR.ID</code>. Zmiana nazwy kolumny w migracji Flyway → przebudujesz projekt → kompilator wskaże wszystkie miejsca do poprawy.
+</div>
+
+<h3>Zależności (Maven)</h3>
+<pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.jooq&lt;/groupId&gt;
+    &lt;artifactId&gt;jooq&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;!-- runtime: jooq + driver bazy --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.postgresql&lt;/groupId&gt;
+    &lt;artifactId&gt;postgresql&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+
+<h3>jOOQ Codegen (build time)</h3>
+<p>Plugin Maven/Gradle łączy się z bazą (lub z pliku DDL) i generuje pakiet, np. <code>com.example.db</code>:</p>
+<pre><code>// Wygenerowane — NIE edytuj ręcznie
+public class Tables {
+    public static final Author AUTHOR = Author.AUTHOR;
+    public static final Title TITLE = Title.TITLE;
+}
+
+public class Author extends TableImpl&lt;AuthorRecord&gt; {
+    public final TableField&lt;AuthorRecord, UUID&gt; ID = createField(...);
+    public final TableField&lt;AuthorRecord, String&gt; EMAIL = createField(...);
+}</code></pre>
+
+<table>
+  <thead><tr><th>Opcja generatora</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><code>generate.records</code></td><td>Typowany <code>AuthorRecord</code> z getterami/setterami per kolumna</td></tr>
+    <tr><td><code>generate.pojos</code></td><td>Proste POJO do mapowania wyników (DTO)</td></tr>
+    <tr><td><code>generate.dao</code></td><td>Gotowe DAO per tabela — szybki start, ale często za mało elastyczne</td></tr>
+    <tr><td><code>generate.kotlin</code></td><td>Wariant dla Kotlina zamiast Javy</td></tr>
+    <tr><td><code>inputSchema</code> / <code>includes</code></td><td>Filtr tabel — generuj tylko to, czego używasz</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Workflow z Flyway/Liquibase</strong>
+  <p>Migracja zmienia schemat → codegen w CI (lub lokalnie) → commit wygenerowanych klas. Bez tego drift między kodem a bazą wraca przez boczne drzwi. Alternatywa: codegen z URL testcontainers w pipeline.</p>
+</div>
+
+<hr>
+
+<h2 id="dsl" class="must-know">DSL i type-safe SQL</h2>
+
+<div class="po-co">
+  <strong>Po co DSL zamiast stringów?</strong> Zapytanie budujesz jak zdanie: <code>select().from().where().fetch()</code>. IDE podpowiada kolumny, a typy filtrów (<code>UUID</code>, <code>String</code>, <code>LocalDateTime</code>) muszą się zgadzać. Porównanie <code>AUTHOR.ID.eq(uuid)</code> nie skompiluje się z <code>String</code> — JDBC pozwoliłby i wywalił się w runtime.
+</div>
+
+<pre><code>import static com.example.db.Tables.*;
+
+// SELECT first_name, email FROM author WHERE id = ?
+List&lt;AuthorRecord&gt; rows = dsl
+    .select(AUTHOR.FIRST_NAME, AUTHOR.EMAIL)
+    .from(AUTHOR)
+    .where(AUTHOR.ID.eq(authorId))
+    .fetchInto(AUTHOR);  // mapowanie na record tabeli
+
+// Lub na własne DTO
+List&lt;AuthorDto&gt; dtos = dsl
+    .select(AUTHOR.FIRST_NAME, AUTHOR.EMAIL)
+    .from(AUTHOR)
+    .where(AUTHOR.EMAIL.like("%@example.com"))
+    .fetchInto(AuthorDto.class);</code></pre>
+
+<h3>JOIN — czytelny jak SQL</h3>
+<pre><code>Result&lt;Record3&lt;String, String, String&gt;&gt; result = dsl
+    .select(AUTHOR.FIRST_NAME, AUTHOR.LAST_NAME, TITLE.TITLE_)
+    .from(AUTHOR)
+    .join(TITLE).on(TITLE.AUTHOR_ID.eq(AUTHOR.ID))
+    .where(AUTHOR.CREATED_AT.gt(LocalDateTime.now().minusYears(1)))
+    .fetch();</code></pre>
+
+<h3>Warunki dynamiczne (filtry opcjonalne)</h3>
+<p>Typowy case: endpoint z parametrami query — część filtrów pusta. jOOQ pozwala składać <code>Condition</code> bez konkatenacji SQL:</p>
+<pre><code>Condition condition = DSL.trueCondition();
+if (email != null)   condition = condition.and(AUTHOR.EMAIL.eq(email));
+if (namePrefix != null) condition = condition.and(AUTHOR.LAST_NAME.startsWith(namePrefix));
+
+return dsl.selectFrom(AUTHOR).where(condition).fetch();</code></pre>
+
+<div class="po-co">
+  <strong>Po co <code>Condition</code> zamiast StringBuilder?</strong> Parametry są bindowane (<code>PreparedStatement</code>) — ochrona przed SQL injection. Logika AND/OR jest jawna. Testujesz filtry jednostkowo bez parsowania stringów.
+</div>
+
+<h3>Plain SQL, gdy DSL nie wystarcza</h3>
+<pre><code>// fragment zapytania poza DSL — nadal z bindingiem
+Field&lt;BigDecimal&gt; rank = DSL.field("rank() OVER (ORDER BY score DESC)", BigDecimal.class);
+
+dsl.select(AUTHOR.FIRST_NAME, rank)
+   .from(AUTHOR)
+   .fetch();</code></pre>
+
+<hr>
+
+<h2 id="crud">CRUD, JOIN, warunki dynamiczne</h2>
+
+<div class="po-co">
+  <strong>Po co osobna sekcja CRUD?</strong> Składnia insert/update/delete w jOOQ różni się od SELECT i ma własne wzorce: <code>returning()</code>, <code>onConflict()</code>, <code>set()</code> z wyrażeniami SQL. Zrozumienie ich pozwala pisać repozytoria bez powrotu do JDBC.
+</div>
+
+<h3>INSERT</h3>
+<pre><code>AuthorRecord record = dsl.newRecord(AUTHOR);
+record.setEmail("anna@ex.com");
+record.setFirstName("Anna");
+record.store();  // INSERT + ustawia wygenerowane ID jeśli jest
+
+// Lub fluent:
+UUID newId = dsl.insertInto(AUTHOR)
+    .set(AUTHOR.EMAIL, "jan@ex.com")
+    .set(AUTHOR.FIRST_NAME, "Jan")
+    .returning(AUTHOR.ID)
+    .fetchOne()
+    .getId();</code></pre>
+
+<h3>UPDATE i DELETE</h3>
+<pre><code>dsl.update(AUTHOR)
+   .set(AUTHOR.FIRST_NAME, "Anna Maria")
+   .where(AUTHOR.ID.eq(authorId))
+   .execute();
+
+dsl.deleteFrom(TITLE)
+   .where(TITLE.AUTHOR_ID.eq(authorId))
+   .execute();</code></pre>
+
+<h3>Paginacja</h3>
+<pre><code>dsl.selectFrom(AUTHOR)
+   .orderBy(AUTHOR.CREATED_AT.desc())
+   .limit(pageSize)
+   .offset(page * pageSize)
+   .fetch();</code></pre>
+
+<table>
+  <thead><tr><th>Metoda fetch</th><th>Po co</th></tr></thead>
+  <tbody>
+    <tr><td><code>fetch()</code></td><td>Lista wszystkich wierszy</td></tr>
+    <tr><td><code>fetchOne()</code></td><td>Dokładnie jeden — wyjątek jeśli 0 lub &gt;1</td></tr>
+    <tr><td><code>fetchOptional()</code></td><td><code>Optional&lt;Record&gt;</code> — brak = empty</td></tr>
+    <tr><td><code>fetchSingle()</code></td><td>Jeden wiersz, jedna kolumna — np. COUNT</td></tr>
+    <tr><td><code>fetchLazy()</code></td><td>Stream z kursorem — duże zestawy bez ładowania do pamięci</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="batch">Batch, UPSERT, transakcje</h2>
+
+<div class="po-co">
+  <strong>Po co batch i UPSERT w jOOQ?</strong> Import tysięcy wierszy pojedynczym INSERT-em to wąskie gardło. Batch grupuje operacje w jednej transzy. UPSERT (<code>ON CONFLICT</code> w Postgresie) eliminuje race condition „najpierw SELECT, potem INSERT lub UPDATE”. jOOQ generuje dialekt-specyficzny SQL — nie musisz pamiętać składni Oracle vs Postgres.
+</div>
+
+<h3>Batch insert</h3>
+<pre><code>dsl.batch(
+    dsl.insertInto(AUTHOR, AUTHOR.EMAIL, AUTHOR.FIRST_NAME)
+       .values("a@ex.com", "Anna"),
+    dsl.insertInto(AUTHOR, AUTHOR.EMAIL, AUTHOR.FIRST_NAME)
+       .values("b@ex.com", "Bogdan")
+).execute();
+
+// Lub batch z wieloma VALUES w pętli
+List&lt;Query&gt; queries = emails.stream()
+    .map(e -&gt; dsl.insertInto(AUTHOR, AUTHOR.EMAIL).values(e))
+    .toList();
+dsl.batch(queries).execute();</code></pre>
+
+<h3>UPSERT (Postgres)</h3>
+<pre><code>dsl.insertInto(AUTHOR)
+   .set(AUTHOR.EMAIL, "anna@ex.com")
+   .set(AUTHOR.FIRST_NAME, "Anna")
+   .onConflict(AUTHOR.EMAIL)
+   .doUpdate()
+   .set(AUTHOR.FIRST_NAME, "Anna Updated")
+   .execute();</code></pre>
+
+<h3>Transakcje</h3>
+<pre><code>dsl.transaction(configuration -&gt; {
+    DSLContext tx = DSL.using(configuration);
+    tx.insertInto(AUTHOR)...execute();
+    tx.insertInto(TITLE)...execute();
+    // rollback automatyczny przy unchecked exception
+});</code></pre>
+
+<div class="keyword">
+  <strong>Po co <code>dsl.transaction()</code> a nie <code>@Transactional</code>?</strong>
+  W kodzie bibliotecznym lub batch job bez Springa — lambda transaction jest samowystarczalna. W Springu i tak używasz <code>@Transactional</code> — jOOQ podłącza się do tej samej transakcji przez <code>ConnectionProvider</code>.
+</div>
+
+<hr>
+
+<h2 id="spring">Spring Boot</h2>
+
+<div class="po-co">
+  <strong>Po co starter jOOQ?</strong> Spring Boot auto-konfiguruje <code>DSLContext</code> z istniejącego <code>DataSource</code> — ten sam pool co Hibernate. Nie duplikujesz konfiguracji połączenia. Wstrzykujesz <code>DSLContext</code> do serwisów tak jak <code>JdbcTemplate</code>.
+</div>
+
+<pre><code>// build.gradle / pom.xml
+// org.springframework.boot:spring-boot-starter-jooq
+
+@Service
+@RequiredArgsConstructor
+public class AuthorQueryService {
+    private final DSLContext dsl;
+
+    public List&lt;AuthorDto&gt; findByDomain(String domain) {
+        return dsl.select(AUTHOR.FIRST_NAME, AUTHOR.EMAIL)
+                  .from(AUTHOR)
+                  .where(AUTHOR.EMAIL.like("%@" + domain))
+                  .fetchInto(AuthorDto.class);
+    }
+}</code></pre>
+
+<table>
+  <thead><tr><th>Integracja</th><th>Po co / uwaga</th></tr></thead>
+  <tbody>
+    <tr><td><code>spring.jooq.sql-dialect</code></td><td>Wymuszenie dialektu (POSTGRES, MYSQL) — domyślnie z JDBC URL</td></tr>
+    <tr><td>Hibernate + jOOQ razem</td><td>OK — różne repozytoria, wspólny DataSource i transakcje</td></tr>
+    <tr><td><code>@Transactional</code> readOnly</td><td>Na odczytach jOOQ — hint do Hibernate/session, mniejszy overhead</td></tr>
+    <tr><td>Testcontainers + codegen</td><td>Testy integracyjne na prawdziwym dialekcie SQL</td></tr>
+  </tbody>
+</table>
+
+<div class="keyword">
+  <strong>Konfiguracja własna <code>DSLContext</code></strong>
+  <p>Multi-tenancy, custom <code>ExecuteListener</code> (logowanie SQL, metryki), <code>Settings</code> (np. <code>withRenderFormatted(true)</code> w dev) — bean <code>DefaultConfiguration</code> + <code>DefaultDSLContext</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="zaawansowane">Zaawansowane scenariusze</h2>
+
+<h3>CTE (WITH)</h3>
+<div class="po-co">
+  <strong>Po co CTE w jOOQ?</strong> Złożone raporty czytelniejsze jako pipeline: najpierw CTE z agregatem, potem SELECT z CTE. jOOQ wspiera zagnieżdżone <code>with()</code> — to nadal jeden statement SQL, atomowy w transakcji.
+</div>
+<pre><code>var recent = name("recent_authors").as(
+    select(AUTHOR.ID, AUTHOR.EMAIL)
+    .from(AUTHOR)
+    .where(AUTHOR.CREATED_AT.gt(LocalDateTime.now().minusMonths(1)))
+);
+
+dsl.with(recent)
+   .select(count())
+   .from(recent)
+   .fetchSingle(0, int.class);</code></pre>
+
+<h3>Stored procedures i funkcje</h3>
+<pre><code>// Wywołanie funkcji Postgres
+BigDecimal result = dsl.select(
+    DSL.function("calculate_royalty", BigDecimal.class, AUTHOR.ID)
+).from(AUTHOR).where(...).fetchSingle(...);</code></pre>
+
+<h3>Multi-schema / multi-tenancy</h3>
+<p>Osobny <code>DSLContext</code> z <code>Settings</code> ustawiającym <code>renderSchema</code> lub mapowanie <code>schema("tenant_123").table("author")</code> — izolacja tenantów bez zmiany kodu zapytań.</p>
+
+<h3>Reactive (R2DBC)</h3>
+<p>jOOQ jest <strong>synchroniczny</strong> (JDBC). Dla WebFlux użyj R2DBC z własnym query layer lub trzymaj jOOQ w blokującym wątku (<code>Schedulers.boundedElastic()</code>). To świadomy kompromis — type-safety vs pełna reaktywność.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong>Brak codegen po migracji</strong> — kod kompiluje się ze starymi kolumnami; błędy w runtime na prod.</li>
+  <li><strong><code>fetchOne()</code> gdy wyników jest 0 lub wiele</strong> — użyj <code>fetchOptional()</code> albo <code>fetchOneInto()</code> z świadomością kontraktu.</li>
+  <li><strong>N+1 w pętli</strong> — jOOQ nie chroni przed zapytaniem w pętli tak jak świadomy JOIN; batch fetch albo jeden SELECT z IN.</li>
+  <li><strong>String concatenation w <code>where()</code></strong> — <code>.where("email = '" + email + "'")</code> omija typowanie i otwiera SQL injection; używaj <code>AUTHOR.EMAIL.eq(email)</code>.</li>
+  <li><strong>Ignorowanie dialektu</strong> — <code>onConflict</code> działa inaczej w MySQL (<code>onDuplicateKeyUpdate</code>); testuj na docelowej bazie.</li>
+  <li><strong>Ładowanie gigantycznego <code>fetch()</code></strong> — milion wierszy do listy; użyj <code>fetchLazy()</code> lub LIMIT + kursor.</li>
+  <li><strong>Edycja wygenerowanych klas</strong> — zmiany znikną przy następnym codegen; logika do osobnych serwisów/repozytoriów.</li>
+  <li><strong>Mieszanie odpowiedzialności z Hibernate</strong> — ta sama encja zarządzana przez Session i jednocześnie UPDATE przez jOOQ bez <code>entityManager.flush()</code> → niespójny stan cache.</li>
+  <li><strong>Brak indeksów pod zapytania jOOQ</strong> — jOOQ generuje optymalny SQL, ale plan wykonania zależy od DBA; EXPLAIN nadal twoja odpowiedzialność.</li>
+  <li><strong>Open Source vs Commercial</strong> — dialekty Oracle, SQL Server w pełni w wersji commercial; Postgres/MySQL w open source — sprawdź licencję przed wyborem.</li>
+</ol>
+
+</body>
+</html>
