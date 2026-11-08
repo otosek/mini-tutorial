@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Cloud Discovery — mini-tutorial</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #6db33f;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef8e6; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong { display: block; color: var(--accent); margin-bottom: 0.25rem; }
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      font-family: ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Spring Cloud Discovery i LoadBalancer</h1>
+<p class="meta">Service discovery · Eureka / Consul / K8s · <code>lb://</code> · health · vs DNS<br>
+Format: samodzielny HTML, offline · Bez pytań rekrutacyjnych</p>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#kiedy">Kiedy tak / kiedy nie</a></li>
+    <li><a href="#loadbalancer">Spring Cloud LoadBalancer</a></li>
+    <li><a href="#eureka">Eureka</a></li>
+    <li><a href="#consul">Consul</a></li>
+    <li><a href="#kubernetes">Kubernetes</a></li>
+    <li><a href="#health">Health i rejestracja</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty</h2>
+
+<p><strong>Service discovery</strong> — mechanizm, dzięki któremu klient (Feign, Gateway, RestClient) wie, <em>gdzie</em> są instancje serwisu <code>order-service</code> bez hardcodowanego IP. Rejestr przechowuje listę host:port + metadane; klient pyta rejestr i wybiera instancję przez <strong>load balancer</strong>.</p>
+
+<div class="flow-box">order-service (3 repliki)  →  rejestracja  →  Eureka / Consul / K8s API
+                                              ↑
+author-service (Feign)  →  LoadBalancer  →  wybór instancji order-service</div>
+
+<p><strong>Spring Cloud LoadBalancer</strong> (SC LB) zastąpił Netflix Ribbon (usunięty). Działa z dowolnym <code>DiscoveryClient</code> — Eureka, Consul, Kubernetes. URI <code>lb://order-service</code> w Gateway/Feign/RestClient aktywuje SC LB.</p>
+
+<div class="keyword">
+  <strong>Discovery vs DNS</strong>
+  <p>W K8s często wystarczy DNS (<code>order-service.default.svc.cluster.local</code>) + Service — kube-proxy/load balancer routuje. Osobny Eureka na K8s to zwykle zbędna warstwa. Discovery Spring ma sens na VM/ECS bez natywnego rejestru albo gdy chcesz ten sam model lokalnie i na prod.</p>
+</div>
+
+<hr>
+
+<h2 id="kiedy" class="must-know">1. Kiedy używać / kiedy nie</h2>
+
+<table>
+  <thead><tr><th>Mechanizm</th><th>Kiedy</th></tr></thead>
+  <tbody>
+    <tr><td><strong>K8s Service + DNS</strong></td><td>Aplikacje w klastrze — domyślny wybór 2025+</td></tr>
+    <tr><td><strong>Spring Cloud K8s discovery</strong></td><td>Chcesz <code>lb://</code> / Feign z nazwą serwisu jak w Eureka, ale backend to K8s</td></tr>
+    <tr><td><strong>Eureka</strong></td><td>Legacy VM/ECS, wiele serwisów Spring bez K8s; rozmowy rekrutacyjne</td></tr>
+    <tr><td><strong>Consul</strong></td><td>Multi-DC, health checks, KV store obok discovery</td></tr>
+    <tr><td><strong>Statyczna lista</strong></td><td>Dev local, 1–2 instancje — <code>spring.cloud.discovery.client.simple.instances</code></td></tr>
+    <tr><td><strong>Bez discovery</strong></td><td>Jeden monolit lub zawsze jeden URL — <code>@FeignClient(url=...)</code></td></tr>
+  </tbody>
+</table>
+
+<div class="trap"><strong>Pułapka:</strong> Eureka + K8s razem „bo Spring Cloud” — podwójna rejestracja, chaos przy skalowaniu. Na K8s wybierz jeden model: albo DNS/Service, albo Spring Cloud Kubernetes — nie Eureka Server w klastrze.</div>
+
+<hr>
+
+<h2 id="loadbalancer" class="must-know">2. Spring Cloud LoadBalancer</h2>
+
+<p>Starter: <code>spring-cloud-starter-loadbalancer</code> (często tranzytywnie z OpenFeign/Gateway). Bez discovery — statyczne instancje:</p>
+
+<pre><code>spring:
+  cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            order-service:
+              - uri: http://localhost:8081
+              - uri: http://localhost:8082</code></pre>
+
+<p>Programowe wywołanie:</p>
+
+<pre><code>@Autowired LoadBalancerClient lb;
+
+URI uri = lb.choose("order-service").getUri();
+// np. http://192.168.1.10:8081</code></pre>
+
+<p>Algorytm domyślny: <strong>RoundRobinLoadBalancer</strong>. Własny:</p>
+
+<pre><code>@Bean
+ReactorLoadBalancer&lt;ServiceInstance&gt; customLb(
+    Environment env, LoadBalancerClientFactory factory) {
+  String name = env.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);
+  return new RoundRobinLoadBalancer(
+      factory.getLazyProvider(name, ServiceInstanceListSupplier.class), name);
+}</code></pre>
+
+<table>
+  <thead><tr><th>Integracja</th><th>Składnia</th></tr></thead>
+  <tbody>
+    <tr><td>OpenFeign</td><td><code>@FeignClient(name = "order-service")</code> — bez <code>url</code></td></tr>
+    <tr><td>Gateway</td><td><code>uri: lb://order-service</code></td></tr>
+    <tr><td>RestClient / @LoadBalanced</td><td><code>@LoadBalanced RestClient.Builder</code> → <code>http://order-service/api</code></td></tr>
+    <tr><td>WebClient</td><td><code>@LoadBalanced WebClient.Builder</code></td></tr>
+  </tbody>
+</table>
+
+<pre><code>@Bean
+@LoadBalanced
+RestClient.Builder restClientBuilder() {
+  return RestClient.builder();
+}
+
+// GET http://order-service/orders/1  → LB wybiera instancję</code></pre>
+
+<p><strong>Sticky sessions:</strong> domyślnie brak — każde żądanie może trafić na inną replikę. Sesja HTTP wymaga sticky LB (Ingress annotation) albo stateless JWT.</p>
+
+<hr>
+
+<h2 id="eureka">3. Netflix Eureka</h2>
+
+<p>Serwer Eureka — rejestr instancji. Klient na każdej aplikacji — rejestracja przy starcie, heartbeat co ~30 s, wyrejestrowanie przy shutdown.</p>
+
+<pre><code># eureka-server
+spring:
+  application.name: eureka-server
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+server.port: 8761
+
+# order-service (klient)
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true</code></pre>
+
+<p>Starter serwera: <code>spring-cloud-starter-netflix-eureka-server</code>. Klienta: <code>spring-cloud-starter-netflix-eureka-client</code> + <code>@EnableDiscoveryClient</code> (opcjonalne w nowszych wersjach — auto-config).</p>
+
+<table>
+  <thead><tr><th>Pojęcie</th><th>Znaczenie</th></tr></thead>
+  <tbody>
+    <tr><td><code>register-with-eureka</code></td><td>Ta aplikacja rejestruje siebie</td></tr>
+    <tr><td><code>fetch-registry</code></td><td>Pobiera listę innych serwisów (potrzebne Feign/Gateway)</td></tr>
+    <tr><td><code>lease-renewal-interval</code></td><td>Heartbeat — za długi = opóźnione wykrycie padu</td></tr>
+    <tr><td><code>self-preservation</code></td><td>Serwer nie usuwa instancji przy masowej utracie heartbeatów (split-brain protection)</td></tr>
+  </tbody>
+</table>
+
+<p><strong>HA Eureka:</strong> minimum 2 węzły serwera, <code>defaultZone</code> wskazuje oba. Pojedynczy Eureka Server to SPOF.</p>
+
+<p>Status w 2025+: Netflix Eureka w maintenance mode, ale nadal używany w brownfield. Nowe greenfield na K8s — raczej bez Eureka.</p>
+
+<hr>
+
+<h2 id="consul">4. HashiCorp Consul</h2>
+
+<p>Discovery + health checks + KV (config light). Starter: <code>spring-cloud-starter-consul-discovery</code>.</p>
+
+<pre><code>spring:
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        service-name: ${spring.application.name}
+        health-check-path: /actuator/health
+        health-check-interval: 10s
+        prefer-ip-address: true</code></pre>
+
+<p>Consul odpytuje <code>/actuator/health</code> — instancja unhealthy znika z routingu szybciej niż przy samym braku heartbeatu Eureka (zależy od konfiguracji).</p>
+
+<p><strong>Multi-DC:</strong> Consul ma first-class wsparcie centrów danych — Eureka wymaga osobnej architektury peerów per region.</p>
+
+<hr>
+
+<h2 id="kubernetes" class="must-know">5. Kubernetes discovery</h2>
+
+<p>Starter: <code>spring-cloud-starter-kubernetes-client</code> (Fabric8 client) lub <code>kubernetes-fabric8-discovery</code>. Discovery czyta Endpoints/Service z API K8s.</p>
+
+<pre><code>spring:
+  cloud:
+    kubernetes:
+      discovery:
+        all-namespaces: false
+      reload:
+        enabled: true
+        mode: event   # odśwież listę instancji przy zmianie Endpoints</code></pre>
+
+<p><code>spring.application.name</code> powinno odpowiadać nazwie <strong>Kubernetes Service</strong> (np. <code>order-service</code>). Feign/Gateway z <code>lb://order-service</code> → Endpoints tego Service.</p>
+
+<table>
+  <thead><tr><th>Podejście</th><th>Opis</th></tr></thead>
+  <tbody>
+    <tr><td>DNS K8s</td><td><code>http://order-service</code> bez SC — najprostsze w pure K8s</td></tr>
+    <tr><td>SC K8s discovery</td><td>Ten sam kod co z Eureka (lb://), lista instancji z API</td></tr>
+    <tr><td>Ingress only</td><td>Ruch zewnętrzny przez Ingress; wewnątrz mesh DNS</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Spring Cloud Kubernetes Config</strong> — ConfigMap/Secret jako property source (alternatywa dla Config Server — patrz tutorial Config).</p>
+
+<hr>
+
+<h2 id="health">6. Health, graceful shutdown, metadane</h2>
+
+<p>Actuator <code>/actuator/health</code> — Eureka/Consul oznaczają instancję DOWN gdy health nie przechodzi. Włącz probe w K8s:</p>
+
+<pre><code>livenessProbe:
+  httpGet: { path: /actuator/health/liveness, port: 8080 }
+readinessProbe:
+  httpGet: { path: /actuator/health/readiness, port: 8080 }</code></pre>
+
+<p><strong>Graceful shutdown:</strong> <code>server.shutdown=graceful</code> + <code>spring.lifecycle.timeout-per-shutdown-phase</code> — dokończ żądania przed wyrejestrowaniem. Bez tego LB wysyła ruch na padającą instancję.</p>
+
+<p>Metadane instancji (Eureka/Consul) — wersja, strefa, canary:</p>
+
+<pre><code>eureka:
+  instance:
+    metadata-map:
+      version: "2.1"
+      zone: "eu-central-1a"</code></pre>
+
+<p>LoadBalancer może filtrować po metadanych (własny <code>ServiceInstanceListSupplier</code>) — np. tylko <code>version=2.1</code> dla canary.</p>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+
+<ol>
+  <li><strong><code>lb://</code> bez startera LoadBalancer ani discovery.</strong> „No instances available for order-service” — dodaj klienta discovery lub simple instances.</li>
+  <li><strong>Eureka na K8s „dla zasady”.</strong> Dodatkowy stateful set, split brain, podwójna prawda o instancjach — użyj Service K8s.</li>
+  <li><strong><code>spring.application.name</code> ≠ nazwa w Feign/Gateway.</strong> <code>orders</code> vs <code>order-service</code> — brak match w rejestrze.</li>
+  <li><strong>Rejestracja przed readiness.</strong> Ruch trafia na instancję, która jeszcze nie wstaje — opóźnij rejestrację (<code>eureka.client.initial-instance-info-replication-interval-seconds</code>) albo readiness probe.</li>
+  <li><strong>Jeden Eureka Server na prod.</strong> Awaria = brak discovery dla całego klastra.</li>
+  <li><strong><code>prefer-hostname</code> w Docker/K8s bez DNS.</strong> Klient nie resolvuje hostname kontenera — <code>prefer-ip-address: true</code>.</li>
+  <li><strong>Self-preservation Eureka w incydencie.</strong> Serwer trzyma martwe instancje — wyłącz świadomie albo napraw sieć między klientem a serwerem.</li>
+  <li><strong>Session affinity bez sticky.</strong> Round-robin + sesja w pamięci = losowe wylogowania.</li>
+  <li><strong>Consul health check na złym porcie/path.</strong> Instancja zawsze unhealthy — 0 instancji w LB.</li>
+  <li><strong>Discovery w testach bez mocka.</strong> IT wymaga Eureka/Consul — użyj <code>simple.instances</code> albo Testcontainers Consul.</li>
+</ol>
+
+</body>
+</html>
