@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Decyzje architektoniczne i pułapki umysłu</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ddd;
+      --accent: #b45309;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --code-bg: #f4f4f5;
+      --star: #ca8a04;
+      --trap-bg: #fef2f2;
+      --tip-bg: #f0fdf4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2.25rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+
+    p { margin: 0.75rem 0; }
+    ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+
+    .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    .must-know::after { content: " ★"; color: var(--star); }
+
+    .thesis {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0;
+      font-size: 1.05rem;
+      font-weight: 500;
+      border-radius: 0 8px 8px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+      background: var(--surface);
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #fef3c7; font-weight: 600; }
+
+    .keyword {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .keyword strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+
+    .keyword p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+
+    .trap {
+      background: var(--trap-bg);
+      border-left: 4px solid var(--danger);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .trap strong { color: var(--danger); }
+
+    .tip {
+      background: var(--tip-bg);
+      border-left: 4px solid var(--success);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .tip strong { color: var(--success); }
+
+    .phrase-box {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+
+    .phrase-box code {
+      background: #fef3c7;
+      font-style: italic;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .toc ol { margin: 0.5rem 0 0; columns: 2; column-gap: 1.5rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    .back { margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back a { color: var(--accent); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { padding-left: 1.5rem; position: relative; margin: 0.5rem 0; }
+    .checklist li::before { content: "☐"; position: absolute; left: 0; color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<p class="back"><a href="../index.html">← Spis tutoriali</a></p>
+
+<h1>Decyzje architektoniczne i pułapki umysłu</h1>
+<p class="meta">Jak podejmować decyzje i nie dać się oszukać własnemu mózgowi · ADR · błędy poznawcze · techniki obronne<br>
+Format: samodzielny HTML, offline · Perspektywa Principal Architect</p>
+
+<div class="thesis">
+<strong>Główna teza:</strong> Decyzja architektoniczna istnieje tylko wtedy, gdy istnieje realna alternatywa. Wybór jedynej znanej opcji to nie decyzja — to akt rozpaczy, brak wiedzy lub uleganie pułapkom poznawczym.
+</div>
+
+<nav class="toc">
+  <strong>Spis treści</strong>
+  <ol>
+    <li><a href="#fundamenty">Fundamenty</a></li>
+    <li><a href="#adr">Problem w ADR</a></li>
+    <li><a href="#psychologia">Pułapki poznawcze</a></li>
+    <li><a href="#technologia">Pułapki technologiczne</a></li>
+    <li><a href="#procedura">Procedura obronna</a></li>
+    <li><a href="#apteczka">Apteczka dyskusyjna</a></li>
+    <li><a href="#bledy">Typowe błędy</a></li>
+  </ol>
+</nav>
+
+<h2 id="fundamenty">Część 0 — Fundamenty: czym jest decyzja</h2>
+
+<p>Architektura oprogramowania to <strong>suma decyzji</strong>, które trudno cofnąć. Wybór bazy danych, protokołu komunikacji, granicy modułów — każda z tych decyzji kształtuje system na lata. Ale czy każdy „wybór" to rzeczywiście decyzja?</p>
+
+<p><strong>Definicja robocza:</strong> Decyzja architektoniczna to świadomy wybór spośród co najmniej dwóch realnych, wykonalnych alternatyw, podjęty na podstawie jawnych kryteriów i udokumentowany z uzasadnieniem.</p>
+
+<table>
+  <thead><tr><th>To NIE jest decyzja</th><th>To JEST decyzja</th></tr></thead>
+  <tbody>
+    <tr><td>„Użyjemy Kafki, bo tylko to znam"</td><td>„Kafka vs RabbitMQ vs SQS — wybraliśmy Kafkę, bo replay i ordering"</td></tr>
+    <tr><td>„Mikrousługi, bo tak się robi"</td><td>„Monolit vs mikrousługi — monolit na start, bo zespół 4 osoby"</td></tr>
+    <tr><td>„Spring, bo wszyscy używają"</td><td>„Spring vs Quarkus vs Micronaut — Spring, bo ekosystem i hiring"</td></tr>
+  </tbody>
+</table>
+
+<p>Gdy nie ma alternatywy, nie podejmujesz decyzji — <strong>poddajesz się okolicznościom</strong>. To fundamentalna różnica, którą większość zespołów ignoruje.</p>
+
+<hr>
+
+<h2 id="adr" class="must-know">1. Istota problemu w ADR</h2>
+
+<p><strong>Architecture Decision Record (ADR)</strong> to dokument opisujący jedną decyzję architektoniczną. Typowa struktura:</p>
+
+<pre><code># ADR-007: Wybór bazy danych dla modułu zamówień
+
+## Status
+Accepted
+
+## Context
+System wymaga persystencji zamówień z gwarancją ACID...
+
+## Decision
+PostgreSQL 16
+
+## Alternatives      ← KLUCZOWA SEKCJA
+- MongoDB
+- MySQL
+- DynamoDB
+
+## Consequences
++ Silne gwarancje transakcyjne
+- Skalowanie horyzontalne wymaga dodatkowej pracy</code></pre>
+
+<h3>Dlaczego sekcja „Alternatives" jest kluczowa</h3>
+
+<div class="trap">
+<strong>Pułapka:</strong> ADR bez alternatyw to <strong>dokument propagandowy</strong>, nie zapis decyzji. Uzasadnia wybór post-factum, zamiast dokumentować proces myślowy.
+</div>
+
+<p>Brak sekcji alternatyw oznacza jedno z trzech:</p>
+<ol>
+  <li><strong>Nie szukaliśmy innych opcji</strong> — tunel myślowy, pierwsza opcja wygrała bez konkurencji</li>
+  <li><strong>Szukaliśmy, ale nie zapisaliśmy</strong> — za pół roku nikt nie pamięta dlaczego nie MongoDB</li>
+  <li><strong>Celowo ukrywamy</strong> — decyzja była polityczna, nie techniczna</li>
+</ol>
+
+<h3>Konsekwencje pustych alternatyw</h3>
+
+<table>
+  <thead><tr><th>Problem</th><th>Skutek w projekcie</th></tr></thead>
+  <tbody>
+    <tr><td>Brak możliwości rewizji</td><td>Gdy kontekst się zmieni, nie wiadomo co ponownie rozważyć</td></tr>
+    <tr><td>Dług wiedzy</td><td>Nowi członkowie zespołu nie rozumieją „dlaczego nie X"</td></tr>
+    <tr><td>Fałszywe poczucie słuszności</td><td>„Przecież to udokumentowane" — ale bez analizy opcji</td></tr>
+    <tr><td>Powtarzanie błędów</td><td>Ten sam anty-wzorzec wybierany w kolejnych projektach</td></tr>
+  </tbody>
+</table>
+
+<div class="tip">
+<strong>Reguła:</strong> ADR z pustą sekcją „Alternatives" powinien być odrzucony na code review jak PR bez testów.
+</div>
+
+<hr>
+
+<h2 id="psychologia" class="must-know">2. Perspektywa psychologiczna — pułapki poznawcze</h2>
+
+<p>Mózg programisty to ten sam mózg, który ewoluował na sawannie. Heurystyki, które pomagały przetrwać, dziś sabotują decyzje techniczne.</p>
+
+<h3>Klasyczne błędy poznawcze</h3>
+
+<div class="keyword">
+  <strong>Efekt Zakotwiczenia (Anchoring Bias)</strong>
+  <p>Pierwsza usłyszana informacja nieproporcjonalnie wpływa na ocenę. Senior mówi „Kafka" na początku spotkania — cała dyskusja krąży wokół Kafki, nawet gdy RabbitMQ pasuje lepiej. <em>Obrona:</em> Zbieraj propozycje pisemnie przed dyskusją.</p>
+</div>
+
+<div class="keyword">
+  <strong>Błąd Potwierdzenia (Confirmation Bias)</strong>
+  <p>Szukamy dowodów wspierających naszą tezę, ignorujemy sprzeczne. Chcesz mikrousługi? Znajdziesz 10 artykułów „dlaczego microservices", pominiesz „microservices premium". <em>Obrona:</em> Celowo szukaj argumentów przeciw swojej opcji.</p>
+</div>
+
+<div class="keyword">
+  <strong>Efekt Kosztów Utopionych (Sunk Cost Fallacy)</strong>
+  <p>„Zainwestowaliśmy 3 miesiące w to rozwiązanie, nie możemy teraz zmienić." Czas już stracony nie powinien wpływać na przyszłe decyzje — liczy się tylko koszt od teraz. <em>Obrona:</em> Pytaj „co byśmy wybrali, gdybyśmy zaczynali dziś?"</p>
+</div>
+
+<div class="keyword">
+  <strong>Myślenie Grupowe (Groupthink)</strong>
+  <p>Zespół dąży do konsensusu kosztem krytycznej analizy. Nikt nie chce być „tym, który blokuje". Efekt: decyzje pozornie jednomyślne, faktycznie nieprzeanalizowane. <em>Obrona:</em> Wyznacz Adwokata Diabła, głosowania anonimowe.</p>
+</div>
+
+<h3>Mniej znane, równie groźne</h3>
+
+<div class="keyword">
+  <strong>Efekt Aureoli (Halo Effect)</strong>
+  <p>Netflix używa Cassandry? „To musi być dobre!" Sukces firmy X z technologią Y nie oznacza, że Y pasuje do twojego kontekstu. Netflix ma inną skalę, zespół, budżet. <em>Obrona:</em> Pytaj „czy mamy te same problemy co Netflix?"</p>
+</div>
+
+<div class="keyword">
+  <strong>Efekt Dostępności (Availability Heuristic)</strong>
+  <p>Przeceniamy prawdopodobieństwo zdarzeń, które łatwo przywołać z pamięci. Ostatnio czytałeś o awarii MongoDB? Nagle MongoDB wydaje się ryzykowne, choć statystycznie jest stabilne. <em>Obrona:</em> Bazuj na danych, nie na anegdotach.</p>
+</div>
+
+<div class="keyword">
+  <strong>Efekt Posiadania (Endowment Effect)</strong>
+  <p>Przeceniamy wartość tego, co już mamy. „Nasz obecny stack jest OK" — nawet gdy obiektywnie nie jest. Zmiana boli bardziej niż trwanie w złym stanie. <em>Obrona:</em> Oceń stack jakby był cudzym kodem.</p>
+</div>
+
+<div class="keyword">
+  <strong>Iluzja Kontroli (Illusion of Control)</strong>
+  <p>„Napiszemy własny message broker, będziemy mieli pełną kontrolę." Kontrola jest iluzoryczna — dostajesz też pełną odpowiedzialność za bugi, skalowanie, security. <em>Obrona:</em> Policz TCO własnego rozwiązania vs gotowego.</p>
+</div>
+
+<div class="keyword">
+  <strong>Efekt IKEA (IKEA Effect)</strong>
+  <p>Przeceniamy wartość rzeczy, które sami stworzyliśmy. Własny framework ORM „jest lepszy", bo go napisaliśmy — obiektywnie ma 5% funkcji Hibernate i 500% bugów. <em>Obrona:</em> Zewnętrzny review bez autora w pokoju.</p>
+</div>
+
+<div class="keyword">
+  <strong>Prokrastynacja Decyzyjna (Analysis Paralysis)</strong>
+  <p>Zbyt wiele opcji paraliżuje. „Musimy jeszcze sprawdzić framework X, Y, Z..." — w nieskończoność. Brak decyzji to też decyzja (zwykle zła). <em>Obrona:</em> Ustal deadline i kryteria eliminacji.</p>
+</div>
+
+<div class="keyword">
+  <strong>Efekt Dunning-Kruger</strong>
+  <p>Początkujący przeceniają swoją wiedzę, eksperci ją nie doceniają. Junior: „Kubernetes to prosto, wdrożymy w tydzień." Senior: „Może nie jestem pewien czy to dobry wybór..." <em>Obrona:</em> Słuchaj wątpliwości doświadczonych.</p>
+</div>
+
+<div class="keyword">
+  <strong>Status Quo Bias</strong>
+  <p>Preferujemy obecny stan, nawet gdy zmiana jest korzystna. „Zawsze używaliśmy Oracle" — nikt nie pamięta dlaczego, ale zmiana wydaje się ryzykowna. <em>Obrona:</em> Traktuj status quo jako jedną z alternatyw, nie jako default.</p>
+</div>
+
+<hr>
+
+<h2 id="technologia">3. Perspektywa technologiczna i procesowa</h2>
+
+<p>Oprócz pułapek poznawczych, istnieją systemowe blokady szukania alternatyw wynikające z kultury technicznej i organizacji pracy.</p>
+
+<div class="keyword">
+  <strong>Złoty Młotek (Golden Hammer)</strong>
+  <p>„Mamy młotek, więc wszystko jest gwoździem." Zespół zna Spring Boot — każdy problem rozwiązuje Spring Bootem, nawet gdy Lambda byłaby lepsza. <em>Obrona:</em> Rotacja technologii w spike'ach, nauka nowych narzędzi.</p>
+</div>
+
+<div class="keyword">
+  <strong>Hype-Driven Development</strong>
+  <p>Wybór technologii na podstawie trendów, nie potrzeb. „Kubernetes, bo wszyscy o nim mówią" — dla aplikacji z 10 użytkownikami. <em>Obrona:</em> Pytaj „jaki konkretny problem to rozwiązuje?"</p>
+</div>
+
+<div class="keyword">
+  <strong>Resume-Driven Development</strong>
+  <p>Architekci wybierają technologie, które chcą mieć w CV, nie te optymalne dla projektu. Nowy, błyszczący stack wygląda lepiej na LinkedIn. <em>Obrona:</em> Jawna dyskusja o motywacjach w zespole.</p>
+</div>
+
+<div class="keyword">
+  <strong>Deadline Panic</strong>
+  <p>„Nie ma czasu na analizę, musimy coś wybrać TERAZ." Presja czasu eliminuje myślenie o alternatywach. Ironicznie, zła decyzja pod presją kosztuje więcej czasu później. <em>Obrona:</em> Zawsze jest czas na 30-minutowy spike z dwoma opcjami.</p>
+</div>
+
+<div class="keyword">
+  <strong>Vendor Lock-in Blindness</strong>
+  <p>Ignorowanie kosztów uzależnienia od dostawcy. „AWS jest wygodne" — dopóki nie zobaczysz rachunku lub nie będziesz musiał migrować. <em>Obrona:</em> Zawsze rozważ opcję cloud-agnostic jako alternatywę.</p>
+</div>
+
+<div class="keyword">
+  <strong>Kultura „Tak, ale..."</strong>
+  <p>Organizacja, w której każda propozycja spotyka się z oporem, ale brak kontrpropozycji. Blokowanie bez alternatyw to nie krytyczne myślenie — to destrukcja. <em>Obrona:</em> Reguła „krytyka + propozycja".</p>
+</div>
+
+<div class="keyword">
+  <strong>Efekt Konferencji</strong>
+  <p>Technologia wybrana, bo prelegent przekonująco mówił na konferencji. Prelegenci to często ewangeliści, nie praktycy. <em>Obrona:</em> Szukaj case studies porażek, nie tylko sukcesów.</p>
+</div>
+
+<hr>
+
+<h2 id="procedura" class="must-know">4. Praktyczna procedura obronna</h2>
+
+<p>Algorytm dla zespołu chcącego uzdrowić proces decyzyjny:</p>
+
+<h3>Krok 1: Status Quo jako alternatywa</h3>
+<p>Zawsze wpisz obecne rozwiązanie (lub „nie robimy nic") jako pierwszą alternatywę. Zmusza to do jawnego porównania zmiany z brakiem zmiany.</p>
+
+<h3>Krok 2: Minimum 3 opcje</h3>
+<p>Nie kończ analizy, dopóki nie masz trzech realnych alternatyw. Dwie to za mało — łatwo wpaść w fałszywą dychotomię. Trzy wymuszają szersze myślenie.</p>
+
+<h3>Krok 3: Adwokat Diabła</h3>
+<p>Wyznacz osobę, której <strong>zadaniem</strong> jest atakować preferowaną opcję. To nie jest „bycie negatywnym" — to rola procesowa. Rotuj tę rolę między spotkaniami.</p>
+
+<h3>Krok 4: Technika Pre-mortem</h3>
+<p>Zanim podejmiesz decyzję, załóż że <strong>już się nie udało</strong>. Pytanie: „Jest rok później, projekt spalił się. Dlaczego?" Zespół generuje listę ryzyk, których nie widział wcześniej.</p>
+
+<pre><code>Pre-mortem dla decyzji "Kafka jako message broker":
+
+Załóżmy, że za rok Kafka okazała się złą decyzją. Dlaczego?
+- Zespół nie miał kompetencji → 3 miesiące nauki zamiast delivery
+- Overkill dla naszego ruchu → płacimy za infrastrukturę 10x
+- Ops nie chciał utrzymywać → konflikty, brak wsparcia
+- Ordering okazał się niepotrzebny → mogliśmy użyć SQS</code></pre>
+
+<h3>Krok 5: Odwrócony Świat (Inversion)</h3>
+<p>Zamiast pytać „jak wybrać najlepszą opcję?", pytaj „jak zagwarantować najgorszą decyzję?". Odpowiedzi pokazują, czego unikać.</p>
+
+<pre><code>Jak podjąć NAJGORSZĄ decyzję o bazie danych?
+- Wybrać pierwszą opcję, którą ktoś zaproponował
+- Nie sprawdzać wymagań wydajnościowych
+- Ignorować opinię ops/DBA
+- Bazować na artykule sprzed 5 lat
+- Nie robić proof-of-concept
+
+→ Więc zrób odwrotnie.</code></pre>
+
+<h3>Krok 6: Timeboxed Spike</h3>
+<p>Zamiast teoretyzować, zbuduj prototyp każdej opcji. 2-4 godziny na opcję. Rzeczywisty kod eliminuje 80% fałszywych założeń.</p>
+
+<h3>Krok 7: Jawne kryteria decyzyjne</h3>
+<p>Przed analizą opcji ustal wagowane kryteria. Unikasz retrospektywnego dopasowywania kryteriów do preferowanej opcji.</p>
+
+<table>
+  <thead><tr><th>Kryterium</th><th>Waga</th><th>Opcja A</th><th>Opcja B</th><th>Opcja C</th></tr></thead>
+  <tbody>
+    <tr><td>Time to market</td><td>30%</td><td>8</td><td>6</td><td>9</td></tr>
+    <tr><td>Koszty utrzymania</td><td>25%</td><td>7</td><td>9</td><td>5</td></tr>
+    <tr><td>Kompetencje zespołu</td><td>25%</td><td>9</td><td>4</td><td>7</td></tr>
+    <tr><td>Skalowalność</td><td>20%</td><td>6</td><td>9</td><td>8</td></tr>
+    <tr><td><strong>Suma ważona</strong></td><td></td><td><strong>7.55</strong></td><td>6.85</td><td>7.30</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="apteczka" class="must-know">5. Apteczka dyskusyjna — narzędzia komunikacji</h2>
+
+<p>Gotowe frazy do użycia podczas spotkań, gdy chcesz asertywnie wymusić rozważenie alternatyw bez wchodzenia w konflikt.</p>
+
+<h3>Gdy ktoś forsuje jedną opcję</h3>
+
+<div class="phrase-box">
+<code>„Brzmi solidnie. Jakie inne opcje rozważaliśmy, zanim doszliśmy do tej rekomendacji?"</code><br>
+Neutralne, nie atakuje — pyta o proces.
+</div>
+
+<div class="phrase-box">
+<code>„Załóżmy, że ta opcja odpada z powodów budżetowych. Co byłoby planem B?"</code><br>
+Wymusza myślenie o alternatywie bez negowania opcji A.
+</div>
+
+<div class="phrase-box">
+<code>„Chcę się upewnić, że dobrze rozumiem trade-offy. Co tracimy wybierając tę opcję?"</code><br>
+Kieruje dyskusję na koszty, nie tylko korzyści.
+</div>
+
+<h3>Gdy spotkanie zmierza do szybkiego konsensusu</h3>
+
+<div class="phrase-box">
+<code>„Zanim zamkniemy temat — czy ktoś ma wątpliwości, które jeszcze nie padły? Chcę się upewnić, że nie pomijamy czegoś ważnego."</code><br>
+Daje przestrzeń cichym głosom.
+</div>
+
+<div class="phrase-box">
+<code>„Zróbmy szybki Devil's Advocate — przez 5 minut atakujmy tę opcję. Co może pójść nie tak?"</code><br>
+Formalizuje krytykę jako technikę, nie atak personalny.
+</div>
+
+<h3>Gdy pada argument „bo wszyscy tak robią"</h3>
+
+<div class="phrase-box">
+<code>„To ciekawe, że X używa tego rozwiązania. Czy mamy podobny kontekst — skalę, zespół, budżet?"</code><br>
+Podważa argument z autorytetu bez agresji.
+</div>
+
+<div class="phrase-box">
+<code>„Czy znamy przypadki, gdzie to rozwiązanie się NIE sprawdziło? Co ich różniło od nas?"</code><br>
+Wymusza poszukiwanie kontrprzykładów.
+</div>
+
+<h3>Gdy presja czasu eliminuje analizę</h3>
+
+<div class="phrase-box">
+<code>„Rozumiem deadline. Czy możemy poświęcić 2 godziny na spike dwóch opcji, zanim zdecydujemy? To mniej niż cofanie złej decyzji za miesiąc."</code><br>
+Reframuje koszt analizy jako inwestycję.
+</div>
+
+<div class="phrase-box">
+<code>„Jaka jest minimalna analiza, która da nam wystarczającą pewność? Nie mówię o tygodniach — chodzi o 80% pewności."</code><br>
+Negocjuje zakres, nie istnienie analizy.
+</div>
+
+<h3>Gdy decyzja została podjęta bez ciebie</h3>
+
+<div class="phrase-box">
+<code>„Widzę, że zdecydowaliśmy o X. Czy mogę zobaczyć ADR z alternatywami, żebym mógł lepiej zrozumieć kontekst?"</code><br>
+Prośba o dokumentację ujawnia jej brak.
+</div>
+
+<div class="phrase-box">
+<code>„Chcę się upewnić, że dobrze wdrożę tę decyzję. Jakie były główne argumenty przeciw opcjom, które odrzuciliśmy?"</code><br>
+Pytanie praktyczne, które wymusza refleksję.
+</div>
+
+<h3>Gdy senior/lider narzuca rozwiązanie</h3>
+
+<div class="phrase-box">
+<code>„Doceniam twoją rekomendację — masz więcej doświadczenia. Czy mógłbyś podzielić się, jakie inne podejścia rozważałeś?"</code><br>
+Szanuje autorytet, ale wymusza transparentność.
+</div>
+
+<div class="phrase-box">
+<code>„Chcę się nauczyć twojego procesu myślowego. Co sprawiło, że odrzuciłeś alternatywy?"</code><br>
+Pozycjonuje się jako uczeń, nie krytyk — ale wymusza ujawnienie procesu.
+</div>
+
+<hr>
+
+<h2 id="bledy">Typowe błędy</h2>
+<ol>
+  <li><strong>ADR bez sekcji Alternatives</strong> — dokument propagandowy, nie zapis decyzji</li>
+  <li><strong>„Jedyna słuszna opcja"</strong> — czerwona flaga, że nie szukano alternatyw</li>
+  <li><strong>Analiza post-factum</strong> — szukanie uzasadnienia dla już podjętej decyzji</li>
+  <li><strong>Brak kryteriów przed analizą</strong> — kryteria dopasowywane do preferowanej opcji</li>
+  <li><strong>Ignorowanie Status Quo</strong> — „nie zmieniać" to też opcja warta rozważenia</li>
+  <li><strong>Consensus bez dyskusji</strong> — szybka zgoda = prawdopodobnie groupthink</li>
+  <li><strong>Argument z autorytetu</strong> — „Netflix tak robi" nie oznacza, że ty powinieneś</li>
+  <li><strong>Deadline jako wymówka</strong> — zawsze jest czas na minimalną analizę</li>
+  <li><strong>Sunk cost w decyzjach</strong> — przeszłe inwestycje nie powinny wpływać na przyszłe wybory</li>
+  <li><strong>Brak retrospektywy decyzji</strong> — nie uczysz się, które decyzje były złe i dlaczego</li>
+</ol>
+
+<hr>
+
+<h2 id="checklist">Checklist przed decyzją</h2>
+<ul class="checklist">
+  <li>Czy mam minimum 3 realne alternatywy (włącznie ze status quo)?</li>
+  <li>Czy kryteria decyzyjne ustaliłem PRZED analizą opcji?</li>
+  <li>Czy ktoś pełnił rolę Adwokata Diabła?</li>
+  <li>Czy zrobiłem Pre-mortem dla preferowanej opcji?</li>
+  <li>Czy szukałem case studies PORAŻEK, nie tylko sukcesów?</li>
+  <li>Czy ADR ma wypełnioną sekcję Alternatives z uzasadnieniem odrzucenia?</li>
+  <li>Czy decyzja nie jest driven by hype/CV/konferencja?</li>
+  <li>Czy uwzględniłem koszty utopione i nie pozwoliłem im wpływać na wybór?</li>
+</ul>
+
+</body>
+</html>
