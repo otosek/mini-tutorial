@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Boot + K8s Probes — wersja Confluence</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem 0.65rem; text-align: left; }
+    th { background: #f4f4f5; }
+    pre { background: #f4f4f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+    code { font-family: monospace; background: #f4f4f5; padding: 0.15em 0.4em; border-radius: 3px; }
+    pre code { background: none; padding: 0; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>Spring Boot + Kubernetes Probes</h1>
+<p><em>Błędne proby, graceful shutdown, preStop hook, Java w kontenerach, skalowanie</em></p>
+
+<p>ℹ️ <strong>CEL DOKUMENTU:</strong> Pokazanie, jak źle skonfigurowany Kubernetes wraz ze Spring Bootem powoduje, że klienci dostają błędy serii 500 wielokrotnie — a my (devops/dev) tego nie widzimy w logach aplikacji.</p>
+
+<p>💡 <strong>ZAŁOŻENIA:</strong> Przy obliczeniach ilości błędów zakładamy ruch <strong>20 req/s</strong>. W środowiskach z większym ruchem liczby będą proporcjonalnie wyższe.</p>
+
+<h2>Spis treści</h2>
+<ol>
+  <li>Błędny startup — socket vs actuator ⭐</li>
+  <li>Błędny shutdown ⭐</li>
+  <li>Graceful shutdown w Spring Boot ⭐</li>
+  <li>PreStop hook — race condition</li>
+  <li>Java w kontenerach — dobre praktyki</li>
+  <li>CPU podczas startu Spring Boot</li>
+  <li>Dlaczego skalować aplikacje Java</li>
+  <li>Kompletna konfiguracja</li>
+  <li>Typowe błędy ⭐</li>
+</ol>
+
+<hr>
+
+<h2>Część 1 — Błędny startup: socket vs actuator ⭐</h2>
+
+<p><strong>Problem:</strong> <code>tcpSocket</code> probe pokazuje OK gdy port się otworzy, ale aplikacja Spring Boot jest gotowa dopiero kilkanaście sekund później. Ruch płynie do niegotowego Poda.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Czas</th>
+      <th>Wydarzenie</th>
+      <th>tcpSocket</th>
+      <th>Ruch (tcpSocket)</th>
+      <th>actuator</th>
+      <th>Ruch (actuator)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>0s</code></td>
+      <td>JVM startuje</td>
+      <td>❌ FAIL</td>
+      <td>—</td>
+      <td>❌ FAIL</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>2s</code></td>
+      <td>Tomcat binduje port 8080</td>
+      <td>✅ OK</td>
+      <td>Pod w endpoints</td>
+      <td>❌ FAIL</td>
+      <td>Brak ruchu</td>
+    </tr>
+    <tr>
+      <td><code>4s</code></td>
+      <td>Flyway migracje DB</td>
+      <td>✅ OK</td>
+      <td>🔴 Ruch → 503</td>
+      <td>❌ FAIL</td>
+      <td>Brak ruchu</td>
+    </tr>
+    <tr>
+      <td><code>8s</code></td>
+      <td>Hibernate SessionFactory</td>
+      <td>✅ OK</td>
+      <td>🔴 503, timeout</td>
+      <td>❌ FAIL</td>
+      <td>Brak ruchu</td>
+    </tr>
+    <tr>
+      <td><code>12s</code></td>
+      <td>Connection pool, @PostConstruct</td>
+      <td>✅ OK</td>
+      <td>🔴 503</td>
+      <td>❌ FAIL</td>
+      <td>Brak ruchu</td>
+    </tr>
+    <tr>
+      <td><code>18s</code></td>
+      <td>Spring Context GOTOWY</td>
+      <td>✅ OK</td>
+      <td>✅ OK</td>
+      <td>✅ OK</td>
+      <td>Pod w endpoints</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Konsekwencje:</strong></p>
+<ul>
+  <li><code>tcpSocket</code>: ~16s fałszywego OK = <strong>~320 błędów</strong> przy każdym restarcie</li>
+  <li><code>/actuator/health/readiness</code>: <strong>0 błędów</strong></li>
+</ul>
+
+<hr>
+
+<h2>Część 2 — Błędny shutdown ⭐</h2>
+
+<p><strong>Problem:</strong> Przy wyłączaniu Poda <code>tcpSocket</code> pokazuje OK aż do zamknięcia portu — K8s kieruje ruch do umierającego Poda.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Czas</th>
+      <th>Wydarzenie</th>
+      <th>tcpSocket</th>
+      <th>Błędy (tcpSocket)</th>
+      <th>actuator</th>
+      <th>Błędy (actuator)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>0s</code></td>
+      <td>K8s wysyła SIGTERM</td>
+      <td>✅ OK</td>
+      <td>—</td>
+      <td>❌ FAIL</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>1s</code></td>
+      <td>Graceful shutdown trwa</td>
+      <td>✅ OK</td>
+      <td>🔴 503</td>
+      <td>❌ FAIL</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>3s</code></td>
+      <td>Connection pool zamykany</td>
+      <td>✅ OK</td>
+      <td>🔴 DB errors</td>
+      <td>❌ FAIL</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>5s</code></td>
+      <td>Tomcat zamyka socket</td>
+      <td>❌ FAIL</td>
+      <td>🔴 Conn refused</td>
+      <td>❌ FAIL</td>
+      <td>—</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Konsekwencje:</strong></p>
+<ul>
+  <li><code>tcpSocket</code>: <strong>~100 błędów</strong></li>
+  <li><code>actuator</code>: <strong>0 błędów</strong></li>
+</ul>
+
+<hr>
+
+<h2>Część 3 — Graceful shutdown w Spring Boot ⭐</h2>
+
+<p><strong>Problem:</strong> Bez <code>server.shutdown=graceful</code> Spring ucina aktywne requesty natychmiast przy SIGTERM.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Czas</th>
+      <th>Wydarzenie</th>
+      <th>Z graceful ✅</th>
+      <th>Bez graceful ❌</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>0s</code></td>
+      <td>SIGTERM</td>
+      <td>Czeka na aktywne req</td>
+      <td>🔴 Zamyka natychmiast</td>
+    </tr>
+    <tr>
+      <td><code>0.5s</code></td>
+      <td>Aktywne requesty</td>
+      <td>Dokańcza</td>
+      <td>🔴 Connection reset</td>
+    </tr>
+    <tr>
+      <td><code>2s</code></td>
+      <td>Zakończenie</td>
+      <td>🟢 0 błędów</td>
+      <td>🔴 ~40 błędów + ucięte TX</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Konsekwencje:</strong></p>
+<ul>
+  <li>Z <code>graceful</code>: <strong>0 błędów</strong></li>
+  <li>Bez <code>graceful</code>: <strong>~40 błędów</strong> + ucięte transakcje</li>
+</ul>
+
+<h3>Konfiguracja</h3>
+<pre><code>server:
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 25s</code></pre>
+
+<hr>
+
+<h2>Część 4 — PreStop hook i race condition</h2>
+
+<p><strong>Problem:</strong> K8s robi dwie rzeczy równolegle przy delete Pod:</p>
+<ol>
+  <li>Wysyła SIGTERM do kontenera (~50ms)</li>
+  <li>Usuwa Pod z Service endpoints (propagacja 1-2s)</li>
+</ol>
+<p>SIGTERM dociera szybciej niż propagacja endpoints. Przez 1-2s ruch wciąż płynie do zamykającego się Poda.</p>
+
+<p>⚠️ <strong>UWAGA:</strong> Bez preStop: ~20-40 błędów przy każdym shutdown (nawet z graceful shutdown włączonym).</p>
+
+<p><strong>Konsekwencje:</strong></p>
+<ul>
+  <li>Bez <code>preStop</code>: <strong>~20-40 błędów</strong></li>
+  <li>Z <code>preStop</code>: <strong>0 błędów</strong></li>
+</ul>
+
+<h3>Rozwiązanie — preStop hook</h3>
+<pre><code>spec:
+  containers:
+  - name: app
+    lifecycle:
+      preStop:
+        exec:
+          command: ["sleep", "3"]</code></pre>
+
+<p><code>sleep 3</code> daje czas na propagację endpoints. Dopiero potem SIGTERM dociera do aplikacji.</p>
+
+<hr>
+
+<h2>Część 5 — Java w kontenerach: dobre praktyki</h2>
+
+<h3>Zalecane parametry JVM</h3>
+<table>
+  <thead>
+    <tr><th>Parametr</th><th>Opis</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>-XX:MaxRAMPercentage=75</code></td><td>Heap = 75% RAM kontenera</td><td>Zalecane</td></tr>
+    <tr><td><code>-XX:InitialRAMPercentage=50</code></td><td>Początkowy heap</td><td>Opcjonalne</td></tr>
+    <tr><td><code>-XX:+ExitOnOutOfMemoryError</code></td><td>Zabij JVM przy OOM — K8s zrestartuje</td><td>Zalecane</td></tr>
+    <tr><td><code>-XX:+UseG1GC</code></td><td>G1 — domyślny od Java 9</td><td>Domyślne</td></tr>
+  </tbody>
+</table>
+
+<h3>Częste błędy</h3>
+<table>
+  <thead>
+    <tr><th>Błąd</th><th>Dlaczego źle</th><th>Rozwiązanie</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>-Xmx2g</code> (hardcoded)</td>
+      <td>Ignoruje limity kontenera</td>
+      <td><code>MaxRAMPercentage=75</code></td>
+    </tr>
+    <tr>
+      <td><code>-Xmx</code> = limit RAM</td>
+      <td>Brak miejsca na native memory → OOMKill</td>
+      <td>Zostaw 25% na metaspace, stacks</td>
+    </tr>
+    <tr>
+      <td>Brak ExitOnOutOfMemoryError</td>
+      <td>JVM wisi po OOM</td>
+      <td>Dodaj flagę</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>JAVA_TOOL_OPTIONS — wszystkie flagi w jednym miejscu</h3>
+<pre><code>env:
+  - name: JAVA_TOOL_OPTIONS
+    value: >-
+      -XX:MaxRAMPercentage=75
+      -XX:InitialRAMPercentage=50
+      -XX:+ExitOnOutOfMemoryError
+      -XX:+UseG1GC</code></pre>
+
+<p>💡 <strong>TIP:</strong> <code>requests.memory = limits.memory</code> dla JVM. Inaczej JVM alokuje heap na podstawie requests, a potem OOMKill.</p>
+
+<hr>
+
+<h2>Część 6 — CPU podczas startu Spring Boot</h2>
+
+<p><strong>Problem:</strong> Spring Boot podczas startu zużywa znacznie więcej CPU niż w runtime — Hibernate, Flyway, inicjalizacja kontekstu, kompilacja JIT. Jeśli Kubernetes dławi CPU, start trwa znacznie dłużej.</p>
+
+<h3>Objawy dławienia CPU</h3>
+<ul>
+  <li>Metryki CPU przez dłuższy czas na górnej granicy (blisko <code>limits.cpu</code>)</li>
+  <li>Start aplikacji trwa 2-3× dłużej niż lokalnie</li>
+  <li><code>kubectl top pod</code> pokazuje CPU na 100% limitu przez cały startup</li>
+</ul>
+
+<h3>Rozwiązanie 1 — usuń limits.cpu (Burstable QoS)</h3>
+<p>Ustaw tylko <code>requests.cpu</code>, bez <code>limits.cpu</code>. Aplikacja może użyć więcej CPU jeśli jest dostępny na nodzie.</p>
+<pre><code>resources:
+  requests:
+    memory: "1Gi"
+    cpu: "1"
+  limits:
+    memory: "1Gi"
+    # brak limits.cpu — aplikacja może "burst"</code></pre>
+
+<h3>Rozwiązanie 2 — Kube Startup CPU Boost</h3>
+<p>Kontroler od Google, który automatycznie zwiększa CPU podczas startu i przywraca oryginalne wartości po gotowości poda (in-place, bez restartu).</p>
+
+<p><strong>Wymagania:</strong></p>
+<ul>
+  <li>Kubernetes 1.33+ lub starszy z feature gate <code>InPlacePodVerticalScaling</code></li>
+  <li>Zainstalowany kontroler: <code>helm install kube-startup-cpu-boost</code></li>
+</ul>
+
+<pre><code>apiVersion: autoscaling.x-k8s.io/v1alpha1
+kind: StartupCPUBoost
+metadata:
+  name: spring-app-boost
+  namespace: demo
+spec:
+  selector:
+    matchExpressions:
+    - key: app.kubernetes.io/name
+      operator: In
+      values: ["spring-app"]
+  resourcePolicy:
+    containerPolicies:
+    - containerName: spring-app
+      percentageIncrease:
+        value: 50
+  durationPolicy:
+    podCondition:
+      type: Ready
+      status: "True"</code></pre>
+
+<p>Powyższa konfiguracja zwiększa CPU o 50% podczas startu. Po osiągnięciu stanu <code>Ready</code> (readinessProbe OK) przywraca oryginalne wartości.</p>
+
+<hr>
+
+<h2>Część 7 — Dlaczego skalować aplikacje Java</h2>
+
+<p><strong>Jedna instancja to anty-pattern.</strong> Java w dużych kontenerach działa gorzej niż w wielu małych.</p>
+
+<h3>Problemy z 1 instancją</h3>
+<table>
+  <thead>
+    <tr><th>Problem</th><th>Opis</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Restart = 100% downtime</td><td>Deploy, crash, OOM — pełna niedostępność</td></tr>
+    <tr><td>Brak rolling update</td><td>Nowa wersja = okno niedostępności</td></tr>
+    <tr><td>readinessProbe bezużyteczna</td><td>Ruch nie ma gdzie iść</td></tr>
+    <tr><td>Duży heap = wolny GC</td><td>16GB heap = pauzy 200-500ms</td></tr>
+  </tbody>
+</table>
+
+<h3>GC: duży heap vs wiele małych</h3>
+<table>
+  <thead>
+    <tr><th>Konfiguracja</th><th>Pauza GC</th><th>Ryzyko awarii</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>1 × 16GB</code></td><td>🔴 200-500ms</td><td>1 OOM = 100% down</td></tr>
+    <tr><td><code>4 × 4GB</code></td><td>20-50ms</td><td>1 OOM = 25% down</td></tr>
+    <tr><td><code>8 × 2GB</code></td><td>🟢 5-15ms</td><td>1 OOM = 12.5% down</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>Część 8 — Kompletna konfiguracja</h2>
+
+<h3>application.yml</h3>
+<pre><code>server:
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 25s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState, db
+        liveness:
+          include: livenessState</code></pre>
+
+<h3>Deployment</h3>
+<pre><code>spec:
+  containers:
+  - name: app
+    image: myregistry/app:1.2.0
+    ports:
+    - containerPort: 8080
+    env:
+    - name: JAVA_TOOL_OPTIONS
+      value: >-
+        -XX:MaxRAMPercentage=75
+        -XX:+ExitOnOutOfMemoryError
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "1"
+      limits:
+        memory: "1Gi"
+    startupProbe:
+      httpGet:
+        path: /actuator/health/liveness
+        port: 8080
+      failureThreshold: 30
+      periodSeconds: 2
+    livenessProbe:
+      httpGet:
+        path: /actuator/health/liveness
+        port: 8080
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /actuator/health/readiness
+        port: 8080
+      periodSeconds: 5
+    lifecycle:
+      preStop:
+        exec:
+          command: ["sleep", "3"]</code></pre>
+
+<hr>
+
+<h2>Część 9 — Typowe błędy ⭐</h2>
+
+<ol>
+  <li><strong>tcpSocket zamiast httpGet</strong> — port otwarty ≠ aplikacja gotowa</li>
+  <li><strong>Brak graceful shutdown</strong> — requesty ucięte przy SIGTERM</li>
+  <li><strong>Brak preStop hook</strong> — race condition, błędy przez 1-2s</li>
+  <li><strong>Hardcoded -Xmx</strong> — ignoruje limity kontenera</li>
+  <li><strong>-Xmx = limit RAM</strong> — brak miejsca na native memory → OOMKill</li>
+  <li><strong>1 replika</strong> — restart = 100% downtime, readiness bezużyteczna</li>
+  <li><strong>Liveness sprawdza DB</strong> — pad DB = restart loop wszystkich Podów</li>
+  <li><strong>Brak startupProbe</strong> — liveness zabija wolno startującą aplikację</li>
+  <li><strong>requests ≠ limits dla memory</strong> — JVM alokuje za dużo → OOMKill</li>
+  <li><strong>Duży heap (16GB+)</strong> — długie pauzy GC, gorsza latencja</li>
+  <li><strong>limits.cpu zbyt niski</strong> — dławienie CPU podczas startu, 2-3× dłuższy startup</li>
+</ol>
+
+</body>
+</html>
