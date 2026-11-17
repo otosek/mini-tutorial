@@ -19,6 +19,7 @@
     code { font-family: monospace; background: #f4f4f5; padding: 0.15em 0.4em; border-radius: 3px; }
     pre code { background: none; padding: 0; }
     hr { border: none; border-top: 1px solid #ddd; margin: 2rem 0; }
+    .confluence-hint { color: #7c3aed; font-style: italic; font-size: 0.9em; }
   </style>
 </head>
 <body>
@@ -26,10 +27,13 @@
 <h1>Spring Boot + Kubernetes Probes</h1>
 <p><em>Błędne proby, graceful shutdown, preStop hook, Java w kontenerach, skalowanie</em></p>
 
-<p>ℹ️ <strong>CEL DOKUMENTU:</strong> Pokazanie, jak źle skonfigurowany Kubernetes wraz ze Spring Bootem powoduje, że klienci dostają błędy serii 500 wielokrotnie — a my (devops/dev) tego nie widzimy w logach aplikacji.</p>
+<p class="confluence-hint">CONFLUENCE: Wpisz /info i wklej poniższy tekst (bez emotki ℹ️)</p>
+<p>ℹ️ <strong>CEL DOKUMENTU:</strong> Celem dokumentu jest pokazanie, jakie dostosowania konfiguracji <strong>Kubernetes (proby, zasoby, lifecycle hooks) oraz Spring Boot (graceful shutdown, actuator)</strong> są niezbędne, aby wyeliminować błędy HTTP 5xx niewidoczne w logach aplikacji.</p>
 
+<p class="confluence-hint">CONFLUENCE: Wpisz /tip i wklej poniższy tekst (bez emotki 💡)</p>
 <p>💡 <strong>ZAŁOŻENIA:</strong> Przy obliczeniach ilości błędów zakładamy ruch <strong>20 req/s</strong>. W środowiskach z większym ruchem liczby będą proporcjonalnie wyższe.</p>
 
+<p class="confluence-hint">CONFLUENCE: Możesz wpisać /toc żeby wstawić automatyczny spis treści z nagłówków, albo zostawić poniższą listę</p>
 <h2>Spis treści</h2>
 <ol>
   <li>Błędny startup — socket vs actuator ⭐</li>
@@ -221,6 +225,7 @@
 </ul>
 
 <h3>Konfiguracja</h3>
+<p class="confluence-hint">CONFLUENCE: Wpisz /code i wybierz język YAML</p>
 <pre><code>server:
   shutdown: graceful
 
@@ -239,6 +244,7 @@ spring:
 </ol>
 <p>SIGTERM dociera szybciej niż propagacja endpoints. Przez 1-2s ruch wciąż płynie do zamykającego się Poda.</p>
 
+<p class="confluence-hint">CONFLUENCE: Wpisz /warning i wklej poniższy tekst (bez emotki ⚠️)</p>
 <p>⚠️ <strong>UWAGA:</strong> Bez preStop: ~20-40 błędów przy każdym shutdown (nawet z graceful shutdown włączonym).</p>
 
 <p><strong>Konsekwencje:</strong></p>
@@ -248,6 +254,7 @@ spring:
 </ul>
 
 <h3>Rozwiązanie — preStop hook</h3>
+<p class="confluence-hint">CONFLUENCE: Wpisz /code i wybierz język YAML</p>
 <pre><code>spec:
   containers:
   - name: app
@@ -300,6 +307,7 @@ spring:
 </table>
 
 <h3>JAVA_TOOL_OPTIONS — wszystkie flagi w jednym miejscu</h3>
+<p class="confluence-hint">CONFLUENCE: Wpisz /code i wybierz język YAML</p>
 <pre><code>env:
   - name: JAVA_TOOL_OPTIONS
     value: >-
@@ -308,6 +316,7 @@ spring:
       -XX:+ExitOnOutOfMemoryError
       -XX:+UseG1GC</code></pre>
 
+<p class="confluence-hint">CONFLUENCE: Wpisz /tip i wklej poniższy tekst (bez emotki 💡)</p>
 <p>💡 <strong>TIP:</strong> <code>requests.memory = limits.memory</code> dla JVM. Inaczej JVM alokuje heap na podstawie requests, a potem OOMKill.</p>
 
 <hr>
@@ -325,6 +334,7 @@ spring:
 
 <h3>Rozwiązanie 1 — usuń limits.cpu (Burstable QoS)</h3>
 <p>Ustaw tylko <code>requests.cpu</code>, bez <code>limits.cpu</code>. Aplikacja może użyć więcej CPU jeśli jest dostępny na nodzie.</p>
+<p class="confluence-hint">CONFLUENCE: Wpisz /code i wybierz język YAML</p>
 <pre><code>resources:
   requests:
     memory: "1Gi"
@@ -342,6 +352,7 @@ spring:
   <li>Zainstalowany kontroler: <code>helm install kube-startup-cpu-boost</code></li>
 </ul>
 
+<p class="confluence-hint">CONFLUENCE: Wpisz /code i wybierz język YAML</p>
 <pre><code>apiVersion: autoscaling.x-k8s.io/v1alpha1
 kind: StartupCPUBoost
 metadata:
@@ -401,6 +412,7 @@ spec:
 <h2>Część 8 — Kompletna konfiguracja</h2>
 
 <h3>application.yml</h3>
+<p class="confluence-hint">CONFLUENCE: Wpisz /code i wybierz język YAML</p>
 <pre><code>server:
   shutdown: graceful
 
@@ -424,6 +436,7 @@ management:
           include: livenessState</code></pre>
 
 <h3>Deployment</h3>
+<p class="confluence-hint">CONFLUENCE: Wpisz /code i wybierz język YAML</p>
 <pre><code>spec:
   containers:
   - name: app
