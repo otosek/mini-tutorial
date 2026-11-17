@@ -105,6 +105,8 @@
     }
 
     .toc ol { margin: 0.5rem 0 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
 
     .tip {
       background: #fef3c7;
@@ -124,6 +126,15 @@
       font-size: 0.9rem;
     }
 
+    .goal {
+      background: #eff6ff;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
     hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
   </style>
 </head>
@@ -133,21 +144,30 @@
 <p class="meta">Błędne proby, graceful shutdown, preStop hook, Java w kontenerach, skalowanie<br>
 Format: HTML (otwórz w przeglądarce). Bez sekcji ciekawostek.</p>
 
+<div class="goal">
+<strong>Cel dokumentu:</strong> Pokazanie, jak źle skonfigurowany Kubernetes wraz ze Spring Bootem powoduje, że klienci dostają błędy serii 500 wielokrotnie — a my (devops/dev) tego nie widzimy w logach aplikacji.
+</div>
+
+<div class="tip">
+<strong>Założenia:</strong> Przy obliczeniach ilości błędów zakładamy ruch <strong>20 req/s</strong>. W środowiskach z większym ruchem liczby będą proporcjonalnie wyższe.
+</div>
+
 <nav class="toc">
   <strong>Spis treści</strong>
   <ol>
-    <li>Błędny startup — socket vs actuator</li>
-    <li>Błędny shutdown</li>
-    <li>Graceful shutdown w Spring Boot</li>
-    <li>PreStop hook — race condition</li>
-    <li>Java w kontenerach — dobre praktyki</li>
-    <li>Dlaczego skalować aplikacje Java</li>
-    <li>Kompletna konfiguracja</li>
-    <li>Typowe błędy</li>
+    <li><a href="#czesc-1">Błędny startup — socket vs actuator</a></li>
+    <li><a href="#czesc-2">Błędny shutdown</a></li>
+    <li><a href="#czesc-3">Graceful shutdown w Spring Boot</a></li>
+    <li><a href="#czesc-4">PreStop hook — race condition</a></li>
+    <li><a href="#czesc-5">Java w kontenerach — dobre praktyki</a></li>
+    <li><a href="#czesc-6">CPU podczas startu Spring Boot</a></li>
+    <li><a href="#czesc-7">Dlaczego skalować aplikacje Java</a></li>
+    <li><a href="#czesc-8">Kompletna konfiguracja</a></li>
+    <li><a href="#czesc-9">Typowe błędy</a></li>
   </ol>
 </nav>
 
-<h2 class="must-know">Część 1 — Błędny startup: socket vs actuator</h2>
+<h2 id="czesc-1" class="must-know">Część 1 — Błędny startup: socket vs actuator</h2>
 
 <p><strong>Problem:</strong> <code>tcpSocket</code> probe pokazuje OK gdy port się otworzy, ale aplikacja Spring Boot jest gotowa dopiero kilkanaście sekund później. Ruch płynie do niegotowego Poda.</p>
 
@@ -214,15 +234,15 @@ Format: HTML (otwórz w przeglądarce). Bez sekcji ciekawostek.</p>
   </tbody>
 </table>
 
-<p><strong>Konsekwencje przy 100 req/s:</strong></p>
+<p><strong>Konsekwencje:</strong></p>
 <ul>
-  <li><code>tcpSocket</code>: ~16s fałszywego OK = <strong>~1600 błędów</strong> przy każdym restarcie</li>
+  <li><code>tcpSocket</code>: ~16s fałszywego OK = <strong>~320 błędów</strong> przy każdym restarcie</li>
   <li><code>/actuator/health/readiness</code>: <strong>0 błędów</strong></li>
 </ul>
 
 <hr>
 
-<h2 class="must-know">Część 2 — Błędny shutdown</h2>
+<h2 id="czesc-2" class="must-know">Część 2 — Błędny shutdown</h2>
 
 <p><strong>Problem:</strong> Przy wyłączaniu Poda <code>tcpSocket</code> pokazuje OK aż do zamknięcia portu — K8s kieruje ruch do umierającego Poda.</p>
 
@@ -273,11 +293,15 @@ Format: HTML (otwórz w przeglądarce). Bez sekcji ciekawostek.</p>
   </tbody>
 </table>
 
-<p><strong>Konsekwencje:</strong> <code>tcpSocket</code> = ~500 błędów, <code>actuator</code> = 0 błędów.</p>
+<p><strong>Konsekwencje:</strong></p>
+<ul>
+  <li><code>tcpSocket</code>: <strong>~100 błędów</strong></li>
+  <li><code>actuator</code>: <strong>0 błędów</strong></li>
+</ul>
 
 <hr>
 
-<h2 class="must-know">Część 3 — Graceful shutdown w Spring Boot</h2>
+<h2 id="czesc-3" class="must-know">Część 3 — Graceful shutdown w Spring Boot</h2>
 
 <p><strong>Problem:</strong> Bez <code>server.shutdown=graceful</code> Spring ucina aktywne requesty natychmiast przy SIGTERM.</p>
 
@@ -307,10 +331,16 @@ Format: HTML (otwórz w przeglądarce). Bez sekcji ciekawostek.</p>
       <td class="cell-mono">2s</td>
       <td>Zakończenie</td>
       <td class="cell-good">0 błędów</td>
-      <td class="cell-bad">~200 błędów + ucięte TX</td>
+      <td class="cell-bad">~40 błędów + ucięte TX</td>
     </tr>
   </tbody>
 </table>
+
+<p><strong>Konsekwencje:</strong></p>
+<ul>
+  <li>Z <code>graceful</code>: <strong>0 błędów</strong></li>
+  <li>Bez <code>graceful</code>: <strong>~40 błędów</strong> + ucięte transakcje</li>
+</ul>
 
 <h3>Konfiguracja</h3>
 <pre><code>server:
@@ -318,11 +348,11 @@ Format: HTML (otwórz w przeglądarce). Bez sekcji ciekawostek.</p>
 
 spring:
   lifecycle:
-    timeout-per-shutdown-phase: 30s</code></pre>
+    timeout-per-shutdown-phase: 25s</code></pre>
 
 <hr>
 
-<h2>Część 4 — PreStop hook i race condition</h2>
+<h2 id="czesc-4">Część 4 — PreStop hook i race condition</h2>
 
 <p><strong>Problem:</strong> K8s robi dwie rzeczy równolegle przy delete Pod:</p>
 <ol>
@@ -331,9 +361,11 @@ spring:
 </ol>
 <p>SIGTERM dociera szybciej niż propagacja endpoints. Przez 1-2s ruch wciąż płynie do zamykającego się Poda.</p>
 
-<div class="warn">
-<strong>Bez preStop:</strong> ~100-200 błędów przy każdym shutdown (nawet z graceful shutdown włączonym).
-</div>
+<p><strong>Konsekwencje:</strong></p>
+<ul>
+  <li>Bez <code>preStop</code>: <strong>~20-40 błędów</strong> przy każdym shutdown (nawet z graceful shutdown włączonym)</li>
+  <li>Z <code>preStop</code>: <strong>0 błędów</strong></li>
+</ul>
 
 <h3>Rozwiązanie — preStop hook</h3>
 <pre><code>spec:
@@ -348,7 +380,7 @@ spring:
 
 <hr>
 
-<h2>Część 5 — Java w kontenerach: dobre praktyki</h2>
+<h2 id="czesc-5">Część 5 — Java w kontenerach: dobre praktyki</h2>
 
 <h3>Zalecane parametry JVM</h3>
 <table>
@@ -402,7 +434,62 @@ spring:
 
 <hr>
 
-<h2>Część 6 — Dlaczego skalować aplikacje Java</h2>
+<h2 id="czesc-6">Część 6 — CPU podczas startu Spring Boot</h2>
+
+<p><strong>Problem:</strong> Spring Boot podczas startu zużywa znacznie więcej CPU niż w runtime — Hibernate, Flyway, inicjalizacja kontekstu, kompilacja JIT. Jeśli Kubernetes dławi CPU, start trwa znacznie dłużej.</p>
+
+<h3>Objawy dławienia CPU</h3>
+<ul>
+  <li>Metryki CPU przez dłuższy czas na górnej granicy (blisko <code>limits.cpu</code>)</li>
+  <li>Start aplikacji trwa 2-3× dłużej niż lokalnie</li>
+  <li><code>kubectl top pod</code> pokazuje CPU na 100% limitu przez cały startup</li>
+</ul>
+
+<h3>Rozwiązanie 1 — usuń limits.cpu (Burstable QoS)</h3>
+<p>Ustaw tylko <code>requests.cpu</code>, bez <code>limits.cpu</code>. Aplikacja może użyć więcej CPU jeśli jest dostępny na nodzie.</p>
+<pre><code>resources:
+  requests:
+    memory: "1Gi"
+    cpu: "1"
+  limits:
+    memory: "1Gi"
+    # brak limits.cpu — aplikacja może "burst"</code></pre>
+
+<h3>Rozwiązanie 2 — Kube Startup CPU Boost</h3>
+<p>Kontroler od Google, który automatycznie zwiększa CPU podczas startu i przywraca oryginalne wartości po gotowości poda (in-place, bez restartu).</p>
+
+<p><strong>Wymagania:</strong></p>
+<ul>
+  <li>Kubernetes 1.33+ lub starszy z feature gate <code>InPlacePodVerticalScaling</code></li>
+  <li>Zainstalowany kontroler: <code>helm install kube-startup-cpu-boost</code></li>
+</ul>
+
+<pre><code>apiVersion: autoscaling.x-k8s.io/v1alpha1
+kind: StartupCPUBoost
+metadata:
+  name: spring-app-boost
+  namespace: demo
+spec:
+  selector:
+    matchExpressions:
+    - key: app.kubernetes.io/name
+      operator: In
+      values: ["spring-app"]
+  resourcePolicy:
+    containerPolicies:
+    - containerName: spring-app
+      percentageIncrease:
+        value: 50
+  durationPolicy:
+    podCondition:
+      type: Ready
+      status: "True"</code></pre>
+
+<p>Powyższa konfiguracja zwiększa CPU o 50% podczas startu. Po osiągnięciu stanu <code>Ready</code> (readinessProbe OK) przywraca oryginalne wartości.</p>
+
+<hr>
+
+<h2 id="czesc-7">Część 7 — Dlaczego skalować aplikacje Java</h2>
 
 <p><strong>Jedna instancja to anty-pattern.</strong> Java w dużych kontenerach działa gorzej niż w wielu małych.</p>
 
@@ -433,7 +520,7 @@ spring:
 
 <hr>
 
-<h2>Część 7 — Kompletna konfiguracja</h2>
+<h2 id="czesc-8">Część 8 — Kompletna konfiguracja</h2>
 
 <h3>application.yml</h3>
 <pre><code>server:
@@ -441,7 +528,7 @@ spring:
 
 spring:
   lifecycle:
-    timeout-per-shutdown-phase: 30s
+    timeout-per-shutdown-phase: 25s
 
 management:
   endpoints:
@@ -473,10 +560,9 @@ management:
     resources:
       requests:
         memory: "1Gi"
-        cpu: "500m"
+        cpu: "1"
       limits:
         memory: "1Gi"
-        cpu: "1000m"
     startupProbe:
       httpGet:
         path: /actuator/health/liveness
@@ -500,7 +586,7 @@ management:
 
 <hr>
 
-<h2 class="must-know">Część 8 — Typowe błędy</h2>
+<h2 id="czesc-9" class="must-know">Część 9 — Typowe błędy</h2>
 
 <ol>
   <li><strong>tcpSocket zamiast httpGet</strong> — port otwarty ≠ aplikacja gotowa</li>
@@ -513,6 +599,7 @@ management:
   <li><strong>Brak startupProbe</strong> — liveness zabija wolno startującą aplikację</li>
   <li><strong>requests ≠ limits dla memory</strong> — JVM alokuje za dużo → OOMKill</li>
   <li><strong>Duży heap (16GB+)</strong> — długie pauzy GC, gorsza latencja</li>
+  <li><strong>limits.cpu zbyt niski</strong> — dławienie CPU podczas startu, 2-3× dłuższy startup</li>
 </ol>
 
 </body>
